@@ -5,7 +5,7 @@ export type StageStatus = 'completed' | 'in_progress' | 'not_started'
 export interface WorkflowStage {
   id: number
   title: string
-  subheading: 'Completed' | 'In Progress' | 'Not Started'
+  subheading: string
   status: StageStatus
 }
 
@@ -23,20 +23,24 @@ export interface CompanyInfo {
   phoneNumber?: string // Phone Number (optional)
   email: string // Email Address *
   yearFounded: string // Year Founded *
+  location?: string // Location (e.g. UAE, Dubai)
 }
 
 export interface KeyAssessmentAreas {
   stageOfMaturityAndExperience: string // *
   growthJourneyAndRegionalExperience: string // *
+  milestones?: string[]
   proposalOfCollaboration: string // *
   productPlatformServiceDetails: string // *
   focusAreas: string[] // *
   solutionMaturityLevelAndRegulatory: string // *
   relevantApprovals?: string // optional
+  regulatoryApprovalList?: string[]
   noveltyAndDifferentiation: string // *
   developmentApproach?: string // optional
   requestedM42Resources: string // *
   impactedPatientPopulations?: string[] // optional
+  clinicalAreas?: string[]
 }
 
 export interface UploadedDoc {
@@ -55,6 +59,9 @@ export interface PartnershipRequest {
   solutionMaturity: string
   status: PartnershipStatus
   submittedOn: string
+  submittedRelative?: string
+  headline?: string
+  tags?: string[]
   workflowStages: WorkflowStage[]
   overviewCards: OverviewCards
   sowDetails: {
@@ -76,21 +83,115 @@ export interface PartnershipRequest {
 export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   {
     id: 'req-001',
+    companyName: 'MedTech Innovations',
+    vendorName: 'Sarah Ahmed',
+    solution: 'AI-powered diagnostic platform for early disease detection',
+    headline: 'AI-powered diagnostic platform for early disease detection',
+    focusArea: 'AI & Diagnostics',
+    solutionMaturity: 'Pilot',
+    status: 'Pending',
+    submittedOn: '12 Oct 2026',
+    submittedRelative: '3 days ago',
+    tags: ['AI & Diagnostics', 'Medical Imaging', 'Clinical Decision Support'],
+    workflowStages: [
+      { id: 1, title: '1. Submission', subheading: '12 Oct 2026', status: 'completed' },
+      { id: 2, title: '2. Intake & Triage', subheading: 'Completed', status: 'completed' },
+      { id: 3, title: '3. Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
+      { id: 4, title: '4. NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
+      { id: 5, title: '5. Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 6, title: '6. Due Diligence', subheading: 'Not Started', status: 'not_started' },
+      { id: 7, title: '7. Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
+    ],
+    overviewCards: {
+      evidence: 'Clinical Validation Study',
+      deployment: '10+ hospitals across UAE',
+      regulatory: 'FDA / CE Mark',
+      duplicateCheck: 'Clear',
+    },
+    sowDetails: {
+      sowName: 'MedTech Innovations — AI-powered Diagnostic Platform',
+      sowDeadline: '31/10/2026',
+      tokenConsumption: '1200',
+    },
+    uploadedDocuments: [
+      {
+        id: 'doc-1',
+        name: 'MedTech_Innovations_Diagnostic_RFP.pdf',
+        size: '2.8 MB',
+        type: 'APPLICATION/PDF',
+      },
+      {
+        id: 'doc-2',
+        name: 'Clinical_Validation_Whitepaper.pdf',
+        size: '1.4 MB',
+        type: 'APPLICATION/PDF',
+      },
+      {
+        id: 'doc-3',
+        name: 'Regulatory_Approval_Documentation.pdf',
+        size: '920 KB',
+        type: 'APPLICATION/PDF',
+      },
+    ],
+    companyInfo: {
+      name: 'Sarah Ahmed',
+      jobTitle: 'Business Development Director',
+      company: 'MedTech Innovations',
+      phoneNumber: '+971 50 123 4567',
+      email: 'sarah@medtechinnovations.com',
+      yearFounded: '2018',
+      location: 'UAE, Dubai',
+    },
+    assessmentAreas: {
+      stageOfMaturityAndExperience:
+        'MedTech Innovations is a growth-stage healthtech company with extensive experience in developing AI-powered diagnostic solutions. We have successfully launched our platform in multiple markets including the UAE, KSA, and the UK, and have partnerships with leading hospitals and research institutions.',
+      growthJourneyAndRegionalExperience:
+        'Proven regional rollout across private and public healthcare systems with over 150,000 scans interpreted to date.',
+      milestones: [
+        'Product launch in 2022',
+        'Deployment in 10+ hospitals across UAE',
+        'Strategic partnership with a leading global medical imaging provider',
+        'Ongoing collaboration with academic institutions for clinical validation',
+      ],
+      proposalOfCollaboration:
+        'Deploy our AI diagnostic platform across M42 hospitals and clinics for automated triage and early-stage chronic disease screening across radiology and oncology.',
+      productPlatformServiceDetails:
+        'Secure multi-modal diagnostic engine capable of processing DICOM imaging, pathology slides, and clinical telemetry with real-time accuracy scoring.',
+      focusAreas: ['AI & Diagnostics', 'Medical Imaging', 'Clinical Decision Support'],
+      solutionMaturityLevelAndRegulatory:
+        'Operational pilot phase with clinical validation completed across 3 tertiary hospital networks.',
+      relevantApprovals: 'FDA cleared, CE Mark approved, UAE MOHAP registered.',
+      regulatoryApprovalList: ['FDA', 'CE', 'Not applicable'],
+      noveltyAndDifferentiation:
+        'Proprietary deep learning model trained on multi-ethnic clinical datasets achieving 96.4% diagnostic sensitivity, reducing false positives by 41%.',
+      developmentApproach:
+        'Internally Developed by specialized medical AI engineers and radiologists.',
+      requestedM42Resources:
+        'Clinical sandbox integration with M42 Epic EHR, pilot validation sites at Cleveland Clinic Abu Dhabi, and joint research publication.',
+      impactedPatientPopulations: ['Adult Patients', 'Pediatric Patients'],
+      clinicalAreas: ['Oncology', 'Radiology', 'Chronic Disease'],
+    },
+  },
+  {
+    id: 'req-002',
     companyName: 'AlphaHealth BioTech',
     vendorName: 'Dr. Tariq Mansoor',
     solution: 'CardioScan AI Diagnostic Platform',
+    headline: 'CardioScan AI Diagnostic Platform',
     focusArea: 'Cardiology & Precision Health',
-    solutionMaturity: 'Clinical Validation & Pilot',
+    solutionMaturity: 'Clinical Validation',
     status: 'New',
-    submittedOn: '12 Oct 2026',
+    submittedOn: '10 Oct 2026',
+    submittedRelative: '2 days ago',
+    tags: ['Cardiology & Precision Health', 'Clinical Workflow Automation'],
     workflowStages: [
-      { id: 1, title: 'Submission', subheading: 'Completed', status: 'completed' },
-      { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: 'Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
-      { id: 4, title: 'NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
-      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
-      { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
-      { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
+      { id: 1, title: '1. Submission', subheading: '10 Oct 2026', status: 'completed' },
+      { id: 2, title: '2. Intake & Triage', subheading: 'Completed', status: 'completed' },
+      { id: 3, title: '3. Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
+      { id: 4, title: '4. NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
+      { id: 5, title: '5. Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 6, title: '6. Due Diligence', subheading: 'Not Started', status: 'not_started' },
+      { id: 7, title: '7. Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
     ],
     overviewCards: {
       evidence: 'Proof of concept',
@@ -105,19 +206,19 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     },
     uploadedDocuments: [
       {
-        id: 'doc-1',
+        id: 'doc-4',
         name: 'Digital_Transformation_RFP.pdf',
         size: '2.8 MB',
         type: 'APPLICATION/PDF',
       },
       {
-        id: 'doc-2',
+        id: 'doc-5',
         name: 'Enterprise_Architecture_Specs.pdf',
         size: '1.4 MB',
         type: 'APPLICATION/PDF',
       },
       {
-        id: 'doc-3',
+        id: 'doc-6',
         name: 'Workplace_Requirements_Matrix.pdf',
         size: '920 KB',
         type: 'APPLICATION/PDF',
@@ -126,115 +227,38 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     companyInfo: {
       name: 'Dr. Tariq Mansoor',
       jobTitle: 'Chief Executive Officer & Founder',
-      company: 'AlphaHealth BioTech Ltd.',
+      company: 'AlphaHealth BioTech',
       phoneNumber: '+971 50 234 5678',
       email: 'tariq.mansoor@alphahealth.ae',
       yearFounded: '2021',
+      location: 'UAE, Abu Dhabi',
     },
     assessmentAreas: {
       stageOfMaturityAndExperience:
         'Series A stage clinical AI enterprise with 5 years of specialized algorithmic R&D across cardiovascular modalities.',
       growthJourneyAndRegionalExperience:
         'Launched pilot programs in 3 European academic medical centers in 2023. Established Abu Dhabi ADGM presence in 2025 and conducted retrospective validation on 14,000 regional ECG records.',
-      proposalOfCollaboration:
-        'Collaborate with M42 to integrate CardioScan AI into primary care and ambulatory cardiology pathways, enabling rapid automated detection of heart failure and valvular irregularities.',
-      productPlatformServiceDetails:
-        'Cloud-native and edge-deployable AI inference engine processing standard 12-lead ECG waveforms and echocardiography Doppler streams with sub-minute turnaround.',
-      focusAreas: [
-        'Cardiology & Precision Health',
-        'Clinical Workflow Automation',
-        'Preventative Healthcare',
+      milestones: [
+        'Commercial beta launch in 2023',
+        'Abu Dhabi ADGM entity setup in 2025',
+        'Retrospective validation on 14,000 ECG datasets',
       ],
-      solutionMaturityLevelAndRegulatory:
-        'Demonstrated 94.2% diagnostic accuracy in retrospective multi-center trials. Currently in active regulatory submission with European notified body and preparing DoH Abu Dhabi submission.',
-      relevantApprovals:
-        'ISO 13485 certified, CE Mark Stage 2 audit cleared, Preliminary review under UAE MOHAP.',
-      noveltyAndDifferentiation:
-        'Proprietary transformer-based waveform interpretation with multi-lead cross-attention; achieves 38% reduction in false-positive referrals compared to legacy CAD solutions.',
-      developmentApproach:
-        'Developed entirely in-house by proprietary engineering and clinical team',
-      requestedM42Resources:
-        'Clinical validation access within M42 hospital network (Cleveland Clinic Abu Dhabi, Healthpoint), Epic EHR sandbox integration, and joint scientific publication sponsorship.',
-      impactedPatientPopulations: ['Adult patients', "Women's health"],
-    },
-  },
-  {
-    id: 'req-002',
-    companyName: 'NeuroVance Health Ltd',
-    vendorName: 'Sarah Jenkins',
-    solution: 'NeuroCognitive Screening Suite',
-    focusArea: 'Neurology & Mental Health',
-    solutionMaturity: 'Commercialized (CE Mark)',
-    status: 'Pending',
-    submittedOn: '08 Oct 2026',
-    workflowStages: [
-      { id: 1, title: 'Submission', subheading: 'Completed', status: 'completed' },
-      { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: 'Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
-      { id: 4, title: 'NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
-      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
-      { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
-      { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
-    ],
-    overviewCards: {
-      evidence: 'Clinical trial completed',
-      deployment: '6 live hospital sites',
-      regulatory: 'CE Mark Approved',
-      duplicateCheck: 'Clear',
-    },
-    sowDetails: {
-      sowName: 'NeuroVance Health — NeuroCognitive Screening Suite',
-      sowDeadline: '15/11/2026',
-      tokenConsumption: '1450',
-    },
-    uploadedDocuments: [
-      {
-        id: 'doc-4',
-        name: 'NeuroVance_Clinical_Whitepaper.pdf',
-        size: '3.1 MB',
-        type: 'APPLICATION/PDF',
-      },
-      {
-        id: 'doc-5',
-        name: 'CE_MDR_Certificate_Class_IIa.pdf',
-        size: '1.2 MB',
-        type: 'APPLICATION/PDF',
-      },
-      {
-        id: 'doc-6',
-        name: 'Integration_Architecture_Guide.pdf',
-        size: '840 KB',
-        type: 'APPLICATION/PDF',
-      },
-    ],
-    companyInfo: {
-      name: 'Sarah Jenkins',
-      jobTitle: 'VP of Global Partnerships',
-      company: 'NeuroVance Health Ltd',
-      phoneNumber: '+44 20 7946 0912',
-      email: 's.jenkins@neurovancehealth.com',
-      yearFounded: '2019',
-    },
-    assessmentAreas: {
-      stageOfMaturityAndExperience:
-        'Established growth-stage digital neurology company with commercial deployments across the NHS and GCC private health providers.',
-      growthJourneyAndRegionalExperience:
-        'Scaled to 6 major teaching hospitals in the UK and UAE. Piloted in Dubai Healthcare City in 2024 with over 8,500 patient screenings conducted.',
       proposalOfCollaboration:
-        'Partner with M42 to deploy tablet and VR-based cognitive biomarker screening across elderly care and neurological outpatient clinics.',
+        'Collaborate with M42 to integrate CardioScan AI into primary care and ambulatory cardiology pathways, enabling rapid automated detection of heart failure.',
       productPlatformServiceDetails:
-        'Proprietary gamified digital neuro-assessment capturing micro-saccades, motor reaction latency, and verbal recall metrics within 10 minutes.',
-      focusAreas: ['Neurology & Mental Health', 'Preventative Healthcare', 'Digital Therapeutics'],
+        'Cloud-native and edge-deployable AI inference engine processing standard 12-lead ECG waveforms and echocardiography Doppler streams.',
+      focusAreas: ['Cardiology & Precision Health', 'Clinical Workflow Automation'],
       solutionMaturityLevelAndRegulatory:
-        'Commercial stage with full CE Mark MDR Class IIa certification and ISO 27001 data security compliance.',
-      relevantApprovals: 'CE Mark (MDR 2017/745 Class IIa), ISO 13485, UKCA marked.',
+        'Demonstrated 94.2% diagnostic accuracy in retrospective multi-center trials.',
+      relevantApprovals: 'ISO 13485 certified, CE Mark Stage 2 audit cleared.',
+      regulatoryApprovalList: ['CE', 'ISO 13485', 'UAE MOHAP'],
       noveltyAndDifferentiation:
-        'Eye-tracking augmented cognitive assessment yielding 89% sensitivity in detecting mild cognitive impairment (MCI) 3 years before clinical symptom onset.',
-      developmentApproach:
-        'Co-developed with University of Oxford Department of Clinical Neurosciences.',
+        'Proprietary transformer-based waveform interpretation with multi-lead cross-attention; achieves 38% reduction in false-positive referrals.',
+      developmentApproach: 'Internally Developed by proprietary team',
       requestedM42Resources:
-        'Clinical trial partnership for bilingual Arabic/English dialect normalization, pilot site hosting, and procurement framework agreement.',
-      impactedPatientPopulations: ['Adult patients', 'Pediatric patients'],
+        'Clinical validation access within M42 hospital network, Epic EHR sandbox integration, and joint scientific publication sponsorship.',
+      impactedPatientPopulations: ['Adult Patients', "Women's health"],
+      clinicalAreas: ['Cardiology', 'Internal Medicine'],
     },
   },
   {
@@ -242,18 +266,21 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     companyName: 'GenomicX MENA FZ-LLC',
     vendorName: 'Karim El-Sayed',
     solution: 'Rare Disease Variant Interpreter',
+    headline: 'Rare Disease Variant Interpreter',
     focusArea: 'Genomics & Oncology',
-    solutionMaturity: 'Commercial / FDA 510(k)',
+    solutionMaturity: 'Commercial',
     status: 'Shortlisted',
     submittedOn: '01 Oct 2026',
+    submittedRelative: '11 days ago',
+    tags: ['Genomics & Oncology', 'Precision Health & Diagnostics', 'Rare Diseases'],
     workflowStages: [
-      { id: 1, title: 'Submission', subheading: 'Completed', status: 'completed' },
-      { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: 'Screening & Fit', subheading: 'Completed', status: 'completed' },
-      { id: 4, title: 'NDA & Discovery', subheading: 'In Progress', status: 'in_progress' },
-      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
-      { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
-      { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
+      { id: 1, title: '1. Submission', subheading: '01 Oct 2026', status: 'completed' },
+      { id: 2, title: '2. Intake & Triage', subheading: 'Completed', status: 'completed' },
+      { id: 3, title: '3. Screening & Fit', subheading: 'Completed', status: 'completed' },
+      { id: 4, title: '4. NDA & Discovery', subheading: 'In Progress', status: 'in_progress' },
+      { id: 5, title: '5. Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 6, title: '6. Due Diligence', subheading: 'Not Started', status: 'not_started' },
+      { id: 7, title: '7. Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
     ],
     overviewCards: {
       evidence: 'Peer-reviewed Nature publication',
@@ -279,12 +306,6 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
         size: '1.8 MB',
         type: 'APPLICATION/PDF',
       },
-      {
-        id: 'doc-9',
-        name: 'UAE_Genome_Program_Alignment.pdf',
-        size: '1.1 MB',
-        type: 'APPLICATION/PDF',
-      },
     ],
     companyInfo: {
       name: 'Karim El-Sayed',
@@ -293,26 +314,34 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
       phoneNumber: '+971 4 365 8900',
       email: 'karim.elsayed@genomicx.ae',
       yearFounded: '2018',
+      location: 'UAE, Dubai',
     },
     assessmentAreas: {
       stageOfMaturityAndExperience:
         'Mature clinical bioinformatics provider specializing in whole-genome and exome sequencing analysis for hereditary and rare conditions.',
       growthJourneyAndRegionalExperience:
         'Established in Boston with EMEA headquarters in Dubai Science Park since 2021. Actively processing research cohorts for Middle Eastern population genetics.',
+      milestones: [
+        'Dubai Science Park hub opened in 2021',
+        'Nature Genetics peer-reviewed paper in 2023',
+        'Over 35,000 genomes processed',
+      ],
       proposalOfCollaboration:
-        'Direct pipeline integration with the Emirati Genome Program and M42 Omics Centre of Excellence to accelerate automated ACMG classification for pediatric rare disorders.',
+        'Direct pipeline integration with the Emirati Genome Program and M42 Omics Centre of Excellence.',
       productPlatformServiceDetails:
-        'AI variant filtering and interpretation platform cross-referencing population-specific allele frequencies with clinical phenotyping data in under 4 minutes per genome.',
+        'AI variant filtering and interpretation platform cross-referencing population-specific allele frequencies.',
       focusAreas: ['Genomics & Oncology', 'Precision Health & Diagnostics', 'Rare Diseases'],
       solutionMaturityLevelAndRegulatory:
         'Commercial platform cleared under FDA 510(k) and IVDR certified in the European Union.',
       relevantApprovals: 'FDA 510(k) Class II, CE-IVD, ISO 15189 compliance.',
+      regulatoryApprovalList: ['FDA', 'CE', 'ISO 15189'],
       noveltyAndDifferentiation:
-        'Contains the largest curated database of MENA-specific non-coding variants; reduces unclassified variants of unknown significance (VUS) by 42%.',
-      developmentApproach: 'Developed in-house with Harvard Medical School research affiliations',
+        'Contains the largest curated database of MENA-specific non-coding variants; reduces unclassified variants by 42%.',
+      developmentApproach: 'Internally Developed with Harvard Medical School research affiliations',
       requestedM42Resources:
         'High-throughput sequencing pipeline integration, clinical geneticist pilot evaluation, and enterprise biobanking access.',
-      impactedPatientPopulations: ['Adult patients', 'Pediatric patients', "Women's health"],
+      impactedPatientPopulations: ['Adult Patients', 'Pediatric Patients', "Women's health"],
+      clinicalAreas: ['Genomics', 'Pediatrics', 'Oncology'],
     },
   },
   {
@@ -320,18 +349,21 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     companyName: 'CarePulse Technologies',
     vendorName: 'Elena Rostova',
     solution: 'Remote Patient Monitoring & Triage',
+    headline: 'Remote Patient Monitoring & Triage',
     focusArea: 'Virtual Care & Remote Monitoring',
-    solutionMaturity: 'Commercial (DOH Approved)',
+    solutionMaturity: 'Commercial',
     status: 'Pending',
     submittedOn: '28 Sep 2026',
+    submittedRelative: '14 days ago',
+    tags: ['Virtual Care & Remote Monitoring', 'Clinical Workflow Automation'],
     workflowStages: [
-      { id: 1, title: 'Submission', subheading: 'Completed', status: 'completed' },
-      { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: 'Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
-      { id: 4, title: 'NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
-      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
-      { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
-      { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
+      { id: 1, title: '1. Submission', subheading: '28 Sep 2026', status: 'completed' },
+      { id: 2, title: '2. Intake & Triage', subheading: 'Completed', status: 'completed' },
+      { id: 3, title: '3. Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
+      { id: 4, title: '4. NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
+      { id: 5, title: '5. Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 6, title: '6. Due Diligence', subheading: 'Not Started', status: 'not_started' },
+      { id: 7, title: '7. Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
     ],
     overviewCards: {
       evidence: 'Real-world evidence study',
@@ -351,18 +383,6 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
         size: '2.4 MB',
         type: 'APPLICATION/PDF',
       },
-      {
-        id: 'doc-11',
-        name: 'DoH_Abu_Dhabi_Approval_Certificate.pdf',
-        size: '980 KB',
-        type: 'APPLICATION/PDF',
-      },
-      {
-        id: 'doc-12',
-        name: 'Security_Architecture_and_FHIR_Specs.pdf',
-        size: '1.5 MB',
-        type: 'APPLICATION/PDF',
-      },
     ],
     companyInfo: {
       name: 'Elena Rostova',
@@ -371,31 +391,33 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
       phoneNumber: '+971 52 876 5432',
       email: 'elena.rostova@carepulse.io',
       yearFounded: '2020',
+      location: 'UAE, Dubai',
     },
     assessmentAreas: {
       stageOfMaturityAndExperience:
-        'Commercial scale RPM platform currently managing over 25,000 active chronic disease patients across the UAE and Saudi Arabia.',
+        'Commercial scale RPM platform currently managing over 25,000 active chronic disease patients across the UAE.',
       growthJourneyAndRegionalExperience:
-        'Bootstrapped to initial UAE traction in 2020, secured DoH telehealth licensure in 2022, and integrated with major private health networks across Abu Dhabi and Al Ain.',
-      proposalOfCollaboration:
-        'Integrate CarePulse RPM with M42 virtual health centers for post-discharge hypertension, diabetes, and COPD patients to lower 30-day readmissions.',
-      productPlatformServiceDetails:
-        'Cellular-enabled connected devices (BP cuff, glucometer, pulse oximeter) coupled with an AI clinical escalation dashboard that notifies care coordinators of vitals deterioration.',
-      focusAreas: [
-        'Virtual Care & Remote Monitoring',
-        'Clinical Workflow Automation',
-        'Preventative Healthcare',
+        'Bootstrapped to initial UAE traction in 2020, secured DoH telehealth licensure in 2022.',
+      milestones: [
+        'DoH telehealth license in 2022',
+        'Active care for 25,000+ chronic disease patients',
       ],
+      proposalOfCollaboration:
+        'Integrate CarePulse RPM with M42 virtual health centers for post-discharge chronic disease care.',
+      productPlatformServiceDetails:
+        'Cellular-enabled connected devices coupled with an AI clinical escalation dashboard.',
+      focusAreas: ['Virtual Care & Remote Monitoring', 'Preventative Healthcare'],
       solutionMaturityLevelAndRegulatory:
-        'Fully commercialized with Department of Health Abu Dhabi telemedicine and RPM authorization.',
+        'Fully commercialized with Department of Health Abu Dhabi telemedicine authorization.',
       relevantApprovals: 'DoH Abu Dhabi Telehealth License, CE Mark Class I, ISO 27001.',
+      regulatoryApprovalList: ['DoH Abu Dhabi', 'CE'],
       noveltyAndDifferentiation:
-        'Zero-pairing cellular hub requiring no patient smartphone or Wi-Fi setup; achieves 88% continuous adherence in elderly diabetic populations.',
-      developmentApproach:
-        'Proprietary hardware firmware with cloud AWS-Middle East infrastructure',
+        'Zero-pairing cellular hub requiring no patient smartphone or Wi-Fi setup.',
+      developmentApproach: 'Internally Developed hardware firmware with AWS infrastructure',
       requestedM42Resources:
-        'Formal partnership with M42 Ambulatory Healthcare Services (AHS), joint remote patient monitoring clinical pathways, and formulary inclusion.',
-      impactedPatientPopulations: ['Adult patients', "Women's health"],
+        'Formal partnership with M42 Ambulatory Healthcare Services and joint clinical pathways.',
+      impactedPatientPopulations: ['Adult Patients', "Women's health"],
+      clinicalAreas: ['Chronic Care', 'Virtual Health'],
     },
   },
 ]

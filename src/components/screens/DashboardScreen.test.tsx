@@ -5,16 +5,28 @@ import { describe, it, expect } from 'vitest'
 import { DashboardScreen } from './DashboardScreen'
 
 describe('DashboardScreen', () => {
-  it('renders breadcrumb and all 3 KPI cards with vendor metrics', () => {
+  it('renders breadcrumb and all 4 KPI cards matching Image 1', () => {
     render(<DashboardScreen />)
 
     expect(screen.getByText('M42 admin')).toBeInTheDocument()
-    expect(screen.getByText('Total Vendors')).toBeInTheDocument()
-    expect(screen.getByText('Average Rounds per Vendor')).toBeInTheDocument()
-    expect(screen.getByText('Evidence backlog by age')).toBeInTheDocument()
+    expect(screen.getByText('Total Partnership Requests')).toBeInTheDocument()
+    expect(screen.getByText('24')).toBeInTheDocument()
+    expect(screen.getByText('Pipeline')).toBeInTheDocument()
+
+    expect(screen.getByText('Pending Director Review')).toBeInTheDocument()
+    expect(screen.getByText('8')).toBeInTheDocument()
+    expect(screen.getByText('Action needed')).toBeInTheDocument()
+
+    expect(screen.getByText('NDA in Progress')).toBeInTheDocument()
+    expect(screen.getByText('6')).toBeInTheDocument()
+    expect(screen.getByText('In progress')).toBeInTheDocument()
+
+    expect(screen.getByText('SLA Breached')).toBeInTheDocument()
+    expect(screen.getByText('3')).toBeInTheDocument()
+    expect(screen.getByText('Overdue')).toBeInTheDocument()
   })
 
-  it('renders Partnership Requests title and exactly the 7 requested columns', () => {
+  it('renders Partnership Requests title and exactly the 7 requested columns with styled headers', () => {
     render(<DashboardScreen />)
 
     expect(screen.getByText('Partnership Requests')).toBeInTheDocument()
@@ -35,14 +47,14 @@ describe('DashboardScreen', () => {
     render(<DashboardScreen />)
 
     // Table rows
-    expect(screen.getByText('AlphaHealth BioTech')).toBeInTheDocument()
-    expect(screen.getByText('NeuroVance Health Ltd')).toBeInTheDocument()
+    expect(screen.getByText('MedTech Innovations')).toBeInTheDocument()
+    expect(screen.getByText('GenomicX MENA FZ-LLC')).toBeInTheDocument()
 
     // Search filter
     const searchInput = screen.getByPlaceholderText('Filter records...')
-    await user.type(searchInput, 'GenomicX')
-    expect(screen.getByText('GenomicX MENA FZ-LLC')).toBeInTheDocument()
-    expect(screen.queryByText('AlphaHealth BioTech')).not.toBeInTheDocument()
+    await user.type(searchInput, 'CarePulse')
+    expect(screen.getByText('CarePulse Technologies')).toBeInTheDocument()
+    expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
 
     // Clear search
     await user.clear(searchInput)
@@ -51,53 +63,68 @@ describe('DashboardScreen', () => {
     const shortlistedChip = screen.getByRole('button', { name: /Shortlisted/i })
     await user.click(shortlistedChip)
     expect(screen.getByText('GenomicX MENA FZ-LLC')).toBeInTheDocument()
-    expect(screen.queryByText('AlphaHealth BioTech')).not.toBeInTheDocument()
+    expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
   })
 
-  it('opens detailed view, allows proceeding and updates status', async () => {
+  it('opens detailed view, allows proceeding through confirmation modal, and updates status', async () => {
+    const user = userEvent.setup()
+    render(<DashboardScreen />)
+
+    const row = screen.getByText('MedTech Innovations')
+    await user.click(row)
+
+    // Verify detailed view is open
+    expect(screen.getByText('Workflow Progress')).toBeInTheDocument()
+
+    // Click Proceed button in header bar
+    const proceedBtn = screen.getByRole('button', { name: /^Proceed$/i })
+    await user.click(proceedBtn)
+
+    // Modal opens
+    expect(screen.getByText('Proceed to Next Stage')).toBeInTheDocument()
+    const confirmProceedBtn = screen.getByRole('button', { name: /Confirm & Proceed/i })
+    await user.click(confirmProceedBtn)
+
+    expect(
+      screen.getByText(/Partnership request has been approved to proceed to the next stage/i)
+    ).toBeInTheDocument()
+
+    // Back to table and verify status updated
+    await user.click(screen.getByRole('button', { name: 'Back to Partnership Requests' }))
+    expect(screen.getByText('MedTech Innovations')).toBeInTheDocument()
+  })
+
+  it('opens detailed view, allows rejecting with reason through modal, and updates status', async () => {
     const user = userEvent.setup()
     render(<DashboardScreen />)
 
     const row = screen.getByText('AlphaHealth BioTech')
     await user.click(row)
 
-    // Switch to Brief tab
-    await user.click(screen.getByRole('button', { name: 'Brief' }))
+    // Click Reject in header bar
+    const rejectBtn = screen.getByRole('button', { name: /^Reject$/i })
+    await user.click(rejectBtn)
 
-    // Click Proceed
-    const proceedBtn = screen.getByRole('button', { name: /Proceed/i })
-    await user.click(proceedBtn)
+    // Modal opens
+    expect(screen.getByText('Reject Partnership Request')).toBeInTheDocument()
 
+    // Try without reason
+    const confirmRejectBtn = screen.getByRole('button', { name: /Confirm Rejection/i })
+    await user.click(confirmRejectBtn)
     expect(
-      screen.getByText(/Partnership request has been approved to proceed to the next stage/i)
+      screen.getByText(/A reason is mandatory when rejecting a partnership request/i)
     ).toBeInTheDocument()
 
-    // Back to table and verify status updated to Shortlisted
-    await user.click(screen.getByRole('button', { name: 'Back to Partnership Requests' }))
-    expect(screen.getByText('AlphaHealth BioTech')).toBeInTheDocument()
-  })
-
-  it('opens detailed view, allows rejecting with reason and updates status', async () => {
-    const user = userEvent.setup()
-    render(<DashboardScreen />)
-
-    const row = screen.getByText('NeuroVance Health Ltd')
-    await user.click(row)
-
-    // Switch to Brief tab
-    await user.click(screen.getByRole('button', { name: 'Brief' }))
-
-    // Type reason and click Reject
-    const reasonTextarea = screen.getByRole('textbox', { name: /Decision Reason \/ Notes/i })
+    // Type reason and confirm
+    const reasonTextarea = screen.getByRole('textbox', { name: /Rejection Reason/i })
     await user.type(reasonTextarea, 'Out of scope for current cycle.')
-    const rejectBtn = screen.getByRole('button', { name: /Reject/i })
-    await user.click(rejectBtn)
+    await user.click(confirmRejectBtn)
 
     expect(screen.getByText(/Partnership request has been rejected/i)).toBeInTheDocument()
 
     // Back to table
     await user.click(screen.getByRole('button', { name: 'Back to Partnership Requests' }))
-    expect(screen.getByText('NeuroVance Health Ltd')).toBeInTheDocument()
+    expect(screen.getByText('AlphaHealth BioTech')).toBeInTheDocument()
   })
 
   it('displays empty state when search matches no records', async () => {
