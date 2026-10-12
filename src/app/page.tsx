@@ -11,7 +11,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'dashboard'>('dashboard')
   // Default designation is Director as requested
   const [userProfile, setUserProfile] = useState<UserProfile>(AVAILABLE_PROFILES[0])
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
   const handleLogin = (profile: UserProfile) => {
     setUserProfile(profile)

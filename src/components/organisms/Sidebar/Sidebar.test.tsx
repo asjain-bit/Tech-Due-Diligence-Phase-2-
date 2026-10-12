@@ -39,7 +39,7 @@ describe('Sidebar', () => {
     expect(handleTabChange).toHaveBeenCalledWith('dashboard')
   })
 
-  it('opens and cancels logout modal', async () => {
+  it('opens and cancels logout modal in expanded state', async () => {
     const handleSignOut = vi.fn()
     const user = userEvent.setup()
 
@@ -104,10 +104,20 @@ describe('Sidebar', () => {
       />
     )
 
+    // In collapsed state, Dashboard text is displayed below icon
+    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+
     await user.click(screen.getByTitle('Expand sidebar'))
     expect(handleToggle).toHaveBeenCalledTimes(2)
 
-    await user.click(screen.getByTitle('Sign out'))
+    // In collapsed state, avatar button opens user overlay
+    const avatarButton = screen.getByLabelText('User profile options')
+    await user.click(avatarButton)
+
+    // Popover overlay is shown with Sign out option
+    const signoutBtn = screen.getByRole('button', { name: /Sign out/i })
+    expect(signoutBtn).toBeInTheDocument()
+    await user.click(signoutBtn)
     expect(screen.getByText('Confirm Logout')).toBeInTheDocument()
   })
 })

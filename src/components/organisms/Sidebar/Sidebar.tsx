@@ -21,6 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSignOut,
 }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showUserOverlay, setShowUserOverlay] = useState(false)
 
   // Only Dashboard kept per specification: "In the left nav do not keep any other pages as of now."
   const navItems = [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }]
@@ -81,8 +82,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Navigation Items — Dashboard only */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
+        {/* Navigation Items — Dashboard only; in collapsed state icon is above and text is below */}
+        <nav className="flex-1 overflow-y-auto py-4 px-2 flex flex-col gap-1.5">
           {navItems.map((item) => {
             const isActive = activeTab === item.id
             const IconComp = item.icon
@@ -91,21 +92,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 title={collapsed ? item.label : undefined}
-                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all font-semibold text-sm cursor-pointer select-none ${
+                className={`flex transition-all cursor-pointer select-none rounded-xl ${
+                  collapsed
+                    ? 'flex-col items-center justify-center w-full py-2.5 px-1 gap-1 text-center'
+                    : 'items-center gap-3 px-3.5 py-3 text-sm font-semibold'
+                } ${
                   isActive
                     ? 'bg-[#153443] text-[#36c0c9] shadow-xs'
                     : 'text-white/70 hover:bg-white/5 hover:text-white'
-                } ${collapsed ? 'justify-center px-0' : ''}`}
+                }`}
               >
                 <IconComp className="w-5 h-5 shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                <span
+                  className={
+                    collapsed
+                      ? 'text-[11px] font-semibold leading-tight text-inherit'
+                      : 'text-sm font-semibold'
+                  }
+                >
+                  {item.label}
+                </span>
               </button>
             )
           })}
         </nav>
 
-        {/* Sidebar Footer User Section with Designation Director */}
-        <div className="p-3 border-t border-[#153443] shrink-0 bg-[#08171f]/50">
+        {/* Sidebar Footer User Section with Designation Director and Overlay */}
+        <div className="p-3 pb-5 border-t border-[#153443] shrink-0 bg-[#08171f]/50 relative">
           {!collapsed ? (
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -132,14 +145,62 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => setShowLogoutConfirm(true)}
-              title="Sign out"
-              aria-label="Sign out"
-              className="w-full flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-white/10 transition cursor-pointer"
+            /* Collapsed state with profile icon and hover/click overlay popover */
+            <div
+              className="relative flex justify-center w-full"
+              onMouseEnter={() => setShowUserOverlay(true)}
+              onMouseLeave={() => setShowUserOverlay(false)}
             >
-              <LogOut className="w-4 h-4" />
-            </button>
+              <button
+                onClick={() => setShowUserOverlay((prev) => !prev)}
+                title={userName}
+                aria-label="User profile options"
+                className="p-1 rounded-xl hover:bg-white/10 transition cursor-pointer flex flex-col items-center justify-center"
+              >
+                <Avatar
+                  src={defaultAvatar}
+                  fallback={userInitials}
+                  size="sm"
+                  className="bg-[#153443] text-white border border-white/20 shrink-0 shadow-xs"
+                />
+              </button>
+
+              {/* Overlay popover card anchored to the right of the sidebar */}
+              {showUserOverlay && (
+                <div
+                  className="absolute left-[calc(100%+12px)] bottom-0 w-52 bg-white rounded-2xl border border-[#e2e8f0] shadow-2xl p-3 z-50 text-left text-[#0d212c] animate-in fade-in slide-in-from-left-2 duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#f1f5f9]">
+                    <Avatar
+                      src={defaultAvatar}
+                      fallback={userInitials}
+                      size="sm"
+                      className="bg-[#153443] text-white border border-slate-200 shrink-0"
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-[#0d212c] truncate">{userName}</span>
+                      <span className="text-[11px] font-semibold text-[#36c0c9] truncate">
+                        {userDesignation}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        setShowUserOverlay(false)
+                        setShowLogoutConfirm(true)
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </aside>

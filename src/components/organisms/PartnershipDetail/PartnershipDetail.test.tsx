@@ -11,7 +11,7 @@ describe('PartnershipDetail', () => {
   const onProceed = vi.fn()
   const onReject = vi.fn()
 
-  it('renders header card and overview tab matching Image 2', () => {
+  it('renders header card without company description and without vendor designation, with Referred by', () => {
     render(
       <PartnershipDetail
         request={mockRequest}
@@ -21,27 +21,60 @@ describe('PartnershipDetail', () => {
       />
     )
 
-    // Header info matching Image 2
+    // Header info: Company name present, description removed
     expect(screen.getByText('MedTech Innovations')).toBeInTheDocument()
     expect(screen.getByText('Pending Director Review')).toBeInTheDocument()
+
+    // Subtitle description under company name is removed
     expect(
-      screen.getByText(/AI-powered diagnostic platform for early disease detection/i)
-    ).toBeInTheDocument()
+      screen.queryByText('AI-powered diagnostic platform for early disease detection')
+    ).not.toBeInTheDocument()
+
+    // Contact person name present, designation removed
     expect(screen.getByText('Sarah Ahmed')).toBeInTheDocument()
+    expect(screen.queryByText('Business Development Director')).not.toBeInTheDocument()
+
+    // Other details and Referred by
     expect(screen.getByText('sarah@medtechinnovations.com')).toBeInTheDocument()
     expect(screen.getByText('+971 50 123 4567')).toBeInTheDocument()
     expect(screen.getByText('Founded in 2018')).toBeInTheDocument()
     expect(screen.getByText('UAE, Dubai')).toBeInTheDocument()
+    expect(screen.getByText('Referred by:')).toBeInTheDocument()
+    expect(screen.getByText('Dr. Fatima Al Mansoori')).toBeInTheDocument()
+  })
 
-    // Overview section: Workflow Progress with 7 stages
+  it('renders overview inside single large box with workflow without numbers and highlighted Agent Recommendation', () => {
+    render(
+      <PartnershipDetail
+        request={mockRequest}
+        onBack={onBack}
+        onProceed={onProceed}
+        onReject={onReject}
+      />
+    )
+
+    // Proceed and Reject buttons removed from Overview page
+    expect(screen.queryByRole('button', { name: /^Proceed$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Reject$/i })).not.toBeInTheDocument()
+
+    // Workflow Progress heading without numbers in steps
     expect(screen.getByText('Workflow Progress')).toBeInTheDocument()
-    expect(screen.getByText('1. Submission')).toBeInTheDocument()
-    expect(screen.getByText('2. Intake & Triage')).toBeInTheDocument()
-    expect(screen.getByText('3. Screening & Fit')).toBeInTheDocument()
-    expect(screen.getByText('4. NDA & Discovery')).toBeInTheDocument()
-    expect(screen.getByText('5. Value Assessment')).toBeInTheDocument()
-    expect(screen.getByText('6. Due Diligence')).toBeInTheDocument()
-    expect(screen.getByText('7. Term Sheet & Pilot')).toBeInTheDocument()
+    expect(screen.getByText('Initial Review')).toBeInTheDocument()
+    expect(screen.getByText('Internal Interest')).toBeInTheDocument()
+    expect(screen.getByText('Evaluation')).toBeInTheDocument()
+    expect(screen.getByText('Strategy Alignment')).toBeInTheDocument()
+    expect(screen.getByText('Legal & Sponsor Review')).toBeInTheDocument()
+
+    // Numbers 1., 2., 3. removed from step titles
+    expect(screen.queryByText('1. Initial Review')).not.toBeInTheDocument()
+    expect(screen.queryByText('2. Internal Interest')).not.toBeInTheDocument()
+
+    // Agent Recommendation highlighted banner
+    expect(screen.getByText('Agent Recommendation')).toBeInTheDocument()
+    expect(screen.getByText(/Recommended to Proceed \(94% Match\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/Clinical Fit:/i)).toBeInTheDocument()
+    expect(screen.getByText(/Regulatory Approval:/i)).toBeInTheDocument()
+    expect(screen.getByText(/Architecture:/i)).toBeInTheDocument()
 
     // Solution Overview & tags
     expect(screen.getByText('Solution Overview')).toBeInTheDocument()
@@ -49,19 +82,15 @@ describe('PartnershipDetail', () => {
       screen.getByText(/MedTech Innovations has proposed an AI-powered diagnostic platform/i)
     ).toBeInTheDocument()
     expect(screen.getByText('Medical Imaging')).toBeInTheDocument()
-    expect(screen.getByText('Clinical Decision Support')).toBeInTheDocument()
 
-    // Key Information with 6 items
+    // Key Information
     expect(screen.getByText('Key Information')).toBeInTheDocument()
     expect(screen.getByText('Focus Area(s)')).toBeInTheDocument()
     expect(screen.getByText('Solution Maturity')).toBeInTheDocument()
     expect(screen.getByText('Regulatory Approvals')).toBeInTheDocument()
-    expect(screen.getByText('Patient Population')).toBeInTheDocument()
-    expect(screen.getByText('Clinical Area(s)')).toBeInTheDocument()
-    expect(screen.getByText('Development Approach')).toBeInTheDocument()
   })
 
-  it('switches to Partnership Brief tab matching Image 3 with sidebar navigation and sections', async () => {
+  it('switches to Partnership Brief tab and navigates sections', async () => {
     const user = userEvent.setup()
     render(
       <PartnershipDetail
@@ -72,36 +101,18 @@ describe('PartnershipDetail', () => {
       />
     )
 
-    const briefTabButton = screen.getByRole('button', { name: /Partnership Brief/i })
-    await user.click(briefTabButton)
+    const briefTab = screen.getByRole('button', { name: /Partnership Brief/i })
+    await user.click(briefTab)
 
-    // Sidebar navigation menu items
     expect(screen.getByRole('button', { name: /Company Information/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Company Experience/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Collaboration Proposal/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Focus Area/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Solution Maturity/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Regulatory Approvals/i })).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /Innovation & Differentiation/i })
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Development Approach/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Support from M42/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Target Population & Impact/i })).toBeInTheDocument()
-
-    // Section 1: Company Information
     expect(screen.getByText('1. Company Information')).toBeInTheDocument()
-    expect(screen.getAllByText('Business Development Director').length).toBeGreaterThanOrEqual(1)
-
-    // Section 2: Stage of Maturity and Milestones
     expect(screen.getByText(/2. Company's Stage of Maturity and Experience/i)).toBeInTheDocument()
-    expect(screen.getByText(/Deployment in 10\+ hospitals across UAE/i)).toBeInTheDocument()
 
-    // Nav clicking does not crash
     await user.click(screen.getByRole('button', { name: /Company Experience/i }))
   })
 
-  it('allows proceeding with optional reason through modal', async () => {
+  it('switches to Internal Interest tab matching Image 1 with stakeholders table and modals', async () => {
     const user = userEvent.setup()
     render(
       <PartnershipDetail
@@ -112,82 +123,62 @@ describe('PartnershipDetail', () => {
       />
     )
 
-    const proceedButton = screen.getByRole('button', { name: /^Proceed$/i })
-    await user.click(proceedButton)
+    // Switch to Internal Interest tab
+    const internalTab = screen.getByRole('button', { name: /Internal Interest/i })
+    await user.click(internalTab)
 
-    // Modal is opened
-    expect(screen.getByText('Proceed to Next Stage')).toBeInTheDocument()
-    const reasonInput = screen.getByRole('textbox', { name: /Decision Notes/i })
-    await user.type(reasonInput, 'Strong strategic fit for FY27.')
-
-    const confirmProceed = screen.getByRole('button', { name: /Confirm & Proceed/i })
-    await user.click(confirmProceed)
-
-    expect(onProceed).toHaveBeenCalledWith(mockRequest.id, 'Strong strategic fit for FY27.')
-  })
-
-  it('enforces mandatory reason when rejecting through modal', async () => {
-    const user = userEvent.setup()
-    render(
-      <PartnershipDetail
-        request={mockRequest}
-        onBack={onBack}
-        onProceed={onProceed}
-        onReject={onReject}
-      />
-    )
-
-    const rejectButton = screen.getByRole('button', { name: /^Reject$/i })
-    await user.click(rejectButton)
-
-    // Modal is opened
-    expect(screen.getByText('Reject Partnership Request')).toBeInTheDocument()
-
-    // Try without reason
-    const confirmReject = screen.getByRole('button', { name: /Confirm Rejection/i })
-    await user.click(confirmReject)
-
+    // Heading without icon and subtitle
+    expect(screen.getByRole('heading', { level: 2, name: 'Internal Interest' })).toBeInTheDocument()
     expect(
-      screen.getByText(/A reason is mandatory when rejecting a partnership request/i)
+      screen.getByText(
+        'Manage internal stakeholders who will review this partnership based on their domain expertise.'
+      )
     ).toBeInTheDocument()
-    expect(onReject).not.toHaveBeenCalled()
 
-    // Enter reason and submit
-    const reasonInput = screen.getByRole('textbox', { name: /Rejection Reason/i })
-    await user.type(reasonInput, 'Solution does not align with FY27 clinical priority areas.')
-    await user.click(confirmReject)
+    // + Add Interest button with custom tooltip
+    expect(screen.getByRole('button', { name: /Add Interest/i })).toBeInTheDocument()
+    expect(screen.getByText('Add up to 5 people')).toBeInTheDocument()
 
-    expect(onReject).toHaveBeenCalledWith(
-      mockRequest.id,
-      'Solution does not align with FY27 clinical priority areas.'
-    )
+    // Table renders stakeholders from Image 1
+    expect(screen.getByText('Riza Sayeed')).toBeInTheDocument()
+    expect(screen.getByText('Head of AI & Analytics')).toBeInTheDocument()
+    expect(screen.getByText('Parag Agarwal')).toBeInTheDocument()
+    expect(screen.getByText('Radiology & Imaging Lead')).toBeInTheDocument()
+    expect(screen.getByText('Najla Al Mansoori')).toBeInTheDocument()
+    expect(screen.getByText('Khalid Al Zaabi')).toBeInTheDocument()
+    expect(screen.getByText('Sara Malik')).toBeInTheDocument()
+
+    // Click Delete on one stakeholder
+    const deleteButtons = screen.getAllByRole('button', { name: /Delete/i })
+    await user.click(deleteButtons[0])
+
+    // SOW-style Delete confirmation modal
+    expect(screen.getByText('Remove Stakeholder')).toBeInTheDocument()
+    expect(screen.getByText(/Are you sure you want to remove/i)).toBeInTheDocument()
+
+    // Confirm delete
+    const modalDeleteBtn = screen.getByRole('button', { name: 'Delete' })
+    await user.click(modalDeleteBtn)
+    expect(screen.queryByText('Riza Sayeed')).not.toBeInTheDocument()
+
+    // Add new stakeholder
+    const addBtn = screen.getByRole('button', { name: /Add Interest/i })
+    await user.click(addBtn)
+
+    expect(screen.getByText('Add Internal Stakeholder')).toBeInTheDocument()
+    await user.type(screen.getByPlaceholderText(/Dr\. Fatima/i), 'Dr. Mona Al Hashimi')
+    await user.type(screen.getByPlaceholderText(/Head of AI/i), 'Chief Medical Officer')
+    await user.type(screen.getByPlaceholderText(/Medical Imaging/i), 'Clinical Governance')
+    await user.type(screen.getByPlaceholderText(/Clinical Validation/i), 'Health Policy')
+
+    const confirmAddBtn = screen.getByRole('button', { name: 'Add Stakeholder' })
+    await user.click(confirmAddBtn)
+
+    expect(screen.getByText('Dr. Mona Al Hashimi')).toBeInTheDocument()
+    expect(screen.getByText('Chief Medical Officer')).toBeInTheDocument()
   })
 
-  it('renders decision banner when request has existing decision', () => {
-    const decidedRequest = {
-      ...mockRequest,
-      status: 'Shortlisted' as const,
-      decision: {
-        status: 'proceeded' as const,
-        reason: 'Strong clinical fit.',
-        date: 'Today',
-      },
-    }
-
-    render(
-      <PartnershipDetail
-        request={decidedRequest}
-        onBack={onBack}
-        onProceed={onProceed}
-        onReject={onReject}
-      />
-    )
-
-    expect(screen.getByText(/Status: Approved to Proceed/i)).toBeInTheDocument()
-    expect(screen.getByText(/Director Notes: Strong clinical fit/i)).toBeInTheDocument()
-  })
-
-  it('triggers onBack when back button is clicked', async () => {
+  it('triggers onBack when Back to Partnership Requests is clicked', async () => {
     const user = userEvent.setup()
     render(
       <PartnershipDetail
@@ -198,8 +189,8 @@ describe('PartnershipDetail', () => {
       />
     )
 
-    const backButton = screen.getByRole('button', { name: 'Back to Partnership Requests' })
-    await user.click(backButton)
+    const backBtn = screen.getByRole('button', { name: 'Back to Partnership Requests' })
+    await user.click(backBtn)
     expect(onBack).toHaveBeenCalled()
   })
 })

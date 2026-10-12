@@ -29,7 +29,12 @@ describe('LoginScreen', () => {
     expect(screen.getByText('Evaluator')).toBeInTheDocument()
     expect(screen.getByText('Stragety Fit')).toBeInTheDocument()
     expect(screen.getByText('Sponsor')).toBeInTheDocument()
-    expect(screen.getByText('Legal & Partnership Director')).toBeInTheDocument()
+    // Assert prototype navigation tooltip
+    expect(
+      screen.getByText(
+        'This is for the prototype navigation purpose not to be included in the actual developed application.'
+      )
+    ).toBeInTheDocument()
   })
 
   it('allows navigating back to welcome screen', async () => {

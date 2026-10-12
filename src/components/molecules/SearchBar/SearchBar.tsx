@@ -17,6 +17,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   placeholder = 'Search...',
   disabled = false,
   className = '',
+  showButton = true,
 }) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -56,9 +57,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         )}
       </div>
 
-      <Button variant="primary" size="md" disabled={disabled} onClick={() => onSearch?.(value)}>
-        Search
-      </Button>
+      {showButton && (
+        <Button variant="primary" size="md" disabled={disabled} onClick={() => onSearch?.(value)}>
+          Search
+        </Button>
+      )}
     </div>
   )
 }

@@ -6,4 +6,5 @@ export interface SearchBarProps {
   placeholder?: string
   disabled?: boolean
   className?: string
+  showButton?: boolean
 }

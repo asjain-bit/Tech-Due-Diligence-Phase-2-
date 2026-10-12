@@ -1,7 +1,16 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Fingerprint, Loader2, ShieldCheck, Users, PieChart, Lock, ArrowLeft } from 'lucide-react'
+import {
+  Fingerprint,
+  Loader2,
+  ShieldCheck,
+  Users,
+  PieChart,
+  Lock,
+  ArrowLeft,
+  Info,
+} from 'lucide-react'
 
 export interface UserProfile {
   id: string
@@ -217,12 +226,26 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               </button>
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-bold text-[#0d212c] mb-1.5 tracking-tight">
-              Select Profile
-            </h2>
-            <p className="text-slate-500 text-xs sm:text-sm mb-6 leading-relaxed">
-              Choose your profile perspective to launch the Tech Due Diligence workspace:
-            </p>
+            <div className="flex items-center gap-2 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#0d212c] tracking-tight">
+                Select Profile
+              </h2>
+              <div className="relative group inline-flex items-center">
+                <div
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Prototype navigation note"
+                  className="w-5 h-5 rounded-full bg-slate-100 hover:bg-[#36c0c9]/15 text-slate-500 hover:text-[#36c0c9] flex items-center justify-center transition cursor-pointer"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                </div>
+                <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-64 p-2.5 bg-[#0d212c] text-white text-[11px] font-medium leading-relaxed rounded-xl shadow-xl text-center">
+                  This is for the prototype navigation purpose not to be included in the actual
+                  developed application.
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0d212c]" />
+                </div>
+              </div>
+            </div>
 
             {/* List of Profile Views: only role and user email, no logos, no descriptions, no chips, no arrow icons */}
             <div className="flex flex-col gap-2.5">

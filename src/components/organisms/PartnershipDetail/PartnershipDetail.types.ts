@@ -1,6 +1,6 @@
 import type { PartnershipRequest } from '@/types/partnership.types'
 
-export type DetailTab = 'overview' | 'brief' | 'audit_log'
+export type DetailTab = 'overview' | 'brief' | 'internal_interest'
 
 export interface PartnershipDetailProps {
   request: PartnershipRequest

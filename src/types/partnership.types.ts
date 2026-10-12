@@ -50,10 +50,29 @@ export interface UploadedDoc {
   type: string
 }
 
+export interface InternalInterestStakeholder {
+  id: string
+  name: string
+  initials: string
+  role: string
+  department: string
+  expertise: string
+  avatarColorBg: string
+  avatarColorText: string
+}
+
+export interface AgentRecommendation {
+  status: 'proceed' | 'reject'
+  label: string
+  confidence: number
+  rationale: string
+}
+
 export interface PartnershipRequest {
   id: string
   companyName: string
   vendorName: string
+  referredBy?: string | null
   solution: string
   focusArea: string
   solutionMaturity: string
@@ -72,6 +91,8 @@ export interface PartnershipRequest {
   uploadedDocuments: UploadedDoc[]
   companyInfo: CompanyInfo
   assessmentAreas: KeyAssessmentAreas
+  internalInterests?: InternalInterestStakeholder[]
+  agentRecommendation?: AgentRecommendation
   decision?: {
     status: 'proceeded' | 'rejected'
     reason?: string
@@ -80,11 +101,65 @@ export interface PartnershipRequest {
   }
 }
 
+export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
+  {
+    id: 'int-1',
+    name: 'Riza Sayeed',
+    initials: 'RS',
+    role: 'Head of AI & Analytics',
+    department: 'AI & Analytics',
+    expertise: 'AI Strategy',
+    avatarColorBg: '#dbeafe',
+    avatarColorText: '#1e40af',
+  },
+  {
+    id: 'int-2',
+    name: 'Parag Agarwal',
+    initials: 'PA',
+    role: 'Radiology & Imaging Lead',
+    department: 'Medical Imaging',
+    expertise: 'Imaging',
+    avatarColorBg: '#f3e8ff',
+    avatarColorText: '#6b21a8',
+  },
+  {
+    id: 'int-3',
+    name: 'Najla Al Mansoori',
+    initials: 'NA',
+    role: 'Clinical Innovation Lead',
+    department: 'Clinical Innovation',
+    expertise: 'Clinical Validation',
+    avatarColorBg: '#d1fae5',
+    avatarColorText: '#065f46',
+  },
+  {
+    id: 'int-4',
+    name: 'Khalid Al Zaabi',
+    initials: 'KA',
+    role: 'Operations Transformation Lead',
+    department: 'Operations',
+    expertise: 'Operations',
+    avatarColorBg: '#ffedd5',
+    avatarColorText: '#9a3412',
+  },
+  {
+    id: 'int-5',
+    name: 'Sara Malik',
+    initials: 'SM',
+    role: 'HealthTech Partnerships',
+    department: 'Strategic Partnerships',
+    expertise: 'Partnerships',
+    avatarColorBg: '#fce7f3',
+    avatarColorText: '#9d174d',
+  },
+]
+
 export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   {
     id: 'req-001',
     companyName: 'MedTech Innovations',
     vendorName: 'Sarah Ahmed',
+    referredBy: 'Dr. Noura Al Ghaithi',
     solution: 'AI-powered diagnostic platform for early disease detection',
     headline: 'AI-powered diagnostic platform for early disease detection',
     focusArea: 'AI & Diagnostics',
@@ -93,14 +168,22 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     submittedOn: '12 Oct 2026',
     submittedRelative: '3 days ago',
     tags: ['AI & Diagnostics', 'Medical Imaging', 'Clinical Decision Support'],
+    internalInterests: DEFAULT_INTERNAL_INTERESTS,
+    agentRecommendation: {
+      status: 'proceed',
+      label: 'Recommended to Proceed',
+      confidence: 94,
+      rationale:
+        'AI evaluation confirms high clinical validation maturity, active regional hospital deployments, and strong alignment with M42 strategic healthcare priorities.',
+    },
     workflowStages: [
-      { id: 1, title: '1. Submission', subheading: '12 Oct 2026', status: 'completed' },
-      { id: 2, title: '2. Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: '3. Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
-      { id: 4, title: '4. NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
-      { id: 5, title: '5. Value Assessment', subheading: 'Not Started', status: 'not_started' },
-      { id: 6, title: '6. Due Diligence', subheading: 'Not Started', status: 'not_started' },
-      { id: 7, title: '7. Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
+      { id: 1, title: 'Submission', subheading: '12 Oct 2026', status: 'completed' },
+      { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
+      { id: 3, title: 'Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
+      { id: 4, title: 'NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
+      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
+      { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
     ],
     overviewCards: {
       evidence: 'Clinical Validation Study',
@@ -176,6 +259,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     id: 'req-002',
     companyName: 'AlphaHealth BioTech',
     vendorName: 'Dr. Tariq Mansoor',
+    referredBy: 'Ahmed Al Hosani',
     solution: 'CardioScan AI Diagnostic Platform',
     headline: 'CardioScan AI Diagnostic Platform',
     focusArea: 'Cardiology & Precision Health',
@@ -184,14 +268,22 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     submittedOn: '10 Oct 2026',
     submittedRelative: '2 days ago',
     tags: ['Cardiology & Precision Health', 'Clinical Workflow Automation'],
+    internalInterests: DEFAULT_INTERNAL_INTERESTS,
+    agentRecommendation: {
+      status: 'proceed',
+      label: 'Recommended to Proceed',
+      confidence: 88,
+      rationale:
+        'Demonstrated 94.2% diagnostic accuracy with strong primary care cardiovascular workflow alignment.',
+    },
     workflowStages: [
-      { id: 1, title: '1. Submission', subheading: '10 Oct 2026', status: 'completed' },
-      { id: 2, title: '2. Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: '3. Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
-      { id: 4, title: '4. NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
-      { id: 5, title: '5. Value Assessment', subheading: 'Not Started', status: 'not_started' },
-      { id: 6, title: '6. Due Diligence', subheading: 'Not Started', status: 'not_started' },
-      { id: 7, title: '7. Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
+      { id: 1, title: 'Submission', subheading: '10 Oct 2026', status: 'completed' },
+      { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
+      { id: 3, title: 'Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
+      { id: 4, title: 'NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
+      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
+      { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
     ],
     overviewCards: {
       evidence: 'Proof of concept',
@@ -265,6 +357,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     id: 'req-003',
     companyName: 'GenomicX MENA FZ-LLC',
     vendorName: 'Karim El-Sayed',
+    referredBy: null,
     solution: 'Rare Disease Variant Interpreter',
     headline: 'Rare Disease Variant Interpreter',
     focusArea: 'Genomics & Oncology',
@@ -273,14 +366,22 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     submittedOn: '01 Oct 2026',
     submittedRelative: '11 days ago',
     tags: ['Genomics & Oncology', 'Precision Health & Diagnostics', 'Rare Diseases'],
+    internalInterests: DEFAULT_INTERNAL_INTERESTS,
+    agentRecommendation: {
+      status: 'proceed',
+      label: 'Recommended to Proceed',
+      confidence: 96,
+      rationale:
+        'Mature clinical bioinformatics solution with direct synergy for Emirati Genome Program partnerships.',
+    },
     workflowStages: [
-      { id: 1, title: '1. Submission', subheading: '01 Oct 2026', status: 'completed' },
-      { id: 2, title: '2. Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: '3. Screening & Fit', subheading: 'Completed', status: 'completed' },
-      { id: 4, title: '4. NDA & Discovery', subheading: 'In Progress', status: 'in_progress' },
-      { id: 5, title: '5. Value Assessment', subheading: 'Not Started', status: 'not_started' },
-      { id: 6, title: '6. Due Diligence', subheading: 'Not Started', status: 'not_started' },
-      { id: 7, title: '7. Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
+      { id: 1, title: 'Submission', subheading: '01 Oct 2026', status: 'completed' },
+      { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
+      { id: 3, title: 'Screening & Fit', subheading: 'Completed', status: 'completed' },
+      { id: 4, title: 'NDA & Discovery', subheading: 'In Progress', status: 'in_progress' },
+      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
+      { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
     ],
     overviewCards: {
       evidence: 'Peer-reviewed Nature publication',
@@ -348,6 +449,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     id: 'req-004',
     companyName: 'CarePulse Technologies',
     vendorName: 'Elena Rostova',
+    referredBy: 'Sponsor Office',
     solution: 'Remote Patient Monitoring & Triage',
     headline: 'Remote Patient Monitoring & Triage',
     focusArea: 'Virtual Care & Remote Monitoring',
@@ -356,14 +458,22 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     submittedOn: '28 Sep 2026',
     submittedRelative: '14 days ago',
     tags: ['Virtual Care & Remote Monitoring', 'Clinical Workflow Automation'],
+    internalInterests: DEFAULT_INTERNAL_INTERESTS,
+    agentRecommendation: {
+      status: 'proceed',
+      label: 'Recommended to Proceed',
+      confidence: 91,
+      rationale:
+        'Established regional footprint with 25,000+ active chronic care patients and DoH licensure.',
+    },
     workflowStages: [
-      { id: 1, title: '1. Submission', subheading: '28 Sep 2026', status: 'completed' },
-      { id: 2, title: '2. Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: '3. Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
-      { id: 4, title: '4. NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
-      { id: 5, title: '5. Value Assessment', subheading: 'Not Started', status: 'not_started' },
-      { id: 6, title: '6. Due Diligence', subheading: 'Not Started', status: 'not_started' },
-      { id: 7, title: '7. Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
+      { id: 1, title: 'Submission', subheading: '28 Sep 2026', status: 'completed' },
+      { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
+      { id: 3, title: 'Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
+      { id: 4, title: 'NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
+      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
+      { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
     ],
     overviewCards: {
       evidence: 'Real-world evidence study',
