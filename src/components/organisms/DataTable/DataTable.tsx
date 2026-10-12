@@ -123,8 +123,11 @@ export function DataTable<T extends Record<string, unknown>>({
                   <div className="flex items-center gap-1.5">
                     <span>{col.header}</span>
                     {col.sortable && sortKey === col.key && (
-                      <span className="text-text-accent">
-                        {sortDirection === 'asc' ? '▲' : '▼'}
+                      <span className="text-text-accent flex items-center">
+                        <Icon
+                          name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'}
+                          size="sm"
+                        />
                       </span>
                     )}
                   </div>

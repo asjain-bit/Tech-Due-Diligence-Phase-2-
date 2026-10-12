@@ -69,7 +69,7 @@ export const EdgeCases: Story = {
       <Badge>
         Extremely long badge label that tests wrapping or layout stability in restricted space
       </Badge>
-      <Badge variant="success">✓ Verified Tenant</Badge>
+      <Badge variant="success">Verified Tenant</Badge>
       <Badge variant="error">Critical Failure (Code 500)</Badge>
     </div>
   ),

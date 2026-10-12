@@ -81,20 +81,20 @@ describe('DataTable', () => {
 
     const nameHeader = screen.getByRole('columnheader', { name: /name/i })
     await user.click(nameHeader) // asc
-    expect(screen.getByText('▲')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'chevron-up' })).toBeInTheDocument()
 
     await user.click(nameHeader) // desc
-    expect(screen.getByText('▼')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'chevron-down' })).toBeInTheDocument()
 
     await user.click(nameHeader) // reset to null
-    expect(screen.queryByText('▼')).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'chevron-down' })).not.toBeInTheDocument()
 
     // Sort numbers
     const scoreHeader = screen.getByRole('columnheader', { name: /score/i })
     await user.click(scoreHeader) // score asc
-    expect(screen.getByText('▲')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'chevron-up' })).toBeInTheDocument()
     await user.click(scoreHeader) // score desc
-    expect(screen.getByText('▼')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'chevron-down' })).toBeInTheDocument()
   })
 
   it('updates page size when select changes', async () => {

@@ -10,7 +10,7 @@ describe('Icon', () => {
     expect(icon).toBeInTheDocument()
   })
 
-  it('renders all supported icon types', () => {
+  it('renders all supported Lucide icon types', () => {
     const icons = [
       'search',
       'sun',
@@ -19,6 +19,8 @@ describe('Icon', () => {
       'close',
       'chevron-left',
       'chevron-right',
+      'chevron-up',
+      'chevron-down',
       'check',
       'alert',
       'info',
@@ -32,11 +34,20 @@ describe('Icon', () => {
     })
   })
 
-  it('applies size classes', () => {
+  it('applies standardized Lucide pixel sizing', () => {
     const { rerender } = render(<Icon name="search" size="sm" />)
-    expect(screen.getByRole('img')).toHaveClass('h-4 w-4')
+    const smIcon = screen.getByRole('img')
+    expect(smIcon).toHaveAttribute('width', '16')
+    expect(smIcon).toHaveAttribute('height', '16')
+
+    rerender(<Icon name="search" size="md" />)
+    const mdIcon = screen.getByRole('img')
+    expect(mdIcon).toHaveAttribute('width', '20')
+    expect(mdIcon).toHaveAttribute('height', '20')
 
     rerender(<Icon name="search" size="lg" />)
-    expect(screen.getByRole('img')).toHaveClass('h-6 w-6')
+    const lgIcon = screen.getByRole('img')
+    expect(lgIcon).toHaveAttribute('width', '24')
+    expect(lgIcon).toHaveAttribute('height', '24')
   })
 })

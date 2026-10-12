@@ -61,7 +61,7 @@ describe('SettingsPanel', () => {
         notifications: 'critical',
       })
     )
-    expect(screen.getByText('✓ Preferences saved successfully.')).toBeInTheDocument()
+    expect(screen.getByText('Preferences saved successfully.')).toBeInTheDocument()
   })
 
   it('resets form when reset button is clicked', async () => {

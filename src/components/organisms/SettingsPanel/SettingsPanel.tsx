@@ -6,6 +6,7 @@ import { Select } from '@/components/atoms/Select'
 import { Button } from '@/components/atoms/Button'
 import { ThemeToggle } from '@/components/atoms/ThemeToggle'
 import { Avatar } from '@/components/atoms/Avatar'
+import { Icon } from '@/components/atoms/Icon'
 import type { SettingsPanelProps, UserSettings } from './SettingsPanel.types'
 
 const defaultValues: UserSettings = {
@@ -147,8 +148,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
       <div className="flex items-center justify-between pt-4 border-t border-border-default flex-wrap gap-3">
         {savedSuccess ? (
-          <span className="text-xs font-semibold text-status-success-text">
-            ✓ Preferences saved successfully.
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-status-success-text">
+            <Icon name="check" size="sm" aria-hidden="true" />
+            <span>Preferences saved successfully.</span>
           </span>
         ) : (
           <span className="text-xs text-text-tertiary">All modifications are auditable.</span>

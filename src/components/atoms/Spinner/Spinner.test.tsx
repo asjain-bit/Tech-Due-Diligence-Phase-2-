@@ -16,11 +16,13 @@ describe('Spinner', () => {
     expect(screen.getByRole('status')).toHaveAttribute('aria-label', 'Fetching records')
   })
 
-  it('applies size classes', () => {
+  it('applies Lucide standardized size properties', () => {
     const { rerender } = render(<Spinner size="sm" />)
-    expect(screen.getByRole('status')).toHaveClass('h-4 w-4')
+    expect(screen.getByRole('status')).toHaveAttribute('width', '16')
+    expect(screen.getByRole('status')).toHaveAttribute('height', '16')
 
     rerender(<Spinner size="lg" />)
-    expect(screen.getByRole('status')).toHaveClass('h-8 w-8')
+    expect(screen.getByRole('status')).toHaveAttribute('width', '24')
+    expect(screen.getByRole('status')).toHaveAttribute('height', '24')
   })
 })

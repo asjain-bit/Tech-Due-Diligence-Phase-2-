@@ -8,6 +8,8 @@ export type IconName =
   | 'close'
   | 'chevron-left'
   | 'chevron-right'
+  | 'chevron-up'
+  | 'chevron-down'
   | 'check'
   | 'alert'
   | 'info'
@@ -15,7 +17,7 @@ export type IconName =
 
 export type IconSize = 'sm' | 'md' | 'lg'
 
-export interface IconProps extends React.SVGAttributes<SVGSVGElement> {
+export interface IconProps extends Omit<React.SVGAttributes<SVGSVGElement>, 'size'> {
   name: IconName
   size?: IconSize
   label?: string

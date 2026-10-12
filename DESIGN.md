@@ -6,6 +6,7 @@
 - **Bottom-Up Atomic Build**: Every visual element begins at the lowest atomic tier. Atoms are composed into molecules, molecules assemble into organisms, and organisms slot into page templates.
 - **One Responsibility Per File**: Strict separation of component implementation (`.tsx`), type contracts (`.types.ts`), unit tests (`.test.tsx`), and stories (`.stories.tsx`).
 - **Co-Located Tests**: Unit tests reside alongside component implementations with coverage enforcement (90% branches, functions, lines, statements).
+- **Lucide Iconography Exclusively**: Official Lucide Icons (`lucide-react`) are the sole approved iconography source. No custom SVGs, Unicode symbols, emojis, or third-party icon libraries are permitted across any component.
 - **AI-Elements Opt-In**: Experimental or agent-generated blocks are quarantined under designated namespaces (`src/components/ai-elements/**`) and ignored by core test coverage gates until graduated.
 
 ---
@@ -132,3 +133,37 @@ _Next.js route entries assembling templates and organisms._
 | Name       | Path               | Description                                                                         | Used in          |
 | :--------- | :----------------- | :---------------------------------------------------------------------------------- | :--------------- |
 | `HomePage` | `src/app/page.tsx` | Production infrastructure dashboard demonstrating the full atomic design hierarchy. | App Router (`/`) |
+
+---
+
+## 5. Iconography & Icon Usage Ground Rules
+
+To ensure visual consistency and strict design system adherence across the application:
+
+### Approved Icon Library
+
+- **Lucide Icons exclusively (`lucide-react`)**: All icons across the application must be Lucide outline icons.
+- **No custom SVGs, Unicode symbols, or emojis**: Hand-drawn inline SVGs, raw SVG paths, FontAwesome/Material/Bootstrap sets, and Unicode glyphs (e.g. `▲`, `▼`, `✓`, `✕`) are strictly forbidden.
+- **Semantic fallback**: If a specific icon is unavailable, select the closest semantically accurate icon from Lucide; never create custom artwork.
+
+### Component-Wide Consistency
+
+Use Lucide icons consistently across:
+
+- **Navigation & Menus**: Sidebars, breadcrumbs, expand/collapse indicators (`ChevronLeft`, `ChevronRight`, `ChevronUp`, `ChevronDown`, `Menu`).
+- **Actions & Controls**: Buttons, icon-only buttons, modal triggers, close actions (`X`, `Settings`, `Search`).
+- **Data & Tables**: Column sorting indicators (`ChevronUp`, `ChevronDown`), pagination controls, row actions.
+- **Forms & Inputs**: Search adornments, select carets, field status indicators.
+- **Feedback & Notifications**: Status banners, toasts, dialog alerts (`Check`, `AlertCircle`, `Info`, `AlertTriangle`).
+- **Theme & System**: Mode toggles (`Sun`, `Moon`, `Monitor`/`Laptop`), async loaders (`Loader2`).
+
+### Standardized Icon Styling
+
+- **Outline Style**: Standard outline stroke icons.
+- **Stroke Width**: Fixed at `2px` across all sizes.
+- **Size Scale**:
+  - `sm` (Small inline icons): `16px` (`size={16}`)
+  - `md` (Standard interface icons): `20px` (`size={20}`)
+  - `lg` (Prominent action icons): `24px` (`size={24}`)
+- **Color Tokens**: Icons inherit text colors or consume design token classes (e.g. `text-text-primary`, `text-text-secondary`, `text-status-success-icon`). No arbitrary inline colors or gradients.
+- **Interaction & Accessibility**: Icon-only buttons must provide explicit `aria-label` attributes. Icons themselves include `aria-hidden="true"`.

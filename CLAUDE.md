@@ -74,3 +74,15 @@ Atomic rule: _If a component composes any other component, it is NOT an atom._
   - `fix: correct text-tertiary contrast ratio in dark theme`
   - `test: add edge cases for data table pagination`
   - `chore: update storybook configuration`
+
+## 7. Iconography & Icon Usage Ground Rules
+
+- **Exclusively Lucide Icons**: All application icons MUST be imported from `lucide-react` directly or rendered via `@/components/atoms/Icon`.
+- **Zero Custom Icons / Zero Emojis**: Never create, draw, or generate custom SVG icons. Never use Unicode characters (e.g. `▲`, `▼`, `✓`, `✕`) or emojis as substitutes for UI icons.
+- **Stroke Width**: Maintain a constant `2px` stroke width across all icons.
+- **Standard Sizing**:
+  - Small inline: `14–16px` (`sm`)
+  - Standard interface: `18–20px` (`md`)
+  - Prominent actions: `22–24px` (`lg`)
+- **Semantic Color Tokens**: Apply design-system semantic tokens (`text-text-primary`, `text-text-secondary`, `text-status-success-icon`, etc.). Do not use arbitrary gradients or fills.
+- **Accessibility**: Provide `aria-label` on interactive icon buttons, and mark decorative icons with `aria-hidden="true"`.
