@@ -1,0 +1,24 @@
+/*
+ * BRAND OVERRIDES (WHITE-LABEL CUSTOMIZATION)
+ *
+ * This file is the ONLY token file that a feature branch or white-label tenant
+ * is permitted to edit. Place all brand-specific overrides, custom color ramps,
+ * and accessibility adjustments here.
+ */
+
+:root,
+[data-theme='light'] {
+  /*
+   * A11y override: Bump --text-tertiary from neutral-500 (#6b7280) to neutral-600 (#4b5563)
+   * to guarantee WCAG 2.1 AA contrast ratio (>= 4.5:1) against neutral-0/neutral-50 light backgrounds.
+   */
+  --text-tertiary: var(--colors-neutral-600);
+}
+
+[data-theme='dark'] {
+  /*
+   * A11y override: Bump --text-tertiary from neutral-400 (#9ca3af) to neutral-300 (#d1d5db)
+   * to guarantee WCAG 2.1 AA contrast ratio (>= 4.5:1) against dark surface backgrounds.
+   */
+  --text-tertiary: var(--colors-neutral-300);
+}
