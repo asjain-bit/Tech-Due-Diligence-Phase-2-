@@ -13,6 +13,19 @@
    * to guarantee WCAG 2.1 AA contrast ratio (>= 4.5:1) against neutral-0/neutral-50 light backgrounds.
    */
   --text-tertiary: var(--colors-neutral-600);
+
+  /* M42 Brand Tokens */
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f1f5f9;
+  --app-primary: #0d212c;
+  --app-primary-soft: #d9e6eb;
+  --app-accent: #36c0c9;
+  --app-accent-hover: #2baab3;
+  --app-accent-soft: #ddf7f9;
+  --app-text: #0d212c;
+  --app-text-muted: #64748b;
+  --app-border: #e2e8f0;
 }
 
 [data-theme='dark'] {
@@ -21,4 +34,17 @@
    * to guarantee WCAG 2.1 AA contrast ratio (>= 4.5:1) against dark surface backgrounds.
    */
   --text-tertiary: var(--colors-neutral-300);
+
+  /* M42 Brand Tokens (Dark) */
+  --app-bg: #0a1820;
+  --app-surface: #0d212c;
+  --app-surface-muted: #153443;
+  --app-primary: #ffffff;
+  --app-primary-soft: #1a4256;
+  --app-accent: #36c0c9;
+  --app-accent-hover: #2baab3;
+  --app-accent-soft: #153443;
+  --app-text: #ffffff;
+  --app-text-muted: #94a3b8;
+  --app-border: #1e4558;
 }

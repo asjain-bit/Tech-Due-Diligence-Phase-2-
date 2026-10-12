@@ -24,15 +24,15 @@ describe('ThemeToggle', () => {
     expect(button).toBeInTheDocument()
     expect(button).toHaveAttribute('aria-label', expect.stringContaining('system'))
 
-    // system -> light
-    await user.click(button)
-    expect(button).toHaveAttribute('aria-label', expect.stringContaining('light'))
-
-    // light -> dark
+    // system -> dark
     await user.click(button)
     expect(button).toHaveAttribute('aria-label', expect.stringContaining('dark'))
 
-    // dark -> system
+    // dark -> light
+    await user.click(button)
+    expect(button).toHaveAttribute('aria-label', expect.stringContaining('light'))
+
+    // light -> system
     await user.click(button)
     expect(button).toHaveAttribute('aria-label', expect.stringContaining('system'))
   })

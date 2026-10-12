@@ -12,6 +12,7 @@ export interface HeaderUser {
 
 export interface SiteHeaderProps {
   title?: string
+  subtitle?: string
   links?: NavLinkItem[]
   user?: HeaderUser
   searchValue?: string

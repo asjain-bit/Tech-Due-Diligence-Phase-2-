@@ -11,6 +11,7 @@ import type { SiteHeaderProps } from './SiteHeader.types'
  */
 export const SiteHeader: React.FC<SiteHeaderProps> = ({
   title = 'Platform Console',
+  subtitle,
   links = [],
   user,
   searchValue = '',
@@ -34,9 +35,16 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
           <div className="h-7 w-7 rounded-md bg-action-primary-bg-default flex items-center justify-center text-action-primary-text font-bold text-xs tracking-wider">
             TDD
           </div>
-          <span className="font-semibold text-sm text-text-primary tracking-tight truncate">
-            {title}
-          </span>
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-sm text-text-primary tracking-tight truncate">
+              {title}
+            </span>
+            {subtitle ? (
+              <span className="text-[11px] text-text-secondary leading-tight truncate">
+                {subtitle}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {links.length > 0 && (

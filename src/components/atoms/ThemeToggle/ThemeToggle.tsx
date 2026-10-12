@@ -18,15 +18,15 @@ const sizePixelMap = {
  */
 export const ThemeToggle = React.forwardRef<HTMLButtonElement, ThemeToggleProps>(
   ({ size = 'md', className = '', ...rest }, ref) => {
-    const { theme, setTheme } = useTheme()
+    const { theme, setTheme, resolvedTheme } = useTheme()
 
     const handleCycleTheme = () => {
-      if (theme === 'light') {
-        setTheme('dark')
+      if (theme === 'system') {
+        setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
       } else if (theme === 'dark') {
-        setTheme('system')
-      } else {
         setTheme('light')
+      } else {
+        setTheme('system')
       }
     }
 

@@ -93,20 +93,21 @@ _Single DOM element, zero component children._
 | `Badge`       | `@/components/atoms/Badge`       | Compact status indicator pill with semantic variant themes.                                 | KPICard, DataTable, Toast                                                    |
 | `Spinner`     | `@/components/atoms/Spinner`     | Accessible animated SVG circular loader for async operations.                               | DataTable, SiteHeader                                                        |
 | `Avatar`      | `@/components/atoms/Avatar`      | Image avatar with automatic monogram fallback.                                              | SiteHeader, SettingsPanel                                                    |
-| `ThemeToggle` | `@/components/atoms/ThemeToggle` | Button cycling through light, dark, and system color modes.                                 | SiteHeader, SettingsPanel                                                    |
+| `ThemeToggle` | `@/components/atoms/ThemeToggle` | Button cycling through light, dark, and system color modes.                                 | SiteHeader, SettingsPanel, LoginScreen, HomePage                             |
 | `Icon`        | `@/components/atoms/Icon`        | Scalable vector icon mapping standard application glyphs.                                   | SearchBar, Toast, AppDialog, SiteHeader                                      |
+| `StatusChip`  | `@/components/atoms/StatusChip`  | Compact semantic status pill with color-coded theme and optional dot.                       | DataTable, DashboardScreen                                                   |
 
 ### Molecules
 
 _2+ atoms composed together for a single focused purpose._
 
-| Name        | Path                               | Description                                                                            | Used in                       |
-| :---------- | :--------------------------------- | :------------------------------------------------------------------------------------- | :---------------------------- |
-| `FormField` | `@/components/molecules/FormField` | Accessible form control pairing Label, Input/Textarea/Select, and validation messages. | SettingsPanel                 |
-| `SearchBar` | `@/components/molecules/SearchBar` | Search input pairing Input, search Icon, and quick action Button.                      | SiteHeader, DataTable         |
-| `Toast`     | `@/components/molecules/Toast`     | Ephemeral notification banner pairing Badge, status Icon, and dismiss Button.          | AppShell, SettingsPanel, Page |
-| `AppDialog` | `@/components/molecules/AppDialog` | Modal dialog combining Backdrop, title, content, close Button, and actions.            | SettingsPanel, Page           |
-| `KPICard`   | `@/components/molecules/KPICard`   | Metric display card combining summary value, delta trend Icon, and status Badge.       | Page                          |
+| Name        | Path                               | Description                                                                            | Used in                                |
+| :---------- | :--------------------------------- | :------------------------------------------------------------------------------------- | :------------------------------------- |
+| `FormField` | `@/components/molecules/FormField` | Accessible form control pairing Label, Input/Textarea/Select, and validation messages. | SettingsPanel                          |
+| `SearchBar` | `@/components/molecules/SearchBar` | Search input pairing Input, search Icon, and quick action Button.                      | SiteHeader, DataTable, DashboardScreen |
+| `Toast`     | `@/components/molecules/Toast`     | Ephemeral notification banner pairing Badge, status Icon, and dismiss Button.          | AppShell, SettingsPanel, Page          |
+| `AppDialog` | `@/components/molecules/AppDialog` | Modal dialog combining Backdrop, title, content, close Button, and actions.            | SettingsPanel, Page                    |
+| `KPICard`   | `@/components/molecules/KPICard`   | Metric display card combining summary value, delta trend Icon, and status Badge.       | Page                                   |
 
 ### Organisms
 
@@ -117,22 +118,17 @@ _Distinct self-contained sections; orchestrates multiple molecules and atoms._
 | `SiteHeader`    | `@/components/organisms/SiteHeader`    | Top navigation bar containing branding, search, nav links, ThemeToggle, and user Avatar.        | AppShell, Page      |
 | `DataTable`     | `@/components/organisms/DataTable`     | Tabular data grid with client-side sorting, SearchBar filtering, and pagination controls.       | Page, SettingsPanel |
 | `SettingsPanel` | `@/components/organisms/SettingsPanel` | Comprehensive configuration panel combining multiple FormFields, ThemeToggle, and save actions. | AppShell, Page      |
+| `Sidebar`       | `@/components/organisms/Sidebar`       | Expandable dark left navigation sidebar with user profile, Director designation & logout modal. | HomePage, AppShell  |
 
-### Templates
+### Screens & Pages
 
-_Layout skeletons defining slots and structural containment._
+_Next.js route entries assembling templates, organisms, and views._
 
-| Name       | Path                              | Description                                                                                         | Used in |
-| :--------- | :-------------------------------- | :-------------------------------------------------------------------------------------------------- | :------ |
-| `AppShell` | `@/components/templates/AppShell` | Application frame providing topbar (56px), leftbar (165px/48px), main, and rightbar (~280px) slots. | Page    |
-
-### Pages
-
-_Next.js route entries assembling templates and organisms._
-
-| Name       | Path               | Description                                                                         | Used in          |
-| :--------- | :----------------- | :---------------------------------------------------------------------------------- | :--------------- |
-| `HomePage` | `src/app/page.tsx` | Production infrastructure dashboard demonstrating the full atomic design hierarchy. | App Router (`/`) |
+| Name              | Path                                         | Description                                                                            | Used in          |
+| :---------------- | :------------------------------------------- | :------------------------------------------------------------------------------------- | :--------------- |
+| `LoginScreen`     | `src/components/screens/LoginScreen.tsx`     | M42 SSO authentication screen with persona role selection (Director, Evaluator, etc.). | HomePage (`/`)   |
+| `DashboardScreen` | `src/components/screens/DashboardScreen.tsx` | Vendor assessment dashboard with 3 KPI cards and structured empty assessment table.    | HomePage (`/`)   |
+| `HomePage`        | `src/app/page.tsx`                           | Main application page integrating authentication state, Sidebar, and DashboardScreen.  | App Router (`/`) |
 
 ---
 
