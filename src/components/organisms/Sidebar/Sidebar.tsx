@@ -16,7 +16,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggleCollapse,
   userName = 'Zaid Al Ali',
-  userEmail = 'zaid.alali@m42.ae',
   userDesignation = 'Director',
   userAvatarUrl,
   onSignOut,
@@ -117,13 +116,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className="bg-[#153443] text-white border-white/20 shrink-0"
                 />
                 <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-white truncate">{userName}</span>
-                  </div>
+                  <span className="text-xs font-bold text-white truncate">{userName}</span>
                   <span className="text-[11px] font-semibold text-[#36c0c9] truncate">
                     {userDesignation}
                   </span>
-                  <span className="text-[10px] text-slate-400 truncate">{userEmail}</span>
                 </div>
               </div>
               <button

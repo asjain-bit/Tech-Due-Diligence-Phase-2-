@@ -1,16 +1,22 @@
 import { test, expect } from '@playwright/test'
 
-test('landing page renders and theme toggle works', async ({ page }) => {
+test('landing page renders with light theme and profile selection', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('h1')).toBeVisible()
 
   const html = page.locator('html')
-  const initialTheme = await html.getAttribute('data-theme')
+  const theme = await html.getAttribute('data-theme')
+  expect(theme).toBe('light')
 
-  const toggle = page.getByRole('button', { name: /toggle theme/i })
-  await expect(toggle).toBeVisible()
-  await toggle.click()
+  // Click Sign in with SSO to open profile options
+  const ssoButton = page.getByRole('button', { name: /sign in with sso/i })
+  await expect(ssoButton).toBeVisible()
+  await ssoButton.click()
 
-  const nextTheme = await html.getAttribute('data-theme')
-  expect(nextTheme).not.toBe(initialTheme)
+  // Verify profile options
+  await expect(page.getByText('Director', { exact: true })).toBeVisible()
+  await expect(page.getByText('Evaluator', { exact: true })).toBeVisible()
+  await expect(page.getByText('Stragety Fit', { exact: true })).toBeVisible()
+  await expect(page.getByText('Sponsor', { exact: true })).toBeVisible()
+  await expect(page.getByText('Legal & Partnership Director', { exact: true })).toBeVisible()
 })

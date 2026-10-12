@@ -1,22 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import {
-  Fingerprint,
-  Loader2,
-  ShieldCheck,
-  Users,
-  PieChart,
-  Lock,
-  ArrowLeft,
-  ChevronRight,
-  UserCheck,
-  Scale,
-  Target,
-  Award,
-  Crown,
-} from 'lucide-react'
-import { ThemeToggle } from '@/components/atoms/ThemeToggle'
+import { Fingerprint, Loader2, ShieldCheck, Users, PieChart, Lock, ArrowLeft } from 'lucide-react'
 
 export interface UserProfile {
   id: string
@@ -24,8 +9,6 @@ export interface UserProfile {
   designation: string
   email: string
   roleTitle: string
-  description: string
-  badge: string
   avatarUrl?: string
 }
 
@@ -36,8 +19,6 @@ export const AVAILABLE_PROFILES: UserProfile[] = [
     designation: 'Director',
     email: 'zaid.alali@m42.ae',
     roleTitle: 'Director',
-    description: 'Executive governance & overall assessment authority',
-    badge: 'Executive',
     avatarUrl:
       'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
   },
@@ -47,30 +28,24 @@ export const AVAILABLE_PROFILES: UserProfile[] = [
     designation: 'Evaluator',
     email: 'mariam.alzaabi@m42.ae',
     roleTitle: 'Evaluator',
-    description: 'Technical questionnaire scoring & evidence verification',
-    badge: 'Technical',
     avatarUrl:
       'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
   },
   {
     id: 'strategy-fit',
     name: 'Omar Al-Hashemi',
-    designation: 'Strategy Fit',
+    designation: 'Stragety Fit',
     email: 'omar.alhashemi@m42.ae',
-    roleTitle: 'Strategy Fit People Profile View',
-    description: 'Strategic alignment, organizational capability & team fit',
-    badge: 'Strategy',
+    roleTitle: 'Stragety Fit',
     avatarUrl:
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
   },
   {
     id: 'sponsor',
     name: 'Rashid Al-Nuaimi',
-    designation: 'Executive Sponsor',
+    designation: 'Sponsor',
     email: 'rashid.alnuaimi@m42.ae',
-    roleTitle: 'Sponsor Profile view',
-    description: 'Project sponsorship, resource allocation & milestone sign-off',
-    badge: 'Sponsor',
+    roleTitle: 'Sponsor',
     avatarUrl:
       'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
   },
@@ -80,8 +55,6 @@ export const AVAILABLE_PROFILES: UserProfile[] = [
     designation: 'Legal & Partnership Director',
     email: 'fatima.alkaabi@m42.ae',
     roleTitle: 'Legal & Partnership Director',
-    description: 'Regulatory compliance, contractual governance & partnership terms',
-    badge: 'Legal',
     avatarUrl:
       'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
   },
@@ -104,23 +77,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     }, 700)
   }
 
-  const getProfileIcon = (id: string) => {
-    switch (id) {
-      case 'director':
-        return <Crown className="w-5 h-5 text-[#0f766e]" />
-      case 'evaluator':
-        return <UserCheck className="w-5 h-5 text-[#36c0c9]" />
-      case 'strategy-fit':
-        return <Target className="w-5 h-5 text-[#0284c7]" />
-      case 'sponsor':
-        return <Award className="w-5 h-5 text-[#eab308]" />
-      case 'legal-director':
-        return <Scale className="w-5 h-5 text-[#7c3aed]" />
-      default:
-        return <Crown className="w-5 h-5 text-[#0f766e]" />
-    }
-  }
-
   if (isAuthenticating && selectedProfile) {
     return (
       <div className="fixed inset-0 bg-[#f8f9fc] flex items-center justify-center z-50 animate-in fade-in duration-200">
@@ -141,10 +97,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   }
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col md:flex-row bg-[#f8f9fc] font-sans antialiased text-[#0d212c]">
-      <div className="absolute top-4 right-4 z-20">
-        <ThemeToggle size="sm" />
-      </div>
+    <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#f8f9fc] font-sans antialiased text-[#0d212c]">
       {/* Left Side — Information Panel with requested #D9E6EB background color */}
       <div className="flex-1 p-8 lg:p-16 flex flex-col justify-center relative bg-[#D9E6EB] border-r border-[#e2e8f0]">
         <div className="max-w-md mx-auto w-full flex flex-col gap-8">
@@ -253,7 +206,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           </div>
         ) : (
           /* Step 2: Role / Profile Selection View */
-          <div className="w-full max-w-lg bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-xs flex flex-col">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-xs flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => setCurrentStep('welcome')}
@@ -262,55 +215,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to sign in</span>
               </button>
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Select Profile
-              </span>
             </div>
 
             <h2 className="text-xl sm:text-2xl font-bold text-[#0d212c] mb-1.5 tracking-tight">
-              Select Profile View
+              Select Profile
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mb-6 leading-relaxed">
               Choose your profile perspective to launch the Tech Due Diligence workspace:
             </p>
 
-            {/* List of 5 Profile Views */}
+            {/* List of Profile Views: only role and user email, no logos, no descriptions, no chips, no arrow icons */}
             <div className="flex flex-col gap-2.5">
-              {AVAILABLE_PROFILES.map((profile, idx) => (
+              {AVAILABLE_PROFILES.map((profile) => (
                 <button
                   key={profile.id}
                   onClick={() => handleSelectProfile(profile)}
-                  className="w-full text-left p-3.5 rounded-xl border border-gray-200 hover:border-[#36c0c9] hover:bg-[#36c0c9]/5 transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-2xs hover:shadow-xs"
+                  className="w-full text-left p-3.5 rounded-xl border border-gray-200 hover:border-[#36c0c9] hover:bg-[#36c0c9]/5 transition-all flex flex-col gap-0.5 group cursor-pointer shadow-2xs hover:shadow-xs"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-white group-hover:border-[#36c0c9]/30 transition-colors">
-                      {getProfileIcon(profile.id)}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 font-bold">{idx + 1}.</span>
-                        <span className="font-bold text-sm text-[#0d212c] group-hover:text-[#36c0c9] transition-colors truncate">
-                          {profile.roleTitle}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-slate-600 font-medium truncate">
-                          {profile.name}
-                        </span>
-                        <span className="text-slate-300">•</span>
-                        <span className="text-[11px] text-slate-400 truncate">{profile.email}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                        {profile.description}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 group-hover:bg-[#36c0c9]/15 group-hover:text-[#0f766e] transition-colors">
-                      {profile.badge}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#36c0c9] transition-colors" />
-                  </div>
+                  <span className="font-bold text-sm text-[#0d212c] group-hover:text-[#36c0c9] transition-colors truncate">
+                    {profile.roleTitle}
+                  </span>
+                  <span className="text-xs text-slate-500 truncate">{profile.email}</span>
                 </button>
               ))}
             </div>

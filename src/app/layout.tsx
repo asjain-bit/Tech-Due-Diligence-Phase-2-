@@ -18,8 +18,11 @@ const fraunces = Fraunces({
 })
 
 export const metadata: Metadata = {
-  title: 'Next.js 15 Atomic Design System',
-  description: 'Scaffolded architecture with design tokens and atomic components',
+  title: 'Tech Due Diligence',
+  description: 'M42 Tech Due Diligence Portal',
+  icons: {
+    icon: '/favicon-square.png',
+  },
 }
 
 export default function RootLayout({
@@ -28,8 +31,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`} suppressHydrationWarning>
-      <body>
+    <html
+      lang="en"
+      className={`${inter.variable} ${fraunces.variable}`}
+      data-theme="light"
+      suppressHydrationWarning
+    >
+      <body className="bg-[#f8fafc] text-[#0d212c] antialiased">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

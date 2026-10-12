@@ -22,13 +22,13 @@ describe('LoginScreen', () => {
     renderWithTheme(<LoginScreen onLogin={vi.fn()} />)
 
     await user.click(screen.getByText('Sign in with SSO'))
-    expect(screen.getByText('Select Profile View')).toBeInTheDocument()
+    expect(screen.getByText('Select Profile')).toBeInTheDocument()
 
     // Assert all 5 profiles are listed
     expect(screen.getByText('Director')).toBeInTheDocument()
     expect(screen.getByText('Evaluator')).toBeInTheDocument()
-    expect(screen.getByText('Strategy Fit People Profile View')).toBeInTheDocument()
-    expect(screen.getByText('Sponsor Profile view')).toBeInTheDocument()
+    expect(screen.getByText('Stragety Fit')).toBeInTheDocument()
+    expect(screen.getByText('Sponsor')).toBeInTheDocument()
     expect(screen.getByText('Legal & Partnership Director')).toBeInTheDocument()
   })
 
@@ -37,7 +37,7 @@ describe('LoginScreen', () => {
     renderWithTheme(<LoginScreen onLogin={vi.fn()} />)
 
     await user.click(screen.getByText('Sign in with SSO'))
-    expect(screen.getByText('Select Profile View')).toBeInTheDocument()
+    expect(screen.getByText('Select Profile')).toBeInTheDocument()
 
     await user.click(screen.getByText('Back to sign in'))
     expect(screen.getByText('Sign in with SSO')).toBeInTheDocument()
