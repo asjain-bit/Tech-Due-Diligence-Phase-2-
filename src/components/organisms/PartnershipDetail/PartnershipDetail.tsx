@@ -30,6 +30,7 @@ import {
   Trash2,
   Info,
   Send,
+  ChevronDown,
 } from 'lucide-react'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import type { PartnershipDetailProps, DetailTab } from './PartnershipDetail.types'
@@ -297,6 +298,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     `Hi,\n\nWe have received a partnership request from ${request.companyName}. Please review the strategic alignment and market expansion potential for this partnership.\n\nPlease review the details in the Tech Due Diligence workspace and share your response.`
   )
   const [reviewToast, setReviewToast] = useState<string | null>(null)
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
+  const [showJudgementCriteriaModal, setShowJudgementCriteriaModal] = useState(false)
 
   // Handlers for Strategy Team
   const handleOpenAddStrategyMember = () => {
@@ -387,7 +390,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     showSendStrategyModal ||
     isAddStrategyModalOpen ||
     deletingStrategyMember ||
-    maxStrategyLimitWarning
+    maxStrategyLimitWarning ||
+    showQuestionnaireModal ||
+    showJudgementCriteriaModal
   )
 
   React.useEffect(() => {
@@ -1192,13 +1197,22 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowSendInternalModal(true)}
-                  className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
-                >
-                  Send Request
-                </button>
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowSendInternalModal(true)}
+                    className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
+                  >
+                    Send Request
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowQuestionnaireModal(true)}
+                    className="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-[#008a8a] hover:text-[#006e6e] hover:bg-[#36c0c9]/10 transition cursor-pointer shrink-0"
+                  >
+                    View Questionnaire
+                  </button>
+                </div>
               </div>
 
               {/* Table 1: Internal Interest Stakeholders */}
@@ -1342,13 +1356,22 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowSendStrategyModal(true)}
-                  className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
-                >
-                  Send Request
-                </button>
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowSendStrategyModal(true)}
+                    className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
+                  >
+                    Send Request
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowJudgementCriteriaModal(true)}
+                    className="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-[#008a8a] hover:text-[#006e6e] hover:bg-[#36c0c9]/10 transition cursor-pointer shrink-0"
+                  >
+                    View Judgement Criteria
+                  </button>
+                </div>
               </div>
 
               {/* Table 2: Strategy Team Members (1 person) */}
@@ -2330,6 +2353,306 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 className="w-full px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-bold transition shadow-xs cursor-pointer"
               >
                 Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW QUESTIONNAIRE POPUP MODAL (Internal Interest) — Matching Image 1 */}
+      {showQuestionnaireModal && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative bg-white rounded-2xl max-w-2xl sm:max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-lg sm:text-xl font-bold text-[#0d212c]">View Questionnaire</h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-[#64748b] text-[11px] font-semibold">
+                  View Only
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuestionnaireModal(false)}
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close questionnaire modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#64748b] -mt-2">
+              Preview of questions sent to internal stakeholders. Responses are view-only and cannot
+              be edited by the director.
+            </p>
+
+            {/* Questions container matching Image 1 layout */}
+            <div className="rounded-xl border border-[#e2e8f0] bg-white p-5 sm:p-6 flex flex-col divide-y divide-[#f1f5f9]">
+              {/* Question 1 */}
+              <div className="pb-6 flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                    1
+                  </div>
+                  <p className="text-sm sm:text-base font-semibold text-[#0d212c]">
+                    Is this a real problem for you today, and what do you do about it now?
+                  </p>
+                </div>
+                <div className="sm:pl-9">
+                  <textarea
+                    readOnly
+                    disabled
+                    rows={3}
+                    placeholder=""
+                    className="w-full p-3 rounded-xl border border-[#cbd5e1] bg-slate-50/50 text-xs sm:text-sm text-[#64748b] cursor-not-allowed resize-none focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Question 2 */}
+              <div className="py-6 flex flex-col gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                    2
+                  </div>
+                  <p className="text-sm sm:text-base font-semibold text-[#0d212c]">
+                    Which KPI would move, what is the baseline today, and what change would matter?
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3.5 sm:pl-9">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-[#0d212c] mb-1.5">KPI</label>
+                      <div className="relative">
+                        <select
+                          disabled
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-[#cbd5e1] bg-slate-50/50 text-xs sm:text-sm text-[#64748b] cursor-not-allowed appearance-none focus:outline-none pr-8"
+                        >
+                          <option>Choose a KPI</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#0d212c] mb-1.5">
+                        Baseline today
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        placeholder="e.g. 21% over 12 months"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#cbd5e1] bg-slate-50/50 text-xs sm:text-sm text-[#64748b] cursor-not-allowed placeholder:text-slate-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[#0d212c] mb-1.5">
+                      Change that would matter
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      placeholder="e.g. 3 points lower in 12 months"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#cbd5e1] bg-slate-50/50 text-xs sm:text-sm text-[#64748b] cursor-not-allowed placeholder:text-slate-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Question 3 */}
+              <div className="py-6 flex flex-col gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                    3
+                  </div>
+                  <p className="text-sm sm:text-base font-semibold text-[#0d212c]">
+                    Would you sponsor a pilot, who would the named sponsor be, and what capacity can
+                    you commit?
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2.5 sm:pl-9">
+                  {['Yes, we would sponsor', 'No', 'Not sure yet'].map((opt) => (
+                    <div
+                      key={opt}
+                      className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-[#cbd5e1] bg-slate-50/40 text-xs sm:text-sm font-semibold text-[#0d212c] cursor-not-allowed select-none"
+                    >
+                      <div className="w-4 h-4 rounded-full border border-slate-300 bg-white shrink-0" />
+                      <span>{opt}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Question 4 */}
+              <div className="py-6 flex flex-col gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                    4
+                  </div>
+                  <p className="text-sm sm:text-base font-semibold text-[#0d212c]">
+                    Is there a budget line, or would it need central funding?
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2.5 sm:pl-9">
+                  {['Existing budget line', 'Needs central funding', 'Don’t know'].map((opt) => (
+                    <div
+                      key={opt}
+                      className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-[#cbd5e1] bg-slate-50/40 text-xs sm:text-sm font-semibold text-[#0d212c] cursor-not-allowed select-none"
+                    >
+                      <div className="w-4 h-4 rounded-full border border-slate-300 bg-white shrink-0" />
+                      <span>{opt}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Question 5 */}
+              <div className="pt-6 flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                    5
+                  </div>
+                  <p className="text-sm sm:text-base font-semibold text-[#0d212c]">
+                    What would make you say no?
+                  </p>
+                </div>
+                <div className="sm:pl-9">
+                  <textarea
+                    readOnly
+                    disabled
+                    rows={3}
+                    placeholder=""
+                    className="w-full p-3 rounded-xl border border-[#cbd5e1] bg-slate-50/50 text-xs sm:text-sm text-[#64748b] cursor-not-allowed resize-none focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-2 border-t border-[#f1f5f9]">
+              <span className="text-xs text-[#64748b]">
+                View-only preview • Responses cannot be edited by director
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowQuestionnaireModal(false)}
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW JUDGEMENT CRITERIA POPUP MODAL (Strategy Team) — Matching Image 2 */}
+      {showJudgementCriteriaModal && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative bg-white rounded-2xl max-w-2xl sm:max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
+            {/* Header matching Image 2 */}
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0d212c]">Your judgement</h3>
+                <p className="text-xs text-[#64748b] mt-0.5">
+                  Pre-filled by the agent. Change any you disagree with.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowJudgementCriteriaModal(false)}
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close judgement criteria modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* List of 7 judgement criteria matching Image 2 */}
+            <div className="flex flex-col divide-y divide-[#f1f5f9]">
+              {[
+                {
+                  title: 'Fit to current focus areas',
+                  agentNote:
+                    'Touches "Clinical decision support" and "Patient safety analytics", both in scope.',
+                  value: 'In scope',
+                },
+                {
+                  title: 'Duplication on the roadmap',
+                  agentNote: '"Deterioration alerts in the EMR" is planned for 2027.',
+                  value: 'Overlaps a roadmap item',
+                },
+                {
+                  title: 'Build, buy or partner',
+                  agentNote:
+                    'Strategy lists predictive clinical models as build, through the Agentic CoE.',
+                  value: 'Build',
+                },
+                {
+                  title: 'Architecture, hosting and data residency',
+                  agentNote: 'EU hosting does not meet the in-country residency rule.',
+                  value: 'Does not fit',
+                },
+                {
+                  title: 'Own versus rent',
+                  agentNote: 'Shared IP proposed on a model trained with Bubble data.',
+                  value: 'Mixed',
+                },
+                {
+                  title: 'Scale across the network',
+                  agentNote: 'Would apply across all ICUs.',
+                  value: 'High',
+                },
+                {
+                  title: 'Sovereignty and local content',
+                  agentNote: 'No local entity yet; one promised within 12 months (claim).',
+                  value: 'Partly meets',
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
+                >
+                  <div className="flex flex-col gap-1.5 max-w-md">
+                    <span className="text-sm font-bold text-[#0d212c]">{item.title}</span>
+                    <div className="flex items-start gap-2">
+                      <span className="px-1.5 py-0.5 rounded bg-[#e0f2fe] text-[#0369a1] text-[10px] font-semibold shrink-0 mt-0.5">
+                        Agent
+                      </span>
+                      <p className="text-xs text-[#64748b] leading-relaxed">{item.agentNote}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:items-end gap-1 shrink-0 w-full sm:w-60">
+                    <div className="relative w-full">
+                      <select
+                        disabled
+                        value={item.value}
+                        className="w-full px-3.5 py-2 rounded-xl border border-[#cbd5e1] bg-white text-xs sm:text-sm font-medium text-[#0d212c] cursor-not-allowed appearance-none pr-8 shadow-2xs"
+                      >
+                        <option value={item.value}>{item.value}</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                    <span className="text-[11px] text-[#94a3b8] sm:self-start">
+                      Agent pre-filled
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-2 border-t border-[#f1f5f9]">
+              <span className="text-xs text-[#64748b]">
+                View-only preview • Criteria pre-filled by AI agent
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowJudgementCriteriaModal(false)}
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>
