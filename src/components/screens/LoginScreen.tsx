@@ -123,7 +123,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           </div>
 
           <div>
-            <h2 className="text-2xl lg:text-3xl font-normal text-[#0d212c] tracking-tight leading-snug">
+            <h2 className="text-[22px] lg:text-[28px] font-medium text-[#0d212c] tracking-tight leading-snug">
               From partnership request to strategic collaboration.
             </h2>
           </div>
