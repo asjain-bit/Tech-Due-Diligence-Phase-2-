@@ -247,13 +247,13 @@ describe('PartnershipDetail', () => {
     const modalSendBtn = screen.getByRole('button', { name: 'Send Request' })
     await user.click(modalSendBtn)
 
-    // Table transforms: shows Status, Deadline (5 days), Decision, Questionnaire
+    // Table transforms: shows Status, Deadline (5 days), Decision without Questionnaire column
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Deadline' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Decision' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Questionnaire' })).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Questionnaire' })).not.toBeInTheDocument()
     expect(screen.getAllByText('5 days').length).toBeGreaterThan(0)
-    expect(screen.getByText('Interested')).toBeInTheDocument()
+    expect(screen.getByText('Proceed')).toBeInTheDocument()
 
     // Send request button and add respondant button removed for internal interest
     expect(screen.queryByRole('button', { name: /Add Respondant/i })).not.toBeInTheDocument()

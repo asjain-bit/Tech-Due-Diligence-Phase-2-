@@ -122,14 +122,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             </h1>
           </div>
 
-          <div className="space-y-3">
-            <h2 className="text-2xl lg:text-3xl font-bold text-[#0d212c] tracking-tight leading-snug">
+          <div>
+            <h2 className="text-2xl lg:text-3xl font-normal text-[#0d212c] tracking-tight leading-snug">
               From partnership request to strategic collaboration.
             </h2>
-            <p className="text-slate-600 text-sm lg:text-base leading-relaxed font-normal">
-              A unified workspace to evaluate partnership opportunities, align internal
-              stakeholders, and move promising healthcare innovations toward collaboration.
-            </p>
           </div>
 
           {/* Feature points */}

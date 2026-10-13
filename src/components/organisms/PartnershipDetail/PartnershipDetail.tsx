@@ -306,37 +306,51 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     const s = status || 'Pending'
     if (s === 'Completed' || s === 'Submitted') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
           {s}
         </span>
       )
     }
     if (s === 'In Progress') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
           {s}
         </span>
       )
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
-        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
         {s}
       </span>
     )
   }
 
   const renderDecisionBadge = (decision?: string) => {
-    if (!decision || decision === '-') {
+    const d = decision?.trim()
+    if (!d || d === '-') {
       return <span className="text-[#94a3b8] font-medium text-xs sm:text-sm pl-1">-</span>
     }
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-teal-50 text-[#008a8a] border border-[#008a8a]/20">
-        {decision}
-      </span>
-    )
+    const isProceed = d.toLowerCase() === 'proceed' || d.toLowerCase() === 'interested'
+    const isDecline =
+      d.toLowerCase() === 'decline' ||
+      d.toLowerCase() === 'reject' ||
+      d.toLowerCase() === 'declined'
+
+    if (isProceed) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Proceed
+        </span>
+      )
+    }
+    if (isDecline) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          Decline
+        </span>
+      )
+    }
+    return <span className="text-[#94a3b8] font-medium text-xs sm:text-sm pl-1">-</span>
   }
 
   // Handlers for Strategy Team
@@ -1267,7 +1281,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                             <th className="py-3 px-4">Status</th>
                             <th className="py-3 px-4">Deadline</th>
                             <th className="py-3 px-4">Decision</th>
-                            <th className="py-3 px-4 text-right">Questionnaire</th>
                           </>
                         ) : (
                           <>
@@ -1281,10 +1294,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     <tbody className="divide-y divide-[#e2e8f0]">
                       {stakeholders.length === 0 ? (
                         <tr>
-                          <td
-                            colSpan={internalRequestSent ? 5 : 4}
-                            className="py-12 text-center text-[#64748b]"
-                          >
+                          <td colSpan={4} className="py-12 text-center text-[#64748b]">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <Users className="w-6 h-6 text-slate-300" />
                               <div className="text-xs font-semibold text-[#0d212c]">
@@ -1346,19 +1356,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                                     person.decision !== undefined
                                       ? person.decision
                                       : idx === 0
-                                        ? 'Interested'
+                                        ? 'Proceed'
                                         : '-'
                                   )}
-                                </td>
-
-                                <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowQuestionnaireModal(true)}
-                                    className="text-xs font-semibold text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer transition inline-flex items-center gap-1.5"
-                                  >
-                                    View Questionnaire
-                                  </button>
                                 </td>
                               </>
                             ) : (
@@ -1487,7 +1487,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                             <th className="py-3 px-4">Status</th>
                             <th className="py-3 px-4">Deadline</th>
                             <th className="py-3 px-4">Decision</th>
-                            <th className="py-3 px-4 text-right">Judgement Criteria</th>
                           </>
                         ) : (
                           <>
@@ -1501,10 +1500,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     <tbody className="divide-y divide-[#e2e8f0]">
                       {strategyMembers.length === 0 ? (
                         <tr>
-                          <td
-                            colSpan={strategyRequestSent ? 5 : 4}
-                            className="py-12 text-center text-[#64748b]"
-                          >
+                          <td colSpan={4} className="py-12 text-center text-[#64748b]">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <Users className="w-6 h-6 text-slate-300" />
                               <div className="text-xs font-semibold text-[#0d212c]">
@@ -1556,16 +1552,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
                                 <td className="py-3.5 px-4 whitespace-nowrap">
                                   {renderDecisionBadge(person.decision)}
-                                </td>
-
-                                <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowJudgementCriteriaModal(true)}
-                                    className="text-xs font-semibold text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer transition inline-flex items-center gap-1.5"
-                                  >
-                                    View Judgement Criteria
-                                  </button>
                                 </td>
                               </>
                             ) : (

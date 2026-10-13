@@ -120,7 +120,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     avatarColorText: '#1e40af',
     status: 'Completed',
     deadline: '5 days',
-    decision: 'Interested',
+    decision: 'Proceed',
   },
   {
     id: 'int-2',
