@@ -156,7 +156,7 @@ export const DashboardScreen: React.FC = () => {
   // Detailed view rendering
   if (selectedRequest) {
     return (
-      <div className="flex flex-col gap-6 w-full px-6 lg:px-10 py-6 text-[#0d212c]">
+      <div className="flex flex-col gap-6 w-full px-6 lg:px-10 py-3 text-[#0d212c]">
         {toastMessage && (
           <div className="fixed top-5 right-5 z-50 p-4 rounded-xl shadow-lg bg-white border border-[#e2e8f0] text-sm font-semibold flex items-center gap-2.5 animate-in slide-in-from-top-4">
             <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
@@ -174,7 +174,7 @@ export const DashboardScreen: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full px-6 lg:px-10 py-6 text-[#0d212c]">
+    <div className="flex flex-col gap-6 w-full px-6 lg:px-10 py-3 text-[#0d212c]">
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 p-4 rounded-xl shadow-lg bg-white border border-[#e2e8f0] text-sm font-semibold flex items-center gap-2.5 animate-in slide-in-from-top-4">
           <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
@@ -182,7 +182,7 @@ export const DashboardScreen: React.FC = () => {
         </div>
       )}
 
-      {/* 4 KPI Cards — Styled strictly per Attached Image 2 */}
+      {/* 4 KPI Cards — Icons without background per specification */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* KPI Card 1: Total Partnership Requests */}
         <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
@@ -190,8 +190,8 @@ export const DashboardScreen: React.FC = () => {
             <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-[0.06em]">
               Total Partnership Requests
             </span>
-            <div className="w-8 h-8 rounded-[10px] bg-[#e0f2fe] flex items-center justify-center shrink-0">
-              <Layers className="w-4 h-4 text-[#0284c7] stroke-[2]" />
+            <div className="flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5 text-[#0284c7] stroke-[2]" />
             </div>
           </div>
           <div className="text-4xl font-semibold text-[#0d212c] leading-none my-1">24</div>
@@ -207,8 +207,8 @@ export const DashboardScreen: React.FC = () => {
             <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-[0.06em]">
               Pending Director Review
             </span>
-            <div className="w-8 h-8 rounded-[10px] bg-[#fef3c7] flex items-center justify-center shrink-0">
-              <Clock className="w-4 h-4 text-[#d97706] stroke-[2]" />
+            <div className="flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-[#d97706] stroke-[2]" />
             </div>
           </div>
           <div className="text-4xl font-semibold text-[#0d212c] leading-none my-1">8</div>
@@ -222,8 +222,8 @@ export const DashboardScreen: React.FC = () => {
             <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-[0.06em]">
               NDA in Progress
             </span>
-            <div className="w-8 h-8 rounded-[10px] bg-[#fee2e2] flex items-center justify-center shrink-0">
-              <PenLine className="w-4 h-4 text-[#ef4444] stroke-[2]" />
+            <div className="flex items-center justify-center shrink-0">
+              <PenLine className="w-5 h-5 text-[#ef4444] stroke-[2]" />
             </div>
           </div>
           <div className="text-4xl font-semibold text-[#0d212c] leading-none my-1">6</div>
@@ -237,8 +237,8 @@ export const DashboardScreen: React.FC = () => {
             <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-[0.06em]">
               SLA Breached
             </span>
-            <div className="w-8 h-8 rounded-[10px] bg-[rgba(0,196,196,0.12)] flex items-center justify-center shrink-0">
-              <TriangleAlert className="w-4 h-4 text-[#008a8a] stroke-[2]" />
+            <div className="flex items-center justify-center shrink-0">
+              <TriangleAlert className="w-5 h-5 text-[#008a8a] stroke-[2]" />
             </div>
           </div>
           <div className="text-4xl font-semibold text-[#0d212c] leading-none my-1">3</div>
@@ -284,33 +284,32 @@ export const DashboardScreen: React.FC = () => {
           <SearchBar
             value={searchTerm}
             onChange={(val) => setSearchTerm(val)}
-            placeholder="Filter records..."
+            placeholder="Search partnership requests..."
             showButton={false}
           />
         </div>
       </div>
 
-      {/* Partnership Requests Table — Includes Referred by column */}
+      {/* Partnership Requests Table — Referred by column removed from table per instruction */}
       <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden w-full flex flex-col">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              {/* Column titles: font size reduced by 2 units to text-[11px], font weight reduced by 1 unit to font-semibold */}
+              {/* Column titles: font size text-[11px], font weight font-semibold */}
               <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-semibold uppercase tracking-wider">
-                <th className="py-3 px-4">Company name</th>
-                <th className="py-3 px-4">Vendor Name</th>
-                <th className="py-3 px-4">Referred by</th>
-                <th className="py-3 px-4">Solution</th>
-                <th className="py-3 px-4">Focus Area</th>
-                <th className="py-3 px-4">Solution Maturity</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Submitted on</th>
+                <th className="py-4 px-4">Company name</th>
+                <th className="py-4 px-4">Vendor Name</th>
+                <th className="py-4 px-4">Solution</th>
+                <th className="py-4 px-4">Focus Area</th>
+                <th className="py-4 px-4">Solution Maturity</th>
+                <th className="py-4 px-4">Status</th>
+                <th className="py-4 px-4">Submitted on</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e2e8f0]/60">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-[#64748b]">
+                  <td colSpan={7} className="py-16 text-center text-[#64748b]">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
                         <Inbox className="w-6 h-6 stroke-[1.5]" />
@@ -331,37 +330,32 @@ export const DashboardScreen: React.FC = () => {
                     onClick={() => setSelectedRequest(req)}
                     className="hover:bg-slate-50 transition-colors cursor-pointer group"
                   >
-                    {/* Company name: font size text-xs (same as submitted date), font weight 1 unit more than submitted date (font-medium) */}
-                    <td className="py-3 px-4 text-xs font-medium text-[#0d212c] group-hover:text-[#36c0c9]">
+                    {/* Increased row height via py-4.5 padding */}
+                    <td className="py-4.5 px-4 text-xs font-medium text-[#0d212c] group-hover:text-[#36c0c9]">
                       {req.companyName}
                     </td>
 
                     {/* Vendor Name */}
-                    <td className="py-3 px-4 text-xs font-normal text-[#0d212c]">
+                    <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c]">
                       {req.vendorName}
                     </td>
 
-                    {/* Referred by */}
-                    <td className="py-3 px-4 text-xs font-normal text-[#64748b]">
-                      {req.referredBy || '—'}
-                    </td>
-
-                    <td className="py-3 px-4 text-xs font-normal text-[#0d212c] max-w-xs truncate">
+                    <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] max-w-xs truncate">
                       {req.solution}
                     </td>
 
-                    <td className="py-3 px-4 text-xs font-normal text-[#64748b]">
+                    <td className="py-4.5 px-4 text-xs font-normal text-[#64748b]">
                       <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
                         {req.focusArea}
                       </span>
                     </td>
 
-                    <td className="py-3 px-4 text-xs font-normal text-[#64748b]">
+                    <td className="py-4.5 px-4 text-xs font-normal text-[#64748b]">
                       {req.solutionMaturity}
                     </td>
 
                     {/* Chip without dot per requirement */}
-                    <td className="py-3 px-4 text-xs font-normal">
+                    <td className="py-4.5 px-4 text-xs font-normal">
                       <StatusChip
                         label={req.status}
                         status={getStatusCategory(req.status)}
@@ -369,8 +363,7 @@ export const DashboardScreen: React.FC = () => {
                       />
                     </td>
 
-                    {/* Submitted on */}
-                    <td className="py-3 px-4 text-xs font-normal text-[#64748b]">
+                    <td className="py-4.5 px-4 text-xs font-normal text-[#64748b] whitespace-nowrap">
                       {req.submittedOn}
                     </td>
                   </tr>

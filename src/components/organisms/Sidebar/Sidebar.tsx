@@ -45,15 +45,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           collapsed ? 'w-[72px]' : 'w-[250px]'
         }`}
       >
-        {/* Sidebar Top Header */}
-        <div className="p-4 flex items-center justify-between h-[64px] border-b border-[#153443] shrink-0">
+        {/* Sidebar Top Header — Height 72px */}
+        <div
+          className={`flex items-center justify-between h-[72px] border-b border-[#153443] shrink-0 ${
+            collapsed ? 'px-2' : 'p-4'
+          }`}
+        >
           {!collapsed ? (
             <div className="flex items-center justify-between w-full min-w-0">
               <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
                 <img
                   src="/white-logo.png"
                   alt="M42 logo"
-                  className="h-5 w-auto object-contain shrink-0"
+                  className="h-6 w-auto object-contain shrink-0"
                 />
                 <span className="font-extrabold text-xs tracking-tight text-white truncate leading-none">
                   Tech Due Diligence
@@ -75,9 +79,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={onToggleCollapse}
               aria-label="Expand navigation"
               title="Expand sidebar"
-              className="w-full flex items-center justify-center text-white/70 hover:text-white p-2 rounded-xl hover:bg-white/10 transition cursor-pointer"
+              className="w-full h-full flex items-center justify-center text-white/70 hover:text-white p-1 rounded-xl hover:bg-white/10 transition cursor-pointer"
             >
-              <img src="/white-logo.png" alt="M42 logo" className="h-5 w-auto object-contain" />
+              <img
+                src="/white-logo.png"
+                alt="M42 logo"
+                className="h-8 max-h-[32px] w-auto max-w-[56px] object-contain"
+              />
             </button>
           )}
         </div>
@@ -94,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 title={collapsed ? item.label : undefined}
                 className={`flex transition-all cursor-pointer select-none rounded-xl ${
                   collapsed
-                    ? 'flex-col items-center justify-center w-full py-2.5 px-1 gap-1 text-center'
+                    ? 'flex-col items-center justify-center w-full py-3.5 px-1 gap-1 text-center'
                     : 'items-center gap-3 px-3.5 py-3 text-sm font-semibold'
                 } ${
                   isActive

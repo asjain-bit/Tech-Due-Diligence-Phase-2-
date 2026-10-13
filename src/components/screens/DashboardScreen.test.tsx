@@ -29,14 +29,14 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('Across active projects')).toBeInTheDocument()
   })
 
-  it('renders Partnership Requests title and table columns including Referred by', () => {
+  it('renders Partnership Requests title and table columns without Referred by', () => {
     render(<DashboardScreen />)
 
     expect(screen.getByText('Partnership Requests')).toBeInTheDocument()
 
     expect(screen.getByRole('columnheader', { name: 'Company name' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Vendor Name' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Referred by' })).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Referred by' })).not.toBeInTheDocument()
     expect(
       screen.getByRole('columnheader', { name: (content) => content === 'Solution' })
     ).toBeInTheDocument()
@@ -55,7 +55,7 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('GenomicX MENA FZ-LLC')).toBeInTheDocument()
 
     // Search filter without search button
-    const searchInput = screen.getByPlaceholderText('Filter records...')
+    const searchInput = screen.getByPlaceholderText('Search partnership requests...')
     await user.type(searchInput, 'CarePulse')
     expect(screen.getByText('CarePulse Technologies')).toBeInTheDocument()
     expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
@@ -77,9 +77,9 @@ describe('DashboardScreen', () => {
     const row = screen.getByText('MedTech Innovations')
     await user.click(row)
 
-    // Verify detailed view is open with single large white card containing Workflow Progress
+    // Verify detailed view is open with single large white card containing Workflow Progress and Agent Recommendation chip
     expect(screen.getByText('Workflow Progress')).toBeInTheDocument()
-    expect(screen.getByText('Agent Recommendation')).toBeInTheDocument()
+    expect(screen.getByText(/Recommended to Proceed/i)).toBeInTheDocument()
 
     // Back to table
     await user.click(screen.getByRole('button', { name: 'Back to Partnership Requests' }))

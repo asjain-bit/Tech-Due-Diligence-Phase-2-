@@ -235,9 +235,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   tabIndex={0}
                   role="button"
                   aria-label="Prototype navigation note"
-                  className="w-5 h-5 rounded-full bg-slate-100 hover:bg-[#36c0c9]/15 text-slate-500 hover:text-[#36c0c9] flex items-center justify-center transition cursor-pointer"
+                  className="flex items-center justify-center cursor-default outline-none text-slate-400 select-none"
                 >
-                  <Info className="w-3.5 h-3.5" />
+                  <Info className="w-4 h-4 text-slate-400" />
                 </div>
                 <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-64 p-2.5 bg-[#0d212c] text-white text-[11px] font-medium leading-relaxed rounded-xl shadow-xl text-center">
                   This is for the prototype navigation purpose not to be included in the actual

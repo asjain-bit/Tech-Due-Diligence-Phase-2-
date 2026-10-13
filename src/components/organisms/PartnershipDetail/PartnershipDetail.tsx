@@ -41,10 +41,18 @@ import {
 export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   request,
   onBack,
+  onProceed,
+  onReject,
   className = '',
 }) => {
   const [activeTab, setActiveTab] = useState<DetailTab>('overview')
   const [activeNavSection, setActiveNavSection] = useState('company-info')
+
+  // Proceed & Reject modal states (visible on Partnership Brief tab)
+  const [showProceedModal, setShowProceedModal] = useState(false)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [decisionReason, setDecisionReason] = useState(request.decision?.reason || '')
+  const [decisionError, setDecisionError] = useState<string | null>(null)
 
   // Internal Interest Stakeholders state
   const [stakeholders, setStakeholders] = useState<InternalInterestStakeholder[]>(
@@ -224,7 +232,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <Building2 className="w-8 h-8 text-[#36c0c9]" />
             </div>
 
-            {/* Title & Status — Description underneath company name removed per specification */}
+            {/* Title & Status — Description underneath company name removed */}
             <div className="flex flex-col justify-center min-h-[56px]">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-bold text-[#0d212c] tracking-tight">
@@ -250,7 +258,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           </div>
         </div>
 
-        {/* Metadata items row — Vendor designation removed, Referred by added */}
+        {/* Metadata items row — Vendor designation removed, Referred by retained inside */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-4 border-t border-[#f1f5f9] text-xs text-[#64748b]">
           <div className="flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-slate-400" />
@@ -317,9 +325,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       )}
 
-      {/* LARGE WHITE BOX ENCLOSING TABS AND ALL CONTENT (Item 4) */}
+      {/* LARGE WHITE BOX ENCLOSING TABS AND ALL CONTENT */}
       <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col gap-6">
-        {/* Tabs Bar inside the large white box — Proceed/Reject buttons & horizontal grey line below them removed */}
+        {/* Tabs Bar inside the large white box */}
         <div className="flex items-center gap-8 border-b border-[#f1f5f9] pb-0">
           <button
             onClick={() => setActiveTab('overview')}
@@ -361,13 +369,23 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="flex flex-col gap-8 w-full animate-in fade-in duration-150">
-            {/* Section 1: Workflow Progress — Heading icon removed, numbers removed from each step */}
+            {/* Section 1: Workflow Progress & Agent Recommendation Chip */}
             <div className="flex flex-col gap-4">
-              <h2 className="text-base font-bold text-[#0d212c]">Workflow Progress</h2>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <h2 className="text-base font-bold text-[#0d212c]">Workflow Progress</h2>
 
-              {/* Stepper horizontal row without numbers */}
+                {/* Agent Recommendation added as a small info chip only (no separate card) */}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#e6fffa] text-[#0f766e] border border-[#a7f3d0] shadow-2xs">
+                  <Sparkles className="w-3.5 h-3.5 text-[#36c0c9]" />
+                  <span>
+                    Agent Recommendation: <strong>Recommended to Proceed (94% Match)</strong>
+                  </span>
+                </span>
+              </div>
+
+              {/* Stepper visual starting directly from the left edge */}
               <div className="w-full overflow-x-auto pb-3 pt-2">
-                <div className="min-w-[720px] flex items-start justify-between relative px-2">
+                <div className="min-w-[760px] flex items-start justify-start relative">
                   {request.workflowStages.map((stage, idx) => {
                     const isCompleted = stage.status === 'completed'
                     const isInProgress = stage.status === 'in_progress'
@@ -376,12 +394,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     return (
                       <div
                         key={stage.id || idx}
-                        className="flex-1 flex flex-col items-center relative"
+                        className="flex-1 flex flex-col items-start relative pr-2"
                       >
-                        {/* Connecting Line */}
+                        {/* Connecting Line from left node to next */}
                         {!isLast && (
                           <div
-                            className={`absolute top-4 left-1/2 w-full h-[2px] -z-0 ${
+                            className={`absolute top-4 left-4 w-full h-[2px] -z-0 ${
                               isCompleted
                                 ? 'bg-[#10b981]'
                                 : isInProgress
@@ -391,7 +409,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           />
                         )}
 
-                        {/* Circle Indicator WITHOUT NUMBERS */}
+                        {/* Circle Indicator aligned on the left */}
                         <div className="relative z-10 mb-2">
                           {isCompleted && (
                             <div className="w-8 h-8 rounded-full bg-[#10b981] flex items-center justify-center text-white shadow-xs">
@@ -410,8 +428,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           )}
                         </div>
 
-                        {/* Title (numbers stripped) & Subheading */}
-                        <div className="text-center px-1">
+                        {/* Title & Subheading left-aligned */}
+                        <div className="text-left">
                           <div className="text-xs font-bold text-[#0d212c]">
                             {stage.title.replace(/^\d+[\.\s]+/, '')}
                           </div>
@@ -432,73 +450,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             <div className="h-[1px] bg-[#f1f5f9] w-full" />
 
-            {/* Section 2: Agent Recommendation Highlight Banner (Item 12) */}
-            <div className="rounded-2xl border-2 border-[#36c0c9]/40 bg-gradient-to-r from-[#e6fffa]/80 via-[#f0fdfa]/50 to-white p-5 sm:p-6 shadow-2xs flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#36c0c9] text-white flex items-center justify-center shadow-xs shrink-0">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm sm:text-base font-bold text-[#0d212c]">
-                        Agent Recommendation
-                      </h3>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#36c0c9]/15 text-[#0f766e]">
-                        AI Screening
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#64748b] mt-0.5">
-                      Automated tech due diligence analysis based on clinical relevance, maturity
-                      &amp; regulatory evidence
-                    </p>
-                  </div>
-                </div>
-
-                {/* Highlighted Recommendation Pill */}
-                <div className="shrink-0">
-                  <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#d1fae5] text-[#065f46] border border-[#a7f3d0] shadow-2xs">
-                    <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
-                    <span>Recommended to Proceed (94% Match)</span>
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-white/80 rounded-xl p-4 border border-[#36c0c9]/20 flex flex-col gap-3">
-                <p className="text-xs sm:text-sm text-[#334155] leading-relaxed">
-                  <strong className="text-[#0d212c]">Evaluation Summary:</strong>{' '}
-                  {request.agentRecommendation?.rationale ||
-                    'High clinical need alignment with M42 oncology & radiology priorities. Clear CE regulatory pathway and validated AI efficacy data. Solution architecture is enterprise-grade with HL7/FHIR support.'}
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-xs">
-                  <div className="flex items-center gap-2 text-[#475569]">
-                    <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-                    <span>
-                      Clinical Fit: <strong className="text-[#0d212c]">96% High Priority</strong>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[#475569]">
-                    <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-                    <span>
-                      Regulatory Approval:{' '}
-                      <strong className="text-[#0d212c]">CE Mark Active</strong>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[#475569]">
-                    <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-                    <span>
-                      Architecture:{' '}
-                      <strong className="text-[#0d212c]">Cloud &amp; FHIR Ready</strong>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="h-[1px] bg-[#f1f5f9] w-full" />
-
-            {/* Section 3: Solution Overview */}
+            {/* Section 2: Solution Overview */}
             <div className="flex flex-col gap-3">
               <h2 className="text-base font-bold text-[#0d212c]">Solution Overview</h2>
               <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
@@ -527,7 +479,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             <div className="h-[1px] bg-[#f1f5f9] w-full" />
 
-            {/* Section 4: Key Information */}
+            {/* Section 3: Key Information */}
             <div className="flex flex-col gap-4">
               <h2 className="text-base font-bold text-[#0d212c]">Key Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -649,311 +601,360 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           </div>
         )}
 
-        {/* TAB 2: PARTNERSHIP BRIEF (All enclosed inside the large white box) */}
+        {/* TAB 2: PARTNERSHIP BRIEF (Includes Proceed/Reject action bar & independent content scroll) */}
         {activeTab === 'brief' && (
-          <div className="flex flex-col lg:flex-row gap-8 w-full items-start animate-in fade-in duration-150">
-            {/* Left Column: Clean Navigation Sticky List */}
-            <div className="w-full lg:w-64 bg-slate-50/70 rounded-xl p-2 shrink-0 flex flex-col gap-1 sticky top-20 border border-[#e2e8f0]/60">
-              {navItems.map((item) => {
-                const IconComponent = item.icon
-                const isActive = activeNavSection === item.id
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => scrollToSection(item.id)}
-                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer ${
-                      isActive
-                        ? 'bg-white text-[#36c0c9] font-bold shadow-2xs border-l-3 border-[#36c0c9]'
-                        : 'text-[#64748b] hover:bg-white/60 hover:text-[#0d212c]'
-                    }`}
-                  >
-                    <IconComponent
-                      className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#36c0c9]' : 'text-slate-400'}`}
-                    />
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                )
-              })}
+          <div className="flex flex-col gap-6 w-full animate-in fade-in duration-150">
+            {/* Top Action Header Bar with Proceed and Reject buttons */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#f1f5f9]">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-[#0d212c]">
+                  Partnership Brief Review
+                </h2>
+                <p className="text-xs text-[#64748b] mt-0.5">
+                  Detailed supplier submission and responses for clinical and technical evaluation.
+                </p>
+              </div>
+
+              {/* Proceed and Reject Buttons displayed on the Partnership Brief tab */}
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDecisionError(null)
+                    setShowProceedModal(true)
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                >
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <span>Proceed</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDecisionError(null)
+                    setShowRejectModal(true)
+                  }}
+                  className="px-4 py-2 rounded-xl bg-white border border-red-500 text-red-600 hover:bg-red-50 font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                >
+                  <X className="w-4 h-4 stroke-[2.5]" />
+                  <span>Reject</span>
+                </button>
+              </div>
             </div>
 
-            {/* Right Column: Clean flowing sections without individual separate cards */}
-            <div className="flex-1 flex flex-col divide-y divide-[#f1f5f9] min-w-0 w-full">
-              {/* 1. Company Information */}
-              <div id="company-info" className="pb-8 scroll-mt-24 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">1. Company Information</h3>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-1">
-                  <div>
-                    <div className="text-xs font-semibold text-[#64748b]">
-                      Company Name <span className="text-red-500 font-bold">*</span>
-                    </div>
-                    <div className="text-sm font-semibold text-[#0d212c] mt-1">
-                      {request.companyInfo.company}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-semibold text-[#64748b]">
-                      Contact Person Name <span className="text-red-500 font-bold">*</span>
-                    </div>
-                    <div className="text-sm font-semibold text-[#0d212c] mt-1">
-                      {request.companyInfo.name}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-semibold text-[#64748b]">
-                      Job Title <span className="text-red-500 font-bold">*</span>
-                    </div>
-                    <div className="text-sm font-semibold text-[#0d212c] mt-1">
-                      {request.companyInfo.jobTitle}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-semibold text-[#64748b]">
-                      Email Address <span className="text-red-500 font-bold">*</span>
-                    </div>
-                    <div className="text-sm font-semibold text-[#0d212c] mt-1">
-                      {request.companyInfo.email}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-semibold text-[#64748b]">Phone Number</div>
-                    <div className="text-sm font-semibold text-[#0d212c] mt-1">
-                      {request.companyInfo.phoneNumber || 'Not provided'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-semibold text-[#64748b]">
-                      Year Company Was Founded <span className="text-red-500 font-bold">*</span>
-                    </div>
-                    <div className="text-sm font-semibold text-[#0d212c] mt-1">
-                      {request.companyInfo.yearFounded}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. Company's Stage of Maturity and Experience */}
-              <div id="company-experience" className="py-8 scroll-mt-24 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">
-                    2. Company&apos;s Stage of Maturity and Experience
-                  </h3>
-                </div>
-
-                <div className="flex flex-col gap-4 text-xs sm:text-sm text-[#475569] leading-relaxed">
-                  <p>{request.assessmentAreas.stageOfMaturityAndExperience}</p>
-
-                  <div>
-                    <div className="font-bold text-[#0d212c] mb-2">Key milestones include:</div>
-                    <ul className="list-disc list-inside space-y-1 pl-1 text-[#475569]">
-                      {(
-                        request.assessmentAreas.milestones || [
-                          'Product launch in 2022',
-                          'Deployment in 10+ hospitals across UAE',
-                          'Strategic partnership with a leading global medical imaging provider',
-                          'Ongoing collaboration with academic institutions for clinical validation',
-                        ]
-                      ).map((milestone, idx) => (
-                        <li key={idx}>{milestone}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Collaboration Proposal */}
-              <div id="collaboration-proposal" className="py-8 scroll-mt-24 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <HeartHandshake className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">
-                    3. Proposal of Collaboration
-                  </h3>
-                </div>
-
-                <div className="text-xs sm:text-sm text-[#475569] leading-relaxed flex flex-col gap-3">
-                  <p>{request.assessmentAreas.proposalOfCollaboration}</p>
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                    <div className="font-bold text-[#0d212c] mb-1">
-                      Product, Platform &amp; Service Details:
-                    </div>
-                    <p>{request.assessmentAreas.productPlatformServiceDetails}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. Focus Area */}
-              <div id="focus-area" className="py-8 scroll-mt-24 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">
-                    4. Focus Area(s) <span className="text-red-500 font-bold">*</span>
-                  </h3>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {request.assessmentAreas.focusAreas.map((area, idx) => (
-                    <span
-                      key={idx}
-                      className="px-3 py-1.5 rounded-xl bg-[#f0fdfa] text-[#0f766e] text-xs font-semibold border border-[#ccfbf1]"
-                    >
-                      {area}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* 5. Solution Maturity */}
-              <div id="solution-maturity" className="py-8 scroll-mt-24 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">
-                    5. Solution Maturity &amp; Regulatory Approvals
-                  </h3>
-                </div>
-
-                <div className="text-xs sm:text-sm text-[#475569] leading-relaxed flex flex-col gap-3">
-                  <p>{request.assessmentAreas.solutionMaturityLevelAndRegulatory}</p>
-                  {request.assessmentAreas.relevantApprovals && (
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                      <span className="font-bold text-[#0d212c]">Regulatory Clearances: </span>
-                      <span>{request.assessmentAreas.relevantApprovals}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 6. Regulatory Approvals */}
-              <div id="regulatory-approvals" className="py-8 scroll-mt-24 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">
-                    6. Regulatory Approvals Checklist
-                  </h3>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    request.assessmentAreas.regulatoryApprovalList || [
-                      'FDA',
-                      'CE',
-                      'Not applicable',
-                    ]
-                  ).map((appr, idx) => (
-                    <span
-                      key={idx}
-                      className={`px-3 py-1 rounded-xl text-xs font-semibold border ${
-                        appr === 'Not applicable'
-                          ? 'bg-slate-50 text-slate-500 border-slate-200'
-                          : 'bg-[#f0fdfa] text-[#0f766e] border-[#ccfbf1]'
+            {/* Two-Column Layout: Left nav is fixed beside scrollable brief content */}
+            <div className="flex flex-col lg:flex-row gap-8 w-full items-start">
+              {/* Left Column: Clean Sticky Navigation List */}
+              <div className="w-full lg:w-64 bg-slate-50/70 rounded-xl p-2 shrink-0 flex flex-col gap-1 sticky top-20 border border-[#e2e8f0]/60">
+                {navItems.map((item) => {
+                  const IconComponent = item.icon
+                  const isActive = activeNavSection === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => scrollToSection(item.id)}
+                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer ${
+                        isActive
+                          ? 'bg-white text-[#36c0c9] font-bold shadow-2xs border-l-3 border-[#36c0c9]'
+                          : 'text-[#64748b] hover:bg-white/60 hover:text-[#0d212c]'
                       }`}
                     >
-                      {appr}
-                    </span>
-                  ))}
-                </div>
+                      <IconComponent
+                        className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#36c0c9]' : 'text-slate-400'}`}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  )
+                })}
               </div>
 
-              {/* 7. Innovation & Differentiation */}
-              <div
-                id="innovation-differentiation"
-                className="py-8 scroll-mt-24 flex flex-col gap-4"
-              >
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">
-                    7. Innovation &amp; Differentiation{' '}
-                    <span className="text-red-500 font-bold">*</span>
-                  </h3>
+              {/* Right Column: Independent Scrolling — Only brief content scrolls, not the entire screen */}
+              <div className="flex-1 flex flex-col divide-y divide-[#f1f5f9] min-w-0 w-full max-h-[calc(100vh-320px)] overflow-y-auto pr-3 overscroll-contain">
+                {/* 1. Company Information */}
+                <div id="company-info" className="pb-8 scroll-mt-24 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">1. Company Information</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-1">
+                    <div>
+                      <div className="text-xs font-semibold text-[#64748b]">
+                        Company Name <span className="text-red-500 font-bold">*</span>
+                      </div>
+                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                        {request.companyInfo.company}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-semibold text-[#64748b]">
+                        Contact Person Name <span className="text-red-500 font-bold">*</span>
+                      </div>
+                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                        {request.companyInfo.name}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-semibold text-[#64748b]">
+                        Job Title <span className="text-red-500 font-bold">*</span>
+                      </div>
+                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                        {request.companyInfo.jobTitle}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-semibold text-[#64748b]">
+                        Email Address <span className="text-red-500 font-bold">*</span>
+                      </div>
+                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                        {request.companyInfo.email}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-semibold text-[#64748b]">Phone Number</div>
+                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                        {request.companyInfo.phoneNumber || 'Not provided'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-semibold text-[#64748b]">
+                        Year Company Was Founded <span className="text-red-500 font-bold">*</span>
+                      </div>
+                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                        {request.companyInfo.yearFounded}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-semibold text-[#64748b]">Referred By</div>
+                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                        {request.referredBy || '—'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
-                  {request.assessmentAreas.noveltyAndDifferentiation}
-                </p>
-              </div>
+                {/* 2. Company's Stage of Maturity and Experience */}
+                <div id="company-experience" className="py-8 scroll-mt-24 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">
+                      2. Company&apos;s Stage of Maturity and Experience
+                    </h3>
+                  </div>
 
-              {/* 8. Development Approach */}
-              <div id="development-approach" className="py-8 scroll-mt-24 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">8. Development Approach</h3>
+                  <div className="flex flex-col gap-4 text-xs sm:text-sm text-[#475569] leading-relaxed">
+                    <p>{request.assessmentAreas.stageOfMaturityAndExperience}</p>
+
+                    <div>
+                      <div className="font-bold text-[#0d212c] mb-2">Key milestones include:</div>
+                      <ul className="list-disc list-inside space-y-1 pl-1 text-[#475569]">
+                        {(
+                          request.assessmentAreas.milestones || [
+                            'Product launch in 2022',
+                            'Deployment in 10+ hospitals across UAE',
+                            'Strategic partnership with a leading global medical imaging provider',
+                            'Ongoing collaboration with academic institutions for clinical validation',
+                          ]
+                        ).map((milestone, idx) => (
+                          <li key={idx}>{milestone}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
                 </div>
 
-                <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
-                  {request.assessmentAreas.developmentApproach ||
-                    'Internally developed by proprietary core team.'}
-                </p>
-              </div>
+                {/* 3. Collaboration Proposal */}
+                <div id="collaboration-proposal" className="py-8 scroll-mt-24 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <HeartHandshake className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">
+                      3. Proposal of Collaboration
+                    </h3>
+                  </div>
 
-              {/* 9. Support from M42 */}
-              <div id="support-from-m42" className="py-8 scroll-mt-24 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <HeartHandshake className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">
-                    9. Specific Resources &amp; Support from M42{' '}
-                    <span className="text-red-500 font-bold">*</span>
-                  </h3>
+                  <div className="text-xs sm:text-sm text-[#475569] leading-relaxed flex flex-col gap-3">
+                    <p>{request.assessmentAreas.proposalOfCollaboration}</p>
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                      <div className="font-bold text-[#0d212c] mb-1">
+                        Product, Platform &amp; Service Details:
+                      </div>
+                      <p>{request.assessmentAreas.productPlatformServiceDetails}</p>
+                    </div>
+                  </div>
                 </div>
 
-                <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
-                  {request.assessmentAreas.requestedM42Resources}
-                </p>
-              </div>
+                {/* 4. Focus Area */}
+                <div id="focus-area" className="py-8 scroll-mt-24 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">
+                      4. Focus Area(s) <span className="text-red-500 font-bold">*</span>
+                    </h3>
+                  </div>
 
-              {/* 10. Target Population & Impact */}
-              <div id="target-population" className="pt-8 scroll-mt-24 flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-[#36c0c9]" />
-                  <h3 className="text-base font-bold text-[#0d212c]">
-                    10. Target Patient Population &amp; Impact
-                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {request.assessmentAreas.focusAreas.map((area, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1.5 rounded-xl bg-[#f0fdfa] text-[#0f766e] text-xs font-semibold border border-[#ccfbf1]"
+                      >
+                        {area}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {['Adult patients', 'Pediatric patients', "Women's health"].map((pop) => {
-                    const isChecked = request.assessmentAreas.impactedPatientPopulations?.some(
-                      (p) => p.toLowerCase() === pop.toLowerCase()
-                    )
-                    return (
-                      <div
-                        key={pop}
-                        className={`p-3 rounded-xl border flex items-center gap-2.5 transition ${
-                          isChecked
-                            ? 'bg-[#f0fdfa] border-[#ccfbf1] text-[#0d212c]'
-                            : 'bg-slate-50 border-slate-200 text-slate-400'
+                {/* 5. Solution Maturity */}
+                <div id="solution-maturity" className="py-8 scroll-mt-24 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">
+                      5. Solution Maturity &amp; Regulatory Approvals
+                    </h3>
+                  </div>
+
+                  <div className="text-xs sm:text-sm text-[#475569] leading-relaxed flex flex-col gap-3">
+                    <p>{request.assessmentAreas.solutionMaturityLevelAndRegulatory}</p>
+                    {request.assessmentAreas.relevantApprovals && (
+                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                        <span className="font-bold text-[#0d212c]">Regulatory Clearances: </span>
+                        <span>{request.assessmentAreas.relevantApprovals}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 6. Regulatory Approvals */}
+                <div id="regulatory-approvals" className="py-8 scroll-mt-24 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">
+                      6. Regulatory Approvals Checklist
+                    </h3>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      request.assessmentAreas.regulatoryApprovalList || [
+                        'FDA',
+                        'CE',
+                        'Not applicable',
+                      ]
+                    ).map((appr, idx) => (
+                      <span
+                        key={idx}
+                        className={`px-3 py-1 rounded-xl text-xs font-semibold border ${
+                          appr === 'Not applicable'
+                            ? 'bg-slate-50 text-slate-500 border-slate-200'
+                            : 'bg-[#f0fdfa] text-[#0f766e] border-[#ccfbf1]'
                         }`}
                       >
-                        {isChecked ? (
-                          <CheckSquare className="w-4 h-4 text-[#0f766e] shrink-0" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-300 shrink-0" />
-                        )}
-                        <span
-                          className={`text-xs font-semibold ${isChecked ? 'text-[#0d212c]' : 'text-slate-400'}`}
+                        {appr}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 7. Innovation & Differentiation */}
+                <div
+                  id="innovation-differentiation"
+                  className="py-8 scroll-mt-24 flex flex-col gap-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">
+                      7. Innovation &amp; Differentiation{' '}
+                      <span className="text-red-500 font-bold">*</span>
+                    </h3>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
+                    {request.assessmentAreas.noveltyAndDifferentiation}
+                  </p>
+                </div>
+
+                {/* 8. Development Approach */}
+                <div id="development-approach" className="py-8 scroll-mt-24 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">8. Development Approach</h3>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
+                    {request.assessmentAreas.developmentApproach ||
+                      'Internally developed by proprietary core team.'}
+                  </p>
+                </div>
+
+                {/* 9. Support from M42 */}
+                <div id="support-from-m42" className="py-8 scroll-mt-24 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <HeartHandshake className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">
+                      9. Specific Resources &amp; Support from M42{' '}
+                      <span className="text-red-500 font-bold">*</span>
+                    </h3>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
+                    {request.assessmentAreas.requestedM42Resources}
+                  </p>
+                </div>
+
+                {/* 10. Target Population & Impact */}
+                <div id="target-population" className="pt-8 scroll-mt-24 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-[#36c0c9]" />
+                    <h3 className="text-base font-bold text-[#0d212c]">
+                      10. Target Patient Population &amp; Impact
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {['Adult patients', 'Pediatric patients', "Women's health"].map((pop) => {
+                      const isChecked = request.assessmentAreas.impactedPatientPopulations?.some(
+                        (p) => p.toLowerCase() === pop.toLowerCase()
+                      )
+                      return (
+                        <div
+                          key={pop}
+                          className={`p-3 rounded-xl border flex items-center gap-2.5 transition ${
+                            isChecked
+                              ? 'bg-[#f0fdfa] border-[#ccfbf1] text-[#0d212c]'
+                              : 'bg-slate-50 border-slate-200 text-slate-400'
+                          }`}
                         >
-                          {pop}
-                        </span>
-                      </div>
-                    )
-                  })}
+                          {isChecked ? (
+                            <CheckSquare className="w-4 h-4 text-[#0f766e] shrink-0" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-300 shrink-0" />
+                          )}
+                          <span
+                            className={`text-xs font-semibold ${isChecked ? 'text-[#0d212c]' : 'text-slate-400'}`}
+                          >
+                            {pop}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 3: INTERNAL INTEREST (Item 10 — Exactly matching attached Image 1) */}
+        {/* TAB 3: INTERNAL INTEREST (Count column removed, Edit/Delete are icons only) */}
         {activeTab === 'internal_interest' && (
           <div className="flex flex-col gap-6 w-full animate-in fade-in duration-150">
-            {/* Header: Title (NO icon as requested), subtitle, and "+ Add Interest" button with tooltip */}
+            {/* Header: Title (NO icon), subtitle, and "+ Add Interest" button with tooltip */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg sm:text-xl font-bold text-[#0d212c]">Internal Interest</h2>
@@ -981,13 +982,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               </div>
             </div>
 
-            {/* Stakeholders Table matching Image 1 */}
+            {/* Stakeholders Table — Count column removed, Actions are icons only */}
             <div className="border border-[#e2e8f0] rounded-2xl overflow-hidden bg-white shadow-2xs">
               <div className="overflow-x-auto w-full">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-semibold uppercase tracking-wider">
-                      <th className="py-3 px-4 w-12 text-center">#</th>
                       <th className="py-3 px-4">Name</th>
                       <th className="py-3 px-4">Role</th>
                       <th className="py-3 px-4">Department</th>
@@ -998,7 +998,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <tbody className="divide-y divide-[#e2e8f0]">
                     {stakeholders.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-[#64748b]">
+                        <td colSpan={5} className="py-12 text-center text-[#64748b]">
                           <div className="flex flex-col items-center justify-center gap-2">
                             <Users className="w-6 h-6 text-slate-300" />
                             <div className="text-xs font-semibold text-[#0d212c]">
@@ -1011,13 +1011,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         </td>
                       </tr>
                     ) : (
-                      stakeholders.map((person, idx) => (
+                      stakeholders.map((person) => (
                         <tr key={person.id} className="hover:bg-slate-50/70 transition-colors">
-                          {/* # */}
-                          <td className="py-3.5 px-4 text-xs font-semibold text-[#64748b] text-center">
-                            {idx + 1}
-                          </td>
-
                           {/* Name with initials badge */}
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-3">
@@ -1049,22 +1044,26 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           {/* Expertise */}
                           <td className="py-3.5 px-4 text-xs text-[#475569]">{person.expertise}</td>
 
-                          {/* Actions: Edit & Delete */}
+                          {/* Actions: Edit & Delete using ONLY icons */}
                           <td className="py-3.5 px-4 text-right">
-                            <div className="inline-flex items-center gap-4 justify-end">
+                            <div className="inline-flex items-center gap-2 justify-end">
                               <button
+                                type="button"
                                 onClick={() => handleOpenEditStakeholder(person)}
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-[#0f766e] hover:text-[#36c0c9] transition cursor-pointer"
+                                title="Edit stakeholder"
+                                aria-label="Edit stakeholder"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-[#36c0c9] hover:bg-[#36c0c9]/10 transition cursor-pointer"
                               >
-                                <PenLine className="w-3.5 h-3.5" />
-                                <span>Edit</span>
+                                <PenLine className="w-4 h-4" />
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleOpenDeleteStakeholder(person)}
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-[#ef4444] hover:text-red-700 transition cursor-pointer"
+                                title="Delete stakeholder"
+                                aria-label="Delete stakeholder"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete</span>
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -1079,7 +1078,141 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         )}
       </div>
 
-      {/* POPUP MODALS — Designed exactly matching SOW Generator App (Item 8) */}
+      {/* POPUP MODALS — Designed strictly matching SOW Generator App */}
+
+      {/* PROCEED CONFIRMATION MODAL (For Brief Tab) */}
+      {showProceedModal && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#e6fffa] text-[#0f766e] flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6 text-[#36c0c9]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#0d212c]">Proceed to Next Stage</h3>
+                  <p className="text-xs text-[#64748b] mt-0.5">
+                    Advance request to Screening &amp; Fit stage
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowProceedModal(false)}
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="proceed-reason" className="text-xs font-semibold text-[#0d212c]">
+                Decision Notes <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <textarea
+                id="proceed-reason"
+                rows={3}
+                value={decisionReason}
+                onChange={(e) => setDecisionReason(e.target.value)}
+                placeholder="Add optional director evaluation feedback or next steps..."
+                className="w-full p-3 rounded-xl border border-[#e2e8f0] text-xs text-[#0d212c] focus:outline-none focus:border-[#36c0c9] focus:ring-2 focus:ring-[#36c0c9]/20 bg-slate-50/50"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#f1f5f9]">
+              <button
+                onClick={() => setShowProceedModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onProceed?.(request.id, decisionReason.trim())
+                  setShowProceedModal(false)
+                }}
+                className="px-5 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4 stroke-[2.5]" />
+                <span>Confirm &amp; Proceed</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REJECT CONFIRMATION MODAL (For Brief Tab) */}
+      {showRejectModal && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#0d212c]">Reject Partnership Request</h3>
+                  <p className="text-xs text-[#64748b] mt-0.5">
+                    A mandatory reason is required to reject
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="reject-reason" className="text-xs font-semibold text-[#0d212c]">
+                Rejection Reason <span className="text-red-500 font-bold">*</span>
+              </label>
+              <textarea
+                id="reject-reason"
+                rows={3}
+                value={decisionReason}
+                onChange={(e) => {
+                  setDecisionReason(e.target.value)
+                  if (decisionError) setDecisionError(null)
+                }}
+                placeholder="Provide clear rationale for rejecting this partnership request..."
+                className="w-full p-3 rounded-xl border border-[#e2e8f0] text-xs text-[#0d212c] focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20 bg-slate-50/50"
+              />
+              {decisionError && (
+                <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs font-medium text-red-600 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{decisionError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#f1f5f9]">
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!decisionReason.trim()) {
+                    setDecisionError('A reason is mandatory when rejecting a partnership request.')
+                    return
+                  }
+                  setDecisionError(null)
+                  onReject?.(request.id, decisionReason.trim())
+                  setShowRejectModal(false)
+                }}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                <X className="w-4 h-4 stroke-[2.5]" />
+                <span>Confirm Rejection</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ADD STAKEHOLDER MODAL */}
       {isAddModalOpen && (

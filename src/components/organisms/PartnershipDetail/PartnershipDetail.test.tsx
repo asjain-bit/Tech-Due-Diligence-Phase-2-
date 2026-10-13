@@ -43,7 +43,7 @@ describe('PartnershipDetail', () => {
     expect(screen.getByText('Dr. Fatima Al Mansoori')).toBeInTheDocument()
   })
 
-  it('renders overview inside single large box with workflow without numbers and highlighted Agent Recommendation', () => {
+  it('renders overview inside single large box with workflow without numbers and Agent Recommendation chip', () => {
     render(
       <PartnershipDetail
         request={mockRequest}
@@ -69,12 +69,9 @@ describe('PartnershipDetail', () => {
     expect(screen.queryByText('1. Initial Review')).not.toBeInTheDocument()
     expect(screen.queryByText('2. Internal Interest')).not.toBeInTheDocument()
 
-    // Agent Recommendation highlighted banner
-    expect(screen.getByText('Agent Recommendation')).toBeInTheDocument()
+    // Agent Recommendation chip only (no separate card)
+    expect(screen.getByText(/Agent Recommendation:/i)).toBeInTheDocument()
     expect(screen.getByText(/Recommended to Proceed \(94% Match\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/Clinical Fit:/i)).toBeInTheDocument()
-    expect(screen.getByText(/Regulatory Approval:/i)).toBeInTheDocument()
-    expect(screen.getByText(/Architecture:/i)).toBeInTheDocument()
 
     // Solution Overview & tags
     expect(screen.getByText('Solution Overview')).toBeInTheDocument()
@@ -90,7 +87,7 @@ describe('PartnershipDetail', () => {
     expect(screen.getByText('Regulatory Approvals')).toBeInTheDocument()
   })
 
-  it('switches to Partnership Brief tab and navigates sections', async () => {
+  it('switches to Partnership Brief tab, renders Proceed and Reject buttons with modal popups, and navigates sections', async () => {
     const user = userEvent.setup()
     render(
       <PartnershipDetail
@@ -103,6 +100,15 @@ describe('PartnershipDetail', () => {
 
     const briefTab = screen.getByRole('button', { name: /Partnership Brief/i })
     await user.click(briefTab)
+
+    // Proceed and Reject buttons visible in the Brief tab
+    expect(screen.getByRole('button', { name: /Proceed/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Reject/i })).toBeInTheDocument()
+
+    // Clicking Proceed opens the modal
+    await user.click(screen.getByRole('button', { name: /Proceed/i }))
+    expect(screen.getByText('Proceed to Next Stage')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Cancel/i }))
 
     expect(screen.getByRole('button', { name: /Company Information/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Company Experience/i })).toBeInTheDocument()
@@ -135,6 +141,14 @@ describe('PartnershipDetail', () => {
       )
     ).toBeInTheDocument()
 
+    // Table columns: count column removed
+    expect(screen.queryByRole('columnheader', { name: '#' })).not.toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Role' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Department' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Expertise' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument()
+
     // + Add Interest button with custom tooltip
     expect(screen.getByRole('button', { name: /Add Interest/i })).toBeInTheDocument()
     expect(screen.getByText('Add up to 5 people')).toBeInTheDocument()
@@ -148,8 +162,8 @@ describe('PartnershipDetail', () => {
     expect(screen.getByText('Khalid Al Zaabi')).toBeInTheDocument()
     expect(screen.getByText('Sara Malik')).toBeInTheDocument()
 
-    // Click Delete on one stakeholder
-    const deleteButtons = screen.getAllByRole('button', { name: /Delete/i })
+    // Click Delete on one stakeholder (icon-only button with aria-label)
+    const deleteButtons = screen.getAllByRole('button', { name: /Delete stakeholder/i })
     await user.click(deleteButtons[0])
 
     // SOW-style Delete confirmation modal
