@@ -247,20 +247,40 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               </div>
             </div>
 
-            {/* List of Profile Views: only role and user email, no logos, no descriptions, no chips, no arrow icons */}
+            {/* List of Profile Views: only role and user email, only Director profile has click enabled */}
             <div className="flex flex-col gap-2.5">
-              {AVAILABLE_PROFILES.map((profile) => (
-                <button
-                  key={profile.id}
-                  onClick={() => handleSelectProfile(profile)}
-                  className="w-full text-left p-3.5 rounded-xl border border-gray-200 hover:border-[#36c0c9] hover:bg-[#36c0c9]/5 transition-all flex flex-col gap-0.5 group cursor-pointer shadow-2xs hover:shadow-xs"
-                >
-                  <span className="font-bold text-sm text-[#0d212c] group-hover:text-[#36c0c9] transition-colors truncate">
-                    {profile.roleTitle}
-                  </span>
-                  <span className="text-xs text-slate-500 truncate">{profile.email}</span>
-                </button>
-              ))}
+              {AVAILABLE_PROFILES.map((profile) => {
+                const isDirector = profile.id === 'director'
+
+                if (isDirector) {
+                  return (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      onClick={() => handleSelectProfile(profile)}
+                      className="w-full text-left p-3.5 rounded-xl border border-gray-200 hover:border-[#36c0c9] hover:bg-[#36c0c9]/5 transition-all flex flex-col gap-0.5 group cursor-pointer shadow-2xs hover:shadow-xs"
+                    >
+                      <span className="font-bold text-sm text-[#0d212c] group-hover:text-[#36c0c9] transition-colors truncate">
+                        {profile.roleTitle}
+                      </span>
+                      <span className="text-xs text-slate-500 truncate">{profile.email}</span>
+                    </button>
+                  )
+                }
+
+                return (
+                  <div
+                    key={profile.id}
+                    className="w-full text-left p-3.5 rounded-xl border border-gray-200/70 bg-gray-50/50 opacity-60 flex flex-col gap-0.5 shadow-2xs cursor-not-allowed select-none"
+                    aria-disabled="true"
+                  >
+                    <span className="font-medium text-sm text-slate-600 truncate">
+                      {profile.roleTitle}
+                    </span>
+                    <span className="text-xs text-slate-400 truncate">{profile.email}</span>
+                  </div>
+                )
+              })}
             </div>
 
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-400 text-center">

@@ -26,9 +26,10 @@ describe('LoginScreen', () => {
 
     // Assert all 5 profiles are listed
     expect(screen.getByText('Director')).toBeInTheDocument()
-    expect(screen.getByText('Evaluator')).toBeInTheDocument()
-    expect(screen.getByText('Stragety Fit')).toBeInTheDocument()
+    expect(screen.getByText('Internal Interest Team')).toBeInTheDocument()
+    expect(screen.getByText('Strategy Team')).toBeInTheDocument()
     expect(screen.getByText('Sponsor')).toBeInTheDocument()
+    expect(screen.getByText('Legal Team')).toBeInTheDocument()
     // Assert prototype navigation tooltip
     expect(
       screen.getByText(
@@ -68,7 +69,7 @@ describe('LoginScreen', () => {
     vi.useRealTimers()
   })
 
-  it('selects other role profiles and triggers onLogin', async () => {
+  it('ensures other role profiles are not clickable and do not trigger onLogin', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const handleLogin = vi.fn()
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -76,15 +77,14 @@ describe('LoginScreen', () => {
     renderWithTheme(<LoginScreen onLogin={handleLogin} />)
 
     await user.click(screen.getByText('Sign in with SSO'))
-    await user.click(screen.getByText('Legal & Partnership Director'))
+    const legalRole = screen.getByText('Legal Team')
+    await user.click(legalRole)
 
     act(() => {
       vi.advanceTimersByTime(800)
     })
 
-    expect(handleLogin).toHaveBeenCalledWith(
-      expect.objectContaining({ roleTitle: 'Legal & Partnership Director' })
-    )
+    expect(handleLogin).not.toHaveBeenCalled()
     vi.useRealTimers()
   })
 

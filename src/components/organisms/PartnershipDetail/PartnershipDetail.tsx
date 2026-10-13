@@ -2361,10 +2361,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       {/* VIEW QUESTIONNAIRE POPUP MODAL (Internal Interest) */}
       {showQuestionnaireModal && (
         <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative bg-white rounded-2xl max-w-2xl sm:max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#e2e8f0] flex flex-col gap-4 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
-              <h3 className="text-lg sm:text-xl font-bold text-[#0d212c]">View Questionnaire</h3>
+              <h3 className="text-base sm:text-lg font-bold text-[#0d212c]">View Questionnaire</h3>
               <button
                 type="button"
                 onClick={() => setShowQuestionnaireModal(false)}
@@ -2376,7 +2376,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             </div>
 
             {/* Questions list (view-only list of questions, no option to answer) */}
-            <div className="rounded-xl border border-[#e2e8f0] bg-white p-5 sm:p-6 flex flex-col divide-y divide-[#f1f5f9]">
+            <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 sm:p-5 flex flex-col divide-y divide-[#f1f5f9]">
               {[
                 'Is this a real problem for you today, and what do you do about it now?',
                 'Which KPI would move, what is the baseline today, and what change would matter?',
@@ -2384,11 +2384,11 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 'Is there a budget line, or would it need central funding?',
                 'What would make you say no?',
               ].map((question, idx) => (
-                <div key={idx} className="py-4 first:pt-0 last:pb-0 flex items-start gap-3.5">
-                  <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
                     {idx + 1}
                   </div>
-                  <p className="text-sm sm:text-base font-medium text-[#0d212c] leading-relaxed">
+                  <p className="text-xs sm:text-[13px] font-normal text-[#0d212c] leading-relaxed">
                     {question}
                   </p>
                 </div>
@@ -2400,7 +2400,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setShowQuestionnaireModal(false)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Close
               </button>
@@ -2412,10 +2412,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       {/* VIEW JUDGEMENT CRITERIA POPUP MODAL (Strategy Team) */}
       {showJudgementCriteriaModal && (
         <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative bg-white rounded-2xl max-w-2xl sm:max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#e2e8f0] flex flex-col gap-4 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
-              <h3 className="text-lg sm:text-xl font-bold text-[#0d212c]">Judgement Criteria</h3>
+              <h3 className="text-base sm:text-lg font-bold text-[#0d212c]">Judgement Criteria</h3>
               <button
                 type="button"
                 onClick={() => setShowJudgementCriteriaModal(false)}
@@ -2460,10 +2460,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               ].map((item) => (
                 <div
                   key={item.title}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2.5 sm:py-3"
                 >
-                  <span className="text-sm font-semibold text-[#0d212c]">{item.title}</span>
-                  <span className="text-xs sm:text-sm font-semibold text-[#0d212c] sm:text-right">
+                  <span className="text-xs sm:text-[13px] font-medium text-slate-700">
+                    {item.title}
+                  </span>
+                  <span className="text-xs font-semibold text-[#0d212c] sm:text-right">
                     {item.value}
                   </span>
                 </div>
@@ -2475,7 +2477,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setShowJudgementCriteriaModal(false)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Close
               </button>
