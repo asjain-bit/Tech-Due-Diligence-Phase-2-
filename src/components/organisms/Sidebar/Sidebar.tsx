@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { LayoutDashboard, PanelLeftClose, LogOut, X } from 'lucide-react'
 import { Avatar } from '@/components/atoms/Avatar'
 import type { SidebarProps } from './Sidebar.types'
@@ -22,6 +22,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showUserOverlay, setShowUserOverlay] = useState(false)
+  const userOverlayRef = useRef<HTMLDivElement>(null)
+
+  // Overlay stays visible on hover until user clicks anywhere on screen
+  useEffect(() => {
+    if (!showUserOverlay) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userOverlayRef.current && !userOverlayRef.current.contains(event.target as Node)) {
+        setShowUserOverlay(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showUserOverlay])
+
+  // Lock body scroll when logout modal is open
+  useEffect(() => {
+    if (showLogoutConfirm) {
+      const originalOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = originalOverflow
+      }
+    }
+  }, [showLogoutConfirm])
 
   // Only Dashboard kept per specification: "In the left nav do not keep any other pages as of now."
   const navItems = [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }]
@@ -42,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       <aside
         className={`fixed top-0 left-0 bottom-0 z-50 bg-[#0d212c] text-white flex flex-col transition-all duration-300 ease-in-out shadow-xl ${
-          collapsed ? 'w-[72px]' : 'w-[250px]'
+          collapsed ? 'w-[84px]' : 'w-[250px]'
         }`}
       >
         {/* Sidebar Top Header — Height 72px */}
@@ -57,7 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <img
                   src="/white-logo.png"
                   alt="M42 logo"
-                  className="h-6 w-auto object-contain shrink-0"
+                  className="h-5 w-auto object-contain shrink-0"
                 />
                 <span className="font-extrabold text-xs tracking-tight text-white truncate leading-none">
                   Tech Due Diligence
@@ -79,12 +107,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={onToggleCollapse}
               aria-label="Expand navigation"
               title="Expand sidebar"
-              className="w-full h-full flex items-center justify-center text-white/70 hover:text-white p-1 rounded-xl hover:bg-white/10 transition cursor-pointer"
+              className="w-full h-full flex items-center justify-center cursor-pointer"
             >
               <img
                 src="/white-logo.png"
                 alt="M42 logo"
-                className="h-8 max-h-[32px] w-auto max-w-[56px] object-contain"
+                className="h-5 w-auto max-w-[48px] object-contain"
               />
             </button>
           )}
@@ -128,7 +156,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Sidebar Footer User Section with Designation Director and Overlay */}
         <div className="p-3 pb-5 border-t border-[#153443] shrink-0 bg-[#08171f]/50 relative">
           {!collapsed ? (
-            <div className="flex items-center justify-between gap-2">
+            <div
+              ref={userOverlayRef}
+              className="relative flex items-center justify-between gap-2"
+              onMouseEnter={() => setShowUserOverlay(true)}
+            >
               <div className="flex items-center gap-2.5 min-w-0">
                 <Avatar
                   src={defaultAvatar}
@@ -151,13 +183,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <LogOut className="w-4 h-4" />
               </button>
+
+              {/* Overlay in expanded mode */}
+              {showUserOverlay && (
+                <div
+                  className="absolute left-0 bottom-[calc(100%+8px)] w-full bg-white rounded-2xl border border-[#e2e8f0] shadow-2xl p-3 z-50 text-left text-[#0d212c] animate-in fade-in slide-in-from-bottom-2 duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#f1f5f9]">
+                    <Avatar
+                      src={defaultAvatar}
+                      fallback={userInitials}
+                      size="sm"
+                      className="bg-[#153443] text-white border border-slate-200 shrink-0"
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-[#0d212c] truncate">{userName}</span>
+                      <span className="text-[11px] font-semibold text-[#36c0c9] truncate">
+                        {userDesignation}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        setShowUserOverlay(false)
+                        setShowLogoutConfirm(true)
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             /* Collapsed state with profile icon and hover/click overlay popover */
             <div
+              ref={userOverlayRef}
               className="relative flex justify-center w-full"
               onMouseEnter={() => setShowUserOverlay(true)}
-              onMouseLeave={() => setShowUserOverlay(false)}
             >
               <button
                 onClick={() => setShowUserOverlay((prev) => !prev)}

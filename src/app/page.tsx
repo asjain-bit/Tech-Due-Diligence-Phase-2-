@@ -43,7 +43,7 @@ export default function HomePage() {
       {/* Main Body Layout Container */}
       <div
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
-          sidebarCollapsed ? 'pl-[72px]' : 'pl-[250px]'
+          sidebarCollapsed ? 'pl-[84px]' : 'pl-[250px]'
         }`}
       >
         {/* Top Header Bar — Compact, no subheading, no theme toggle */}

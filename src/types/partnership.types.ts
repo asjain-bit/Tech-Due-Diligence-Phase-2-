@@ -1,4 +1,4 @@
-export type PartnershipStatus = 'Shortlisted' | 'Pending' | 'New' | 'Rejected'
+export type PartnershipStatus = 'Pending' | 'In Progress' | 'At Risk' | 'Exited'
 
 export type StageStatus = 'completed' | 'in_progress' | 'not_started'
 
@@ -57,6 +57,7 @@ export interface InternalInterestStakeholder {
   role: string
   department: string
   expertise: string
+  whySuggested?: string
   avatarColorBg: string
   avatarColorText: string
 }
@@ -78,6 +79,7 @@ export interface PartnershipRequest {
   solutionMaturity: string
   status: PartnershipStatus
   submittedOn: string
+  deadline: string
   submittedRelative?: string
   headline?: string
   tags?: string[]
@@ -92,6 +94,7 @@ export interface PartnershipRequest {
   companyInfo: CompanyInfo
   assessmentAreas: KeyAssessmentAreas
   internalInterests?: InternalInterestStakeholder[]
+  strategyTeamMembers?: InternalInterestStakeholder[]
   agentRecommendation?: AgentRecommendation
   decision?: {
     status: 'proceeded' | 'rejected'
@@ -109,6 +112,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     role: 'Head of AI & Analytics',
     department: 'AI & Analytics',
     expertise: 'AI Strategy',
+    whySuggested: 'Evaluated high-scoring diagnostic algorithms and data infrastructure alignment',
     avatarColorBg: '#dbeafe',
     avatarColorText: '#1e40af',
   },
@@ -119,6 +123,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     role: 'Radiology & Imaging Lead',
     department: 'Medical Imaging',
     expertise: 'Imaging',
+    whySuggested: 'Direct expertise in radiology workflow integration and clinical PACS validation',
     avatarColorBg: '#f3e8ff',
     avatarColorText: '#6b21a8',
   },
@@ -129,6 +134,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     role: 'Clinical Innovation Lead',
     department: 'Clinical Innovation',
     expertise: 'Clinical Validation',
+    whySuggested: 'Leads clinical protocol assessment and clinical trial readiness',
     avatarColorBg: '#d1fae5',
     avatarColorText: '#065f46',
   },
@@ -139,6 +145,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     role: 'Operations Transformation Lead',
     department: 'Operations',
     expertise: 'Operations',
+    whySuggested: 'Assesses operational feasibility and clinical IT deployment readiness',
     avatarColorBg: '#ffedd5',
     avatarColorText: '#9a3412',
   },
@@ -149,8 +156,23 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     role: 'HealthTech Partnerships',
     department: 'Strategic Partnerships',
     expertise: 'Partnerships',
+    whySuggested: 'Oversees ecosystem synergy and commercial healthtech alliance fit',
     avatarColorBg: '#fce7f3',
     avatarColorText: '#9d174d',
+  },
+]
+
+export const DEFAULT_STRATEGY_MEMBERS: InternalInterestStakeholder[] = [
+  {
+    id: 'strat-1',
+    name: 'Ahmed Darwish',
+    initials: 'AD',
+    role: 'Head of Strategy',
+    department: 'Strategy',
+    expertise: 'Market Strategy',
+    whySuggested: 'Assesses overall strategic alignment and healthcare market expansion',
+    avatarColorBg: '#dbeafe',
+    avatarColorText: '#1e40af',
   },
 ]
 
@@ -166,6 +188,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     solutionMaturity: 'Pilot',
     status: 'Pending',
     submittedOn: '12 Oct 2026',
+    deadline: '31 Oct 2026',
     submittedRelative: '3 days ago',
     tags: ['AI & Diagnostics', 'Medical Imaging', 'Clinical Decision Support'],
     internalInterests: DEFAULT_INTERNAL_INTERESTS,
@@ -264,8 +287,9 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     headline: 'CardioScan AI Diagnostic Platform',
     focusArea: 'Cardiology & Precision Health',
     solutionMaturity: 'Clinical Validation',
-    status: 'New',
+    status: 'In Progress',
     submittedOn: '10 Oct 2026',
+    deadline: '24 Oct 2026',
     submittedRelative: '2 days ago',
     tags: ['Cardiology & Precision Health', 'Clinical Workflow Automation'],
     internalInterests: DEFAULT_INTERNAL_INTERESTS,
@@ -362,8 +386,9 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     headline: 'Rare Disease Variant Interpreter',
     focusArea: 'Genomics & Oncology',
     solutionMaturity: 'Commercial',
-    status: 'Shortlisted',
+    status: 'At Risk',
     submittedOn: '01 Oct 2026',
+    deadline: '15 Oct 2026',
     submittedRelative: '11 days ago',
     tags: ['Genomics & Oncology', 'Precision Health & Diagnostics', 'Rare Diseases'],
     internalInterests: DEFAULT_INTERNAL_INTERESTS,
@@ -454,8 +479,9 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     headline: 'Remote Patient Monitoring & Triage',
     focusArea: 'Virtual Care & Remote Monitoring',
     solutionMaturity: 'Commercial',
-    status: 'Pending',
+    status: 'Exited',
     submittedOn: '28 Sep 2026',
+    deadline: '05 Oct 2026',
     submittedRelative: '14 days ago',
     tags: ['Virtual Care & Remote Monitoring', 'Clinical Workflow Automation'],
     internalInterests: DEFAULT_INTERNAL_INTERESTS,

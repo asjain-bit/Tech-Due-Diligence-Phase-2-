@@ -24,9 +24,9 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('6')).toBeInTheDocument()
     expect(screen.getByText('Needs monitoring')).toBeInTheDocument()
 
-    expect(screen.getByText('SLA Breached')).toBeInTheDocument()
-    expect(screen.getByText('3')).toBeInTheDocument()
-    expect(screen.getByText('Across active projects')).toBeInTheDocument()
+    expect(screen.getByText('EXITED BEFORE DIRECTOR REVIEW')).toBeInTheDocument()
+    expect(screen.getByText('12')).toBeInTheDocument()
+    expect(screen.getByText('Filtered out during initial agent screening')).toBeInTheDocument()
   })
 
   it('renders Partnership Requests title and table columns without Referred by', () => {
@@ -43,7 +43,7 @@ describe('DashboardScreen', () => {
     expect(screen.getByRole('columnheader', { name: 'Focus Area' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Solution Maturity' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Submitted on' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Deadline' })).toBeInTheDocument()
   })
 
   it('filters records via search bar and filter chips', async () => {
@@ -63,10 +63,10 @@ describe('DashboardScreen', () => {
     // Clear search
     await user.clear(searchInput)
 
-    // Filter chip for Shortlisted
-    const shortlistedChip = screen.getByRole('button', { name: /Shortlisted/i })
-    await user.click(shortlistedChip)
-    expect(screen.getByText('GenomicX MENA FZ-LLC')).toBeInTheDocument()
+    // Filter chip for In Progress
+    const inProgressChip = screen.getByRole('button', { name: /In Progress/i })
+    await user.click(inProgressChip)
+    expect(screen.getByText('AlphaHealth BioTech')).toBeInTheDocument()
     expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
   })
 
@@ -79,7 +79,8 @@ describe('DashboardScreen', () => {
 
     // Verify detailed view is open with single large white card containing Workflow Progress and Agent Recommendation chip
     expect(screen.getByText('Workflow Progress')).toBeInTheDocument()
-    expect(screen.getByText(/Recommended to Proceed/i)).toBeInTheDocument()
+    expect(screen.getByText(/Proceed/i)).toBeInTheDocument()
+    expect(screen.getByText(/High Confidence/i)).toBeInTheDocument()
 
     // Back to table
     await user.click(screen.getByRole('button', { name: 'Back to Partnership Requests' }))

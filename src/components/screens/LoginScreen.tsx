@@ -34,18 +34,18 @@ export const AVAILABLE_PROFILES: UserProfile[] = [
   {
     id: 'evaluator',
     name: 'Mariam Al-Zaabi',
-    designation: 'Evaluator',
+    designation: 'Internal Interest Team',
     email: 'mariam.alzaabi@m42.ae',
-    roleTitle: 'Evaluator',
+    roleTitle: 'Internal Interest Team',
     avatarUrl:
       'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
   },
   {
     id: 'strategy-fit',
     name: 'Omar Al-Hashemi',
-    designation: 'Stragety Fit',
+    designation: 'Strategy Team',
     email: 'omar.alhashemi@m42.ae',
-    roleTitle: 'Stragety Fit',
+    roleTitle: 'Strategy Team',
     avatarUrl:
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
   },
@@ -61,9 +61,9 @@ export const AVAILABLE_PROFILES: UserProfile[] = [
   {
     id: 'legal-director',
     name: 'Fatima Al-Kaabi',
-    designation: 'Legal & Partnership Director',
+    designation: 'Legal Team',
     email: 'fatima.alkaabi@m42.ae',
-    roleTitle: 'Legal & Partnership Director',
+    roleTitle: 'Legal Team',
     avatarUrl:
       'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
   },

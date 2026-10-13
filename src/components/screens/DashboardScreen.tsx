@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Layers, Clock, PenLine, TriangleAlert, Inbox } from 'lucide-react'
+import { Layers, Clock, FileSignature, GitFork, Inbox } from 'lucide-react'
 import { SearchBar } from '@/components/molecules/SearchBar'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import { PartnershipDetail } from '@/components/organisms/PartnershipDetail'
@@ -14,17 +14,17 @@ export const DashboardScreen: React.FC = () => {
   const [selectedRequest, setSelectedRequest] = useState<PartnershipRequest | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  // Status categories for StatusChip
+  // Status categories for StatusChip (Pending, In Progress, At Risk, Exited)
   const getStatusCategory = (status: string) => {
     switch (status) {
-      case 'Shortlisted':
-        return 'success'
+      case 'In Progress':
+        return 'info'
       case 'Pending':
         return 'warning'
-      case 'New':
-        return 'info'
-      case 'Rejected':
+      case 'At Risk':
         return 'error'
+      case 'Exited':
+        return 'neutral'
       default:
         return 'neutral'
     }
@@ -44,7 +44,7 @@ export const DashboardScreen: React.FC = () => {
         })
         return {
           ...r,
-          status: 'Shortlisted' as const,
+          status: 'In Progress' as const,
           workflowStages: updatedStages,
           decision: {
             status: 'proceeded',
@@ -66,7 +66,7 @@ export const DashboardScreen: React.FC = () => {
       })
       return {
         ...prev,
-        status: 'Shortlisted' as const,
+        status: 'In Progress' as const,
         workflowStages: updatedStages,
         decision: {
           status: 'proceeded',
@@ -87,7 +87,7 @@ export const DashboardScreen: React.FC = () => {
         if (r.id !== requestId) return r
         return {
           ...r,
-          status: 'Rejected' as const,
+          status: 'Exited' as const,
           decision: {
             status: 'rejected',
             reason,
@@ -101,7 +101,7 @@ export const DashboardScreen: React.FC = () => {
       if (!prev || prev.id !== requestId) return prev
       return {
         ...prev,
-        status: 'Rejected' as const,
+        status: 'Exited' as const,
         decision: {
           status: 'rejected',
           reason,
@@ -133,30 +133,35 @@ export const DashboardScreen: React.FC = () => {
     )
   })
 
-  // Filter options with dynamic counts
+  // Filter options with dynamic counts (Pending, In progress, At Risk, Exited)
   const filterOptions = [
     { key: 'all', label: 'All requests', count: requests.length },
-    {
-      key: 'shortlisted',
-      label: 'Shortlisted',
-      count: requests.filter((r) => r.status === 'Shortlisted').length,
-    },
     {
       key: 'pending',
       label: 'Pending',
       count: requests.filter((r) => r.status === 'Pending').length,
     },
     {
-      key: 'new',
-      label: 'New',
-      count: requests.filter((r) => r.status === 'New').length,
+      key: 'in progress',
+      label: 'In Progress',
+      count: requests.filter((r) => r.status === 'In Progress').length,
+    },
+    {
+      key: 'at risk',
+      label: 'At Risk',
+      count: requests.filter((r) => r.status === 'At Risk').length,
+    },
+    {
+      key: 'exited',
+      label: 'Exited',
+      count: requests.filter((r) => r.status === 'Exited').length,
     },
   ]
 
   // Detailed view rendering
   if (selectedRequest) {
     return (
-      <div className="flex flex-col gap-6 w-full px-6 lg:px-10 py-3 text-[#0d212c]">
+      <div className="flex flex-col gap-6 w-full px-3 py-3 text-[#0d212c]">
         {toastMessage && (
           <div className="fixed top-5 right-5 z-50 p-4 rounded-xl shadow-lg bg-white border border-[#e2e8f0] text-sm font-semibold flex items-center gap-2.5 animate-in slide-in-from-top-4">
             <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
@@ -223,7 +228,7 @@ export const DashboardScreen: React.FC = () => {
               NDA in Progress
             </span>
             <div className="flex items-center justify-center shrink-0">
-              <PenLine className="w-5 h-5 text-[#ef4444] stroke-[2]" />
+              <FileSignature className="w-5 h-5 text-[#6366f1] stroke-[2]" />
             </div>
           </div>
           <div className="text-4xl font-semibold text-[#0d212c] leading-none my-1">6</div>
@@ -231,19 +236,21 @@ export const DashboardScreen: React.FC = () => {
           <div className="text-xs font-medium text-[#64748b]">Needs monitoring</div>
         </div>
 
-        {/* KPI Card 4: SLA Breached */}
+        {/* KPI Card 4: EXITED BEFORE DIRECTOR REVIEW */}
         <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-[0.06em]">
-              SLA Breached
+              EXITED BEFORE DIRECTOR REVIEW
             </span>
-            <div className="flex items-center justify-center shrink-0">
-              <TriangleAlert className="w-5 h-5 text-[#008a8a] stroke-[2]" />
+            <div className="w-8 h-8 rounded-xl bg-[#fee2e2]/60 flex items-center justify-center shrink-0">
+              <GitFork className="w-4 h-4 text-[#ef4444] stroke-[2]" />
             </div>
           </div>
-          <div className="text-4xl font-semibold text-[#0d212c] leading-none my-1">3</div>
+          <div className="text-4xl font-semibold text-[#0d212c] leading-none my-1">12</div>
           <div className="h-[1px] bg-slate-100 w-full" />
-          <div className="text-xs font-medium text-[#64748b]">Across active projects</div>
+          <div className="text-xs font-medium text-[#64748b]">
+            Filtered out during initial agent screening
+          </div>
         </div>
       </div>
 
@@ -303,7 +310,7 @@ export const DashboardScreen: React.FC = () => {
                 <th className="py-4 px-4">Focus Area</th>
                 <th className="py-4 px-4">Solution Maturity</th>
                 <th className="py-4 px-4">Status</th>
-                <th className="py-4 px-4">Submitted on</th>
+                <th className="py-4 px-4">Deadline</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e2e8f0]/60">
@@ -345,9 +352,22 @@ export const DashboardScreen: React.FC = () => {
                     </td>
 
                     <td className="py-4.5 px-4 text-xs font-normal text-[#64748b]">
-                      <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
-                        {req.focusArea}
-                      </span>
+                      <div className="flex flex-wrap gap-1.5 max-w-xs">
+                        {(req.assessmentAreas?.focusAreas &&
+                        req.assessmentAreas.focusAreas.length > 0
+                          ? req.assessmentAreas.focusAreas
+                          : req.tags && req.tags.length > 0
+                            ? req.tags
+                            : [req.focusArea]
+                        ).map((area, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-normal whitespace-nowrap"
+                          >
+                            {area}
+                          </span>
+                        ))}
+                      </div>
                     </td>
 
                     <td className="py-4.5 px-4 text-xs font-normal text-[#64748b]">
@@ -364,7 +384,7 @@ export const DashboardScreen: React.FC = () => {
                     </td>
 
                     <td className="py-4.5 px-4 text-xs font-normal text-[#64748b] whitespace-nowrap">
-                      {req.submittedOn}
+                      {req.deadline || req.submittedOn}
                     </td>
                   </tr>
                 ))

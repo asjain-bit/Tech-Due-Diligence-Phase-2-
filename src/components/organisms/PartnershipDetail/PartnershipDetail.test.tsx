@@ -23,7 +23,7 @@ describe('PartnershipDetail', () => {
 
     // Header info: Company name present, description removed
     expect(screen.getByText('MedTech Innovations')).toBeInTheDocument()
-    expect(screen.getByText('Pending Director Review')).toBeInTheDocument()
+    expect(screen.getByText('Pending')).toBeInTheDocument()
 
     // Subtitle description under company name is removed
     expect(
@@ -69,9 +69,14 @@ describe('PartnershipDetail', () => {
     expect(screen.queryByText('1. Initial Review')).not.toBeInTheDocument()
     expect(screen.queryByText('2. Internal Interest')).not.toBeInTheDocument()
 
-    // Agent Recommendation chip only (no separate card)
+    // Agent Recommendation chip only (one word proceed/reject and confidence high/medium/low)
     expect(screen.getByText(/Agent Recommendation:/i)).toBeInTheDocument()
-    expect(screen.getByText(/Recommended to Proceed \(94% Match\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/Proceed/i)).toBeInTheDocument()
+    expect(screen.getByText(/High Confidence/i)).toBeInTheDocument()
+
+    // Submitted on at bottom right without '3 days ago'
+    expect(screen.getByText(/Submitted on:/i)).toBeInTheDocument()
+    expect(screen.queryByText(/days ago/i)).not.toBeInTheDocument()
 
     // Solution Overview & tags
     expect(screen.getByText('Solution Overview')).toBeInTheDocument()
@@ -129,31 +134,41 @@ describe('PartnershipDetail', () => {
       />
     )
 
-    // Switch to Internal Interest tab
-    const internalTab = screen.getByRole('button', { name: /Internal Interest/i })
+    // Switch to Internal Review tab
+    const internalTab = screen.getByRole('button', { name: /Internal Review/i })
     await user.click(internalTab)
 
     // Heading without icon and subtitle
-    expect(screen.getByRole('heading', { level: 2, name: 'Internal Interest' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Review & Alignment' })
+    ).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Manage internal stakeholders who will review this partnership based on their domain expertise.'
+        'Send requests to internal stakeholders and strategy team to review this partnership in sequence.'
       )
     ).toBeInTheDocument()
 
-    // Table columns: count column removed
+    // Table columns: count column removed, role & department removed from separate headers, Why Agent Suggested added
     expect(screen.queryByRole('columnheader', { name: '#' })).not.toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Role' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Department' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Expertise' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader', { name: 'Name' })[0]).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Role' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Department' })).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('columnheader', { name: 'Why Agent Suggested' })[0]
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader', { name: 'Expertise' })[0]).toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader', { name: 'Actions' })[0]).toBeInTheDocument()
 
-    // + Add Interest button with custom tooltip
-    expect(screen.getByRole('button', { name: /Add Interest/i })).toBeInTheDocument()
-    expect(screen.getByText('Add up to 5 people')).toBeInTheDocument()
+    // Send review buttons for both teams
+    const sendButtons = screen.getAllByRole('button', { name: /Send Request/i })
+    expect(sendButtons.length).toBe(2)
 
-    // Table renders stakeholders from Image 1
+    // + Add Respondant and + Add Member buttons
+    expect(screen.getByRole('button', { name: /Add Respondant/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Add Member/i })).toBeInTheDocument()
+    expect(screen.getByText('Add up to 5 respondents')).toBeInTheDocument()
+
+    // Table renders stakeholders from Image 1 with role just below name
     expect(screen.getByText('Riza Sayeed')).toBeInTheDocument()
     expect(screen.getByText('Head of AI & Analytics')).toBeInTheDocument()
     expect(screen.getByText('Parag Agarwal')).toBeInTheDocument()
@@ -162,12 +177,12 @@ describe('PartnershipDetail', () => {
     expect(screen.getByText('Khalid Al Zaabi')).toBeInTheDocument()
     expect(screen.getByText('Sara Malik')).toBeInTheDocument()
 
-    // Click Delete on one stakeholder (icon-only button with aria-label)
-    const deleteButtons = screen.getAllByRole('button', { name: /Delete stakeholder/i })
+    // Click Delete on one respondent (icon-only button with aria-label)
+    const deleteButtons = screen.getAllByRole('button', { name: /Delete respondent/i })
     await user.click(deleteButtons[0])
 
     // SOW-style Delete confirmation modal
-    expect(screen.getByText('Remove Stakeholder')).toBeInTheDocument()
+    expect(screen.getByText('Remove Respondent')).toBeInTheDocument()
     expect(screen.getByText(/Are you sure you want to remove/i)).toBeInTheDocument()
 
     // Confirm delete
@@ -175,17 +190,20 @@ describe('PartnershipDetail', () => {
     await user.click(modalDeleteBtn)
     expect(screen.queryByText('Riza Sayeed')).not.toBeInTheDocument()
 
-    // Add new stakeholder
-    const addBtn = screen.getByRole('button', { name: /Add Interest/i })
+    // Add new respondent via dropdown selection
+    const addBtn = screen.getByRole('button', { name: /Add Respondant/i })
     await user.click(addBtn)
 
-    expect(screen.getByText('Add Internal Stakeholder')).toBeInTheDocument()
-    await user.type(screen.getByPlaceholderText(/Dr\. Fatima/i), 'Dr. Mona Al Hashimi')
-    await user.type(screen.getByPlaceholderText(/Head of AI/i), 'Chief Medical Officer')
-    await user.type(screen.getByPlaceholderText(/Medical Imaging/i), 'Clinical Governance')
-    await user.type(screen.getByPlaceholderText(/Clinical Validation/i), 'Health Policy')
+    expect(screen.getByRole('heading', { level: 3, name: 'Add Respondant' })).toBeInTheDocument()
+    // Select from dropdown
+    const select = screen.getByRole('combobox')
+    await user.selectOptions(select, 'cand-1')
 
-    const confirmAddBtn = screen.getByRole('button', { name: 'Add Stakeholder' })
+    // Rationale textarea
+    const whyInput = screen.getByPlaceholderText(/Enter reason why/i)
+    await user.type(whyInput, 'Extensive expertise in clinical diagnostics.')
+
+    const confirmAddBtn = screen.getByRole('button', { name: 'Add Respondant' })
     await user.click(confirmAddBtn)
 
     expect(screen.getByText('Dr. Mona Al Hashimi')).toBeInTheDocument()
