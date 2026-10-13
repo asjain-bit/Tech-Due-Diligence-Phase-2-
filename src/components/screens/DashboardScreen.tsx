@@ -242,8 +242,8 @@ export const DashboardScreen: React.FC = () => {
             <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-[0.06em]">
               EXITED BEFORE DIRECTOR REVIEW
             </span>
-            <div className="w-8 h-8 rounded-xl bg-[#fee2e2]/60 flex items-center justify-center shrink-0">
-              <GitFork className="w-4 h-4 text-[#ef4444] stroke-[2]" />
+            <div className="flex items-center justify-center shrink-0">
+              <GitFork className="w-5 h-5 text-[#ef4444] stroke-[2]" />
             </div>
           </div>
           <div className="text-4xl font-semibold text-[#0d212c] leading-none my-1">12</div>
