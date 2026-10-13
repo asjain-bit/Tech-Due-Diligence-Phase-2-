@@ -228,7 +228,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onMouseEnter={() => setShowUserOverlay(true)}
             >
               <button
-                onClick={() => setShowUserOverlay((prev) => !prev)}
+                onClick={() => setShowUserOverlay(true)}
                 title={userName}
                 aria-label="User profile options"
                 className="p-1 rounded-xl hover:bg-white/10 transition cursor-pointer flex flex-col items-center justify-center"

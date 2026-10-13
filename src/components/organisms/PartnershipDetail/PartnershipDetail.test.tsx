@@ -166,7 +166,7 @@ describe('PartnershipDetail', () => {
     // + Add Respondant and + Add Member buttons
     expect(screen.getByRole('button', { name: /Add Respondant/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Add Member/i })).toBeInTheDocument()
-    expect(screen.getByText('Add up to 5 respondents')).toBeInTheDocument()
+    expect(screen.getByText('You can add up to 5 respondents.')).toBeInTheDocument()
 
     // Table renders stakeholders from Image 1 with role just below name
     expect(screen.getByText('Riza Sayeed')).toBeInTheDocument()
