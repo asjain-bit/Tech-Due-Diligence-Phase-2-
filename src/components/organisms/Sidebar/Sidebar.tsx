@@ -214,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      <span>Sign out</span>
+                      <span>Logout</span>
                     </button>
                   </div>
                 </div>
@@ -271,7 +271,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      <span>Sign out</span>
+                      <span>Logout</span>
                     </button>
                   </div>
                 </div>

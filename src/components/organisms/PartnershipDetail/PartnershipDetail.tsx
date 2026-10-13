@@ -299,6 +299,45 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [reviewToast, setReviewToast] = useState<string | null>(null)
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   const [showJudgementCriteriaModal, setShowJudgementCriteriaModal] = useState(false)
+  const [internalRequestSent, setInternalRequestSent] = useState(request.status === 'In Progress')
+  const [strategyRequestSent, setStrategyRequestSent] = useState(request.status === 'In Progress')
+
+  const renderRequestStatusBadge = (status?: string) => {
+    const s = status || 'Pending'
+    if (s === 'Completed' || s === 'Submitted') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          {s}
+        </span>
+      )
+    }
+    if (s === 'In Progress') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          {s}
+        </span>
+      )
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+        {s}
+      </span>
+    )
+  }
+
+  const renderDecisionBadge = (decision?: string) => {
+    if (!decision || decision === '-') {
+      return <span className="text-[#94a3b8] font-medium text-xs sm:text-sm pl-1">-</span>
+    }
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-teal-50 text-[#008a8a] border border-[#008a8a]/20">
+        {decision}
+      </span>
+    )
+  }
 
   // Handlers for Strategy Team
   const handleOpenAddStrategyMember = () => {
@@ -1204,13 +1243,15 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   >
                     View Questionnaire
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowSendInternalModal(true)}
-                    className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
-                  >
-                    Send Request
-                  </button>
+                  {!internalRequestSent && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSendInternalModal(true)}
+                      className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
+                    >
+                      Send Request
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1221,15 +1262,29 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     <thead>
                       <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-semibold uppercase tracking-wider">
                         <th className="py-3 px-4">Name</th>
-                        <th className="py-3 px-4">Why Agent Suggested</th>
-                        <th className="py-3 px-4">Expertise</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        {internalRequestSent ? (
+                          <>
+                            <th className="py-3 px-4">Status</th>
+                            <th className="py-3 px-4">Deadline</th>
+                            <th className="py-3 px-4">Decision</th>
+                            <th className="py-3 px-4 text-right">Questionnaire</th>
+                          </>
+                        ) : (
+                          <>
+                            <th className="py-3 px-4">Why Agent Suggested</th>
+                            <th className="py-3 px-4">Expertise</th>
+                            <th className="py-3 px-4 text-right">Actions</th>
+                          </>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#e2e8f0]">
                       {stakeholders.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="py-12 text-center text-[#64748b]">
+                          <td
+                            colSpan={internalRequestSent ? 5 : 4}
+                            className="py-12 text-center text-[#64748b]"
+                          >
                             <div className="flex flex-col items-center justify-center gap-2">
                               <Users className="w-6 h-6 text-slate-300" />
                               <div className="text-xs font-semibold text-[#0d212c]">
@@ -1242,7 +1297,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           </td>
                         </tr>
                       ) : (
-                        stakeholders.map((person) => (
+                        stakeholders.map((person, idx) => (
                           <tr key={person.id} className="hover:bg-slate-50/70 transition-colors">
                             <td className="py-3.5 px-4">
                               <div className="flex items-center gap-3">
@@ -1267,32 +1322,75 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                               </div>
                             </td>
 
-                            <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
-                              <span className="text-[#334155] leading-relaxed">
-                                {person.whySuggested ||
-                                  'Selected based on clinical domain expertise and alignment.'}
-                              </span>
-                            </td>
+                            {internalRequestSent ? (
+                              <>
+                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                  {renderRequestStatusBadge(
+                                    person.status ||
+                                      (idx === 0
+                                        ? 'Completed'
+                                        : idx === 1
+                                          ? 'In Progress'
+                                          : 'Pending')
+                                  )}
+                                </td>
 
-                            <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
-                              <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
-                                {person.expertise}
-                              </span>
-                            </td>
+                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                  <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
+                                    {person.deadline || '5 days'}
+                                  </span>
+                                </td>
 
-                            <td className="py-3.5 px-4 text-right">
-                              <div className="inline-flex items-center gap-2 justify-end">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenDeleteStakeholder(person)}
-                                  title="Delete respondent"
-                                  aria-label="Delete respondent"
-                                  className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
+                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                  {renderDecisionBadge(
+                                    person.decision !== undefined
+                                      ? person.decision
+                                      : idx === 0
+                                        ? 'Interested'
+                                        : '-'
+                                  )}
+                                </td>
+
+                                <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowQuestionnaireModal(true)}
+                                    className="text-xs font-semibold text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer transition inline-flex items-center gap-1.5"
+                                  >
+                                    View Questionnaire
+                                  </button>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
+                                  <span className="text-[#334155] leading-relaxed">
+                                    {person.whySuggested ||
+                                      'Selected based on clinical domain expertise and alignment.'}
+                                  </span>
+                                </td>
+
+                                <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
+                                  <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
+                                    {person.expertise}
+                                  </span>
+                                </td>
+
+                                <td className="py-3.5 px-4 text-right">
+                                  <div className="inline-flex items-center gap-2 justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenDeleteStakeholder(person)}
+                                      title="Delete respondent"
+                                      aria-label="Delete respondent"
+                                      className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </>
+                            )}
                           </tr>
                         ))
                       )}
@@ -1301,31 +1399,33 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 </div>
               </div>
 
-              {/* Table 1 Bottom Actions */}
-              <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
-                <div className="relative group inline-block shrink-0">
-                  <button
-                    type="button"
-                    disabled={stakeholders.length >= 5}
-                    onClick={handleOpenAddStakeholder}
-                    className={`px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
-                      stakeholders.length >= 5
-                        ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
-                        : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
-                    }`}
-                  >
-                    <Plus className="w-4 h-4 stroke-[2.5]" />
-                    <span>Add Respondant</span>
-                  </button>
-                  <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
-                    {stakeholders.length >= 5
-                      ? 'Maximum 5 respondents reached'
-                      : 'Add up to 5 respondents'}
-                    <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
+              {/* Table 1 Bottom Actions (hidden when request is sent) */}
+              {!internalRequestSent && (
+                <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
+                  <div className="relative group inline-block shrink-0">
+                    <button
+                      type="button"
+                      disabled={stakeholders.length >= 5}
+                      onClick={handleOpenAddStakeholder}
+                      className={`px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
+                        stakeholders.length >= 5
+                          ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
+                          : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
+                      }`}
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5]" />
+                      <span>Add Respondant</span>
+                    </button>
+                    <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
+                      {stakeholders.length >= 5
+                        ? 'Maximum 5 respondents reached'
+                        : 'Add up to 5 respondents'}
+                      <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
+                    </div>
                   </div>
+                  <span className="text-xs text-[#64748b]">You can add up to 5 respondents.</span>
                 </div>
-                <span className="text-xs text-[#64748b]">You can add up to 5 respondents.</span>
-              </div>
+              )}
             </div>
 
             {/* Horizontal Line Separator */}
@@ -1363,32 +1463,48 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   >
                     View Judgement Criteria
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowSendStrategyModal(true)}
-                    className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
-                  >
-                    Send Request
-                  </button>
+                  {!strategyRequestSent && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSendStrategyModal(true)}
+                      className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
+                    >
+                      Send Request
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Table 2: Strategy Team Members (1 person) */}
+              {/* Table 2: Strategy Team Members */}
               <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
                 <div className="overflow-x-auto w-full">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-semibold uppercase tracking-wider">
                         <th className="py-3 px-4">Name</th>
-                        <th className="py-3 px-4">Why Agent Suggested</th>
-                        <th className="py-3 px-4">Expertise</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        {strategyRequestSent ? (
+                          <>
+                            <th className="py-3 px-4">Status</th>
+                            <th className="py-3 px-4">Deadline</th>
+                            <th className="py-3 px-4">Decision</th>
+                            <th className="py-3 px-4 text-right">Judgement Criteria</th>
+                          </>
+                        ) : (
+                          <>
+                            <th className="py-3 px-4">Why Agent Suggested</th>
+                            <th className="py-3 px-4">Expertise</th>
+                            <th className="py-3 px-4 text-right">Actions</th>
+                          </>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#e2e8f0]">
                       {strategyMembers.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="py-12 text-center text-[#64748b]">
+                          <td
+                            colSpan={strategyRequestSent ? 5 : 4}
+                            className="py-12 text-center text-[#64748b]"
+                          >
                             <div className="flex flex-col items-center justify-center gap-2">
                               <Users className="w-6 h-6 text-slate-300" />
                               <div className="text-xs font-semibold text-[#0d212c]">
@@ -1426,32 +1542,62 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                               </div>
                             </td>
 
-                            <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
-                              <span className="text-[#334155] leading-relaxed">
-                                {person.whySuggested ||
-                                  'Selected based on market strategy alignment and expansion feasibility.'}
-                              </span>
-                            </td>
+                            {strategyRequestSent ? (
+                              <>
+                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                  {renderRequestStatusBadge(person.status || 'In Progress')}
+                                </td>
 
-                            <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
-                              <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
-                                {person.expertise}
-                              </span>
-                            </td>
+                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                  <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
+                                    {person.deadline || '2-3 days'}
+                                  </span>
+                                </td>
 
-                            <td className="py-3.5 px-4 text-right">
-                              <div className="inline-flex items-center gap-2 justify-end">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenDeleteStrategyMember(person)}
-                                  title="Delete respondent"
-                                  aria-label="Delete respondent"
-                                  className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
+                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                  {renderDecisionBadge(person.decision)}
+                                </td>
+
+                                <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowJudgementCriteriaModal(true)}
+                                    className="text-xs font-semibold text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer transition inline-flex items-center gap-1.5"
+                                  >
+                                    View Judgement Criteria
+                                  </button>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
+                                  <span className="text-[#334155] leading-relaxed">
+                                    {person.whySuggested ||
+                                      'Selected based on market strategy alignment and expansion feasibility.'}
+                                  </span>
+                                </td>
+
+                                <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
+                                  <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
+                                    {person.expertise}
+                                  </span>
+                                </td>
+
+                                <td className="py-3.5 px-4 text-right">
+                                  <div className="inline-flex items-center gap-2 justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenDeleteStrategyMember(person)}
+                                      title="Delete respondent"
+                                      aria-label="Delete respondent"
+                                      className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </>
+                            )}
                           </tr>
                         ))
                       )}
@@ -1460,31 +1606,33 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 </div>
               </div>
 
-              {/* Table 2 Bottom Actions: Renamed to "+ Add Member" */}
-              <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
-                <div className="relative group inline-block shrink-0">
-                  <button
-                    type="button"
-                    disabled={strategyMembers.length >= 2}
-                    onClick={handleOpenAddStrategyMember}
-                    className={`px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
-                      strategyMembers.length >= 2
-                        ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
-                        : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
-                    }`}
-                  >
-                    <Plus className="w-4 h-4 stroke-[2.5]" />
-                    <span>Add Member</span>
-                  </button>
-                  <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
-                    {strategyMembers.length >= 2
-                      ? 'Maximum 2 members reached'
-                      : 'Add up to 2 members'}
-                    <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
+              {/* Table 2 Bottom Actions (hidden when request is sent) */}
+              {!strategyRequestSent && (
+                <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
+                  <div className="relative group inline-block shrink-0">
+                    <button
+                      type="button"
+                      disabled={strategyMembers.length >= 2}
+                      onClick={handleOpenAddStrategyMember}
+                      className={`px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
+                        strategyMembers.length >= 2
+                          ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
+                          : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
+                      }`}
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5]" />
+                      <span>Add Member</span>
+                    </button>
+                    <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
+                      {strategyMembers.length >= 2
+                        ? 'Maximum 2 members reached'
+                        : 'Add up to 2 members'}
+                      <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
+                    </div>
                   </div>
+                  <span className="text-xs text-[#64748b]">You can add up to 2 members.</span>
                 </div>
-                <span className="text-xs text-[#64748b]">You can add up to 2 members.</span>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -1985,6 +2133,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 disabled={selectedInternalSendIds.length === 0}
                 onClick={() => {
                   setShowSendInternalModal(false)
+                  setInternalRequestSent(true)
                   setReviewToast('Review requests sent successfully to selected stakeholders.')
                 }}
                 className={`px-5 py-2.5 rounded-lg font-bold text-xs shadow-xs transition ${
@@ -2108,6 +2257,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 disabled={selectedStrategySendIds.length === 0}
                 onClick={() => {
                   setShowSendStrategyModal(false)
+                  setStrategyRequestSent(true)
                   setReviewToast('Strategy review requests sent successfully to selected members.')
                 }}
                 className={`px-5 py-2.5 rounded-lg font-bold text-xs shadow-xs transition ${

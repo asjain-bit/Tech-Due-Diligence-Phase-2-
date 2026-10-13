@@ -114,8 +114,8 @@ describe('Sidebar', () => {
     const avatarButton = screen.getByLabelText('User profile options')
     await user.click(avatarButton)
 
-    // Popover overlay is shown with Sign out option
-    const signoutBtn = screen.getByRole('button', { name: /Sign out/i })
+    // Popover overlay is shown with Logout option
+    const signoutBtn = screen.getByRole('button', { name: /Logout/i })
     expect(signoutBtn).toBeInTheDocument()
     await user.click(signoutBtn)
     expect(screen.getByText('Confirm Logout')).toBeInTheDocument()

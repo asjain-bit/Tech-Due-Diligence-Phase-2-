@@ -60,6 +60,9 @@ export interface InternalInterestStakeholder {
   whySuggested?: string
   avatarColorBg: string
   avatarColorText: string
+  status?: string
+  deadline?: string
+  decision?: string
 }
 
 export interface AgentRecommendation {
@@ -115,6 +118,9 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     whySuggested: 'Evaluated high-scoring diagnostic algorithms and data infrastructure alignment',
     avatarColorBg: '#dbeafe',
     avatarColorText: '#1e40af',
+    status: 'Completed',
+    deadline: '5 days',
+    decision: 'Interested',
   },
   {
     id: 'int-2',
@@ -126,6 +132,9 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     whySuggested: 'Direct expertise in radiology workflow integration and clinical PACS validation',
     avatarColorBg: '#f3e8ff',
     avatarColorText: '#6b21a8',
+    status: 'In Progress',
+    deadline: '5 days',
+    decision: '-',
   },
   {
     id: 'int-3',
@@ -137,6 +146,9 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     whySuggested: 'Leads clinical protocol assessment and clinical trial readiness',
     avatarColorBg: '#d1fae5',
     avatarColorText: '#065f46',
+    status: 'Pending',
+    deadline: '5 days',
+    decision: '-',
   },
   {
     id: 'int-4',
@@ -148,6 +160,9 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     whySuggested: 'Assesses operational feasibility and clinical IT deployment readiness',
     avatarColorBg: '#ffedd5',
     avatarColorText: '#9a3412',
+    status: 'Pending',
+    deadline: '5 days',
+    decision: '-',
   },
   {
     id: 'int-5',
@@ -159,6 +174,9 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     whySuggested: 'Oversees ecosystem synergy and commercial healthtech alliance fit',
     avatarColorBg: '#fce7f3',
     avatarColorText: '#9d174d',
+    status: 'Pending',
+    deadline: '5 days',
+    decision: '-',
   },
 ]
 
@@ -173,6 +191,9 @@ export const DEFAULT_STRATEGY_MEMBERS: InternalInterestStakeholder[] = [
     whySuggested: 'Assesses overall strategic alignment and healthcare market expansion',
     avatarColorBg: '#dbeafe',
     avatarColorText: '#1e40af',
+    status: 'In Progress',
+    deadline: '2-3 days',
+    decision: '-',
   },
 ]
 

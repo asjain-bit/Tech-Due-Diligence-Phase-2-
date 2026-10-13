@@ -122,10 +122,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             </h1>
           </div>
 
-          <div>
-            <p className="text-slate-600 text-base leading-relaxed font-normal">
-              M42 Tech Due Diligence gives procurement and compliance teams a single, auditable view
-              of every supplier relationship.
+          <div className="space-y-3">
+            <h2 className="text-2xl lg:text-3xl font-bold text-[#0d212c] tracking-tight leading-snug">
+              From partnership request to strategic collaboration.
+            </h2>
+            <p className="text-slate-600 text-sm lg:text-base leading-relaxed font-normal">
+              A unified workspace to evaluate partnership opportunities, align internal
+              stakeholders, and move promising healthcare innovations toward collaboration.
             </p>
           </div>
 
@@ -134,9 +137,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="flex items-start gap-3.5">
               <ShieldCheck className="w-6 h-6 text-[#0f766e] shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-[#0d212c] text-sm">Trusted & secure</h3>
+                <h3 className="font-bold text-[#0d212c] text-sm">Intelligent screening</h3>
                 <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">
-                  Enterprise-grade security with Single Sign-On and role-based access.
+                  AI-assisted assessment to identify relevant, high-potential partnership
+                  opportunities.
                 </p>
               </div>
             </div>
@@ -144,9 +148,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="flex items-start gap-3.5">
               <Users className="w-6 h-6 text-[#0f766e] shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-[#0d212c] text-sm">Collaborative</h3>
+                <h3 className="font-bold text-[#0d212c] text-sm">Cross-functional alignment</h3>
                 <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">
-                  Align procurement, compliance and vendors in one unified workspace.
+                  Connect internal experts and strategy teams to evaluate opportunities together.
                 </p>
               </div>
             </div>
@@ -154,9 +158,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="flex items-start gap-3.5">
               <PieChart className="w-6 h-6 text-[#0f766e] shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-[#0d212c] text-sm">Actionable insights</h3>
+                <h3 className="font-bold text-[#0d212c] text-sm">End-to-end visibility</h3>
                 <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">
-                  Get real-time visibility and make confident, data-driven decisions.
+                  Track reviews, decisions, and partnership progress in one centralized workspace.
                 </p>
               </div>
             </div>
@@ -247,7 +251,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               </div>
             </div>
 
-            {/* List of Profile Views: only role and user email, only Director profile has click enabled */}
+            {/* List of Profile Views: only role and user email, only Director profile can enter */}
             <div className="flex flex-col gap-2.5">
               {AVAILABLE_PROFILES.map((profile) => {
                 const isDirector = profile.id === 'director'
@@ -271,13 +275,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 return (
                   <div
                     key={profile.id}
-                    className="w-full text-left p-3.5 rounded-xl border border-gray-200/70 bg-gray-50/50 opacity-60 flex flex-col gap-0.5 shadow-2xs cursor-not-allowed select-none"
-                    aria-disabled="true"
+                    className="w-full text-left p-3.5 rounded-xl border border-gray-200 bg-white flex flex-col gap-0.5 shadow-2xs cursor-default select-none"
                   >
-                    <span className="font-medium text-sm text-slate-600 truncate">
+                    <span className="font-bold text-sm text-[#0d212c] truncate">
                       {profile.roleTitle}
                     </span>
-                    <span className="text-xs text-slate-400 truncate">{profile.email}</span>
+                    <span className="text-xs text-slate-500 truncate">{profile.email}</span>
                   </div>
                 )
               })}

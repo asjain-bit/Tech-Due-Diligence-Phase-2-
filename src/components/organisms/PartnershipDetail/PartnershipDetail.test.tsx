@@ -225,4 +225,38 @@ describe('PartnershipDetail', () => {
     await user.click(backBtn)
     expect(onBack).toHaveBeenCalled()
   })
+
+  it('updates table to sent state with status, deadline, decision, and view options when request is sent', async () => {
+    const user = userEvent.setup()
+    render(
+      <PartnershipDetail
+        request={mockRequest}
+        onBack={onBack}
+        onProceed={onProceed}
+        onReject={onReject}
+      />
+    )
+
+    await user.click(screen.getByRole('tab', { name: /Internal Review/i }))
+
+    // Click Send Request for Internal Interest
+    const sendButtons = screen.getAllByRole('button', { name: /^Send Request$/i })
+    await user.click(sendButtons[0])
+
+    // Inside modal, click Send Request
+    const modalSendBtn = screen.getByRole('button', { name: 'Send Request' })
+    await user.click(modalSendBtn)
+
+    // Table transforms: shows Status, Deadline (5 days), Decision, Questionnaire
+    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Deadline' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Decision' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Questionnaire' })).toBeInTheDocument()
+    expect(screen.getAllByText('5 days').length).toBeGreaterThan(0)
+    expect(screen.getByText('Interested')).toBeInTheDocument()
+
+    // Send request button and add respondant button removed for internal interest
+    expect(screen.queryByRole('button', { name: /Add Respondant/i })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Send Request$/i }).length).toBe(1)
+  })
 })
