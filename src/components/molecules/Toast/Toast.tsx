@@ -43,7 +43,7 @@ export const Toast: React.FC<ToastProps> = ({
         </span>
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-text-primary break-words">{title}</span>
+            <span className="text-sm font-medium text-text-primary break-words">{title}</span>
             <Badge variant={variant} size="sm">
               {variant.toUpperCase()}
             </Badge>

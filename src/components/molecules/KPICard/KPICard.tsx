@@ -35,11 +35,11 @@ export const KPICard: React.FC<KPICardProps> = ({
       </div>
 
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-2xl font-bold text-text-primary tracking-tight">{value}</span>
+        <span className="text-2xl font-semibold text-text-primary tracking-tight">{value}</span>
 
         {change && (
           <div
-            className={`flex items-center text-xs font-semibold gap-1 ${
+            className={`flex items-center text-xs font-medium gap-1 ${
               trend === 'up'
                 ? 'text-status-success-text'
                 : trend === 'down'

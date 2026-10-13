@@ -53,7 +53,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     >
       <div className="flex items-center justify-between gap-4 border-b border-border-default pb-4">
         <div>
-          <h2 className="text-base font-semibold text-text-primary">Workspace Profile</h2>
+          <h2 className="text-base font-medium text-text-primary">Workspace Profile</h2>
           <p className="text-xs text-text-tertiary">
             Manage your account identity and telemetry configuration.
           </p>
@@ -148,7 +148,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
       <div className="flex items-center justify-between pt-4 border-t border-border-default flex-wrap gap-3">
         {savedSuccess ? (
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-status-success-text">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-status-success-text">
             <Icon name="check" size="sm" aria-hidden="true" />
             <span>Preferences saved successfully.</span>
           </span>

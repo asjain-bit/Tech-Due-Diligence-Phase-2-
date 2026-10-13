@@ -57,7 +57,7 @@ export const AppDialog: React.FC<AppDialogProps> = ({
       <div className="relative z-10 w-full max-w-lg rounded-xl border border-border-default bg-bg-modal p-6 shadow-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h2 id="dialog-title" className="text-lg font-semibold text-text-primary">
+            <h2 id="dialog-title" className="text-lg font-medium text-text-primary">
               {title}
             </h2>
             {description && (

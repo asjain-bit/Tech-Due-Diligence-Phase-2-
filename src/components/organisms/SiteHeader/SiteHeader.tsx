@@ -32,11 +32,11 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
     >
       <div className="flex items-center gap-6 min-w-0">
         <div className="flex items-center gap-2 shrink-0">
-          <div className="h-7 w-7 rounded-md bg-action-primary-bg-default flex items-center justify-center text-action-primary-text font-bold text-xs tracking-wider">
+          <div className="h-7 w-7 rounded-md bg-action-primary-bg-default flex items-center justify-center text-action-primary-text font-semibold text-xs tracking-wider">
             TDD
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="font-semibold text-sm text-text-primary tracking-tight truncate">
+            <span className="font-medium text-sm text-text-primary tracking-tight truncate">
               {title}
             </span>
             {subtitle ? (
@@ -55,7 +55,7 @@ export const SiteHeader: React.FC<SiteHeaderProps> = ({
                 href={link.href}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   link.active
-                    ? 'bg-bg-selected text-text-accent font-semibold'
+                    ? 'bg-bg-selected text-text-accent font-medium'
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                 }`}
               >

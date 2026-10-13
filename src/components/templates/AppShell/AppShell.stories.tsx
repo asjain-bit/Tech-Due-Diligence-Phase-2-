@@ -23,7 +23,7 @@ export const Default: Story = {
     ),
     leftbar: (
       <div className="p-3 text-xs text-text-secondary flex flex-col gap-2">
-        <span className="font-semibold text-text-primary">Navigation</span>
+        <span className="font-medium text-text-primary">Navigation</span>
         <span>Overview</span>
         <span>Clusters</span>
         <span>Metrics</span>
@@ -31,7 +31,7 @@ export const Default: Story = {
     ),
     main: (
       <div className="p-6 flex flex-col gap-4">
-        <h1 className="text-xl font-bold text-text-primary">Main Canvas Area</h1>
+        <h1 className="text-xl font-semibold text-text-primary">Main Canvas Area</h1>
         <p className="text-sm text-text-secondary">
           AppShell flexible central slot expanding across the viewport.
         </p>
@@ -39,7 +39,7 @@ export const Default: Story = {
     ),
     rightbar: (
       <div className="p-4 text-xs text-text-secondary flex flex-col gap-2">
-        <span className="font-semibold text-text-primary">Inspector (~280px)</span>
+        <span className="font-medium text-text-primary">Inspector (~280px)</span>
         <span>Contextual details</span>
       </div>
     ),

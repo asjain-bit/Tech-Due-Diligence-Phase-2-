@@ -306,20 +306,20 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     const s = status || 'Pending'
     if (s === 'Completed' || s === 'Submitted') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60">
           {s}
         </span>
       )
     }
     if (s === 'In Progress') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200/60">
           {s}
         </span>
       )
     }
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200/60">
         {s}
       </span>
     )
@@ -338,14 +338,14 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
     if (isProceed) {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
           Proceed
         </span>
       )
     }
     if (isDecline) {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
           Decline
         </span>
       )
@@ -463,7 +463,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       <div>
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#0d212c] hover:text-[#36c0c9] transition cursor-pointer"
+          className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-[#0d212c] hover:text-[#36c0c9] transition cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Partnership Requests</span>
@@ -482,7 +482,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             {/* Title & Status — Same status as outside, no additional text */}
             <div className="flex flex-col justify-center min-h-[56px]">
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-bold text-[#0d212c] tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-semibold text-[#0d212c] tracking-tight">
                   {request.companyName}
                 </h1>
                 <StatusChip
@@ -500,7 +500,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <div className="flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-semibold text-[#0d212c]">{request.companyInfo.name}</span>
+              <span className="font-medium text-[#0d212c]">{request.companyInfo.name}</span>
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -529,13 +529,13 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             <div className="flex items-center gap-1.5">
               <span className="text-slate-400">Referred by:</span>
-              <span className="font-semibold text-[#0d212c]">{request.referredBy || '—'}</span>
+              <span className="font-medium text-[#0d212c]">{request.referredBy || '—'}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-1 text-xs text-[#64748b] sm:ml-auto shrink-0 self-end sm:self-auto">
             <span>Submitted on:</span>
-            <span className="font-semibold text-[#0d212c]">{request.submittedOn}</span>
+            <span className="font-medium text-[#0d212c]">{request.submittedOn}</span>
           </div>
         </div>
       </div>
@@ -555,7 +555,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
           )}
           <div>
-            <div className="font-bold">
+            <div className="font-semibold">
               {request.decision.status === 'proceeded'
                 ? 'Status: Approved to Proceed'
                 : 'Status: Request Rejected'}
@@ -575,9 +575,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         <div className="flex items-center gap-8 border-b border-[#f1f5f9] pb-0">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`pb-3.5 text-sm font-semibold transition-all relative cursor-pointer ${
+            className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
               activeTab === 'overview'
-                ? 'text-[#36c0c9] font-bold border-b-2 border-[#36c0c9]'
+                ? 'text-[#36c0c9] font-semibold border-b-2 border-[#36c0c9]'
                 : 'text-[#64748b] hover:text-[#0d212c] border-b-2 border-transparent'
             }`}
           >
@@ -586,9 +586,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
           <button
             onClick={() => setActiveTab('brief')}
-            className={`pb-3.5 text-sm font-semibold transition-all relative cursor-pointer ${
+            className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
               activeTab === 'brief'
-                ? 'text-[#36c0c9] font-bold border-b-2 border-[#36c0c9]'
+                ? 'text-[#36c0c9] font-semibold border-b-2 border-[#36c0c9]'
                 : 'text-[#64748b] hover:text-[#0d212c] border-b-2 border-transparent'
             }`}
           >
@@ -597,9 +597,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
           <button
             onClick={() => setActiveTab('internal_review')}
-            className={`pb-3.5 text-sm font-semibold transition-all relative cursor-pointer ${
+            className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
               activeTab === 'internal_review' || activeTab === 'internal_interest'
-                ? 'text-[#36c0c9] font-bold border-b-2 border-[#36c0c9]'
+                ? 'text-[#36c0c9] font-semibold border-b-2 border-[#36c0c9]'
                 : 'text-[#64748b] hover:text-[#0d212c] border-b-2 border-transparent'
             }`}
           >
@@ -613,7 +613,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             {/* Section 1: Workflow Progress & Agent Recommendation Chip */}
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between flex-wrap gap-3">
-                <h2 className="text-base font-bold text-[#0d212c]">Workflow Progress</h2>
+                <h2 className="text-base font-semibold text-[#0d212c]">Workflow Progress</h2>
 
                 {/* Agent Recommendation: one word proceed/reject and confidence level high/medium/low */}
                 {(() => {
@@ -624,7 +624,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   const isReject = recWord === 'Reject'
                   return (
                     <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-2xs border ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-2xs border ${
                         isReject
                           ? 'bg-red-50 text-red-700 border-red-200'
                           : 'bg-[#e6fffa] text-[#0f766e] border-[#a7f3d0]'
@@ -689,12 +689,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
                         {/* Title & Subheading left-aligned */}
                         <div className="text-left">
-                          <div className="text-xs font-bold text-[#0d212c]">
+                          <div className="text-xs font-semibold text-[#0d212c]">
                             {stage.title.replace(/^\d+[\.\s]+/, '')}
                           </div>
                           <div
                             className={`text-[11px] font-medium mt-0.5 ${
-                              isInProgress ? 'text-[#36c0c9] font-semibold' : 'text-[#64748b]'
+                              isInProgress ? 'text-[#36c0c9] font-medium' : 'text-[#64748b]'
                             }`}
                           >
                             {stage.subheading}
@@ -711,7 +711,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             {/* Section 2: Solution Overview */}
             <div className="flex flex-col gap-3">
-              <h2 className="text-base font-bold text-[#0d212c]">Solution Overview</h2>
+              <h2 className="text-base font-semibold text-[#0d212c]">Solution Overview</h2>
               <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
                 {request.companyName} has proposed an AI-powered diagnostic platform that enables
                 early detection of chronic diseases using medical imaging and predictive analytics.
@@ -728,7 +728,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 ).map((tag, idx) => (
                   <span
                     key={idx}
-                    className="px-3 py-1 rounded-xl bg-[#f0fdfa] text-[#0f766e] text-xs font-semibold border border-[#ccfbf1]"
+                    className="px-3 py-1 rounded-xl bg-[#f0fdfa] text-[#0f766e] text-xs font-medium border border-[#ccfbf1]"
                   >
                     {tag}
                   </span>
@@ -740,16 +740,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             {/* Section 3: Key Information */}
             <div className="flex flex-col gap-4">
-              <h2 className="text-base font-bold text-[#0d212c]">Key Information</h2>
+              <h2 className="text-base font-semibold text-[#0d212c]">Key Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Focus Area */}
                 <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#0d212c]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
                     <Target className="w-4 h-4 text-[#36c0c9]" />
                     <span>Focus Area(s)</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    <span className="px-2.5 py-1 rounded-lg bg-[#f0fdfa] text-[#0f766e] text-xs font-semibold border border-[#ccfbf1]">
+                    <span className="px-2.5 py-1 rounded-lg bg-[#f0fdfa] text-[#0f766e] text-xs font-medium border border-[#ccfbf1]">
                       {request.focusArea}
                     </span>
                   </div>
@@ -757,12 +757,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
                 {/* Solution Maturity */}
                 <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#0d212c]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
                     <BarChart2 className="w-4 h-4 text-[#36c0c9]" />
                     <span>Solution Maturity</span>
                   </div>
                   <div>
-                    <span className="px-3 py-1 rounded-lg bg-purple-50 text-purple-700 text-xs font-semibold border border-purple-200">
+                    <span className="px-3 py-1 rounded-lg bg-purple-50 text-purple-700 text-xs font-medium border border-purple-200">
                       {request.solutionMaturity}
                     </span>
                   </div>
@@ -770,7 +770,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
                 {/* Regulatory Approvals */}
                 <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#0d212c]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
                     <ShieldCheck className="w-4 h-4 text-[#36c0c9]" />
                     <span>Regulatory Approvals</span>
                   </div>
@@ -784,7 +784,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     ).map((appr, idx) => (
                       <span
                         key={idx}
-                        className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${
+                        className={`px-2.5 py-0.5 rounded-lg text-xs font-medium border ${
                           appr === 'Not applicable'
                             ? 'bg-slate-50 text-slate-500 border-slate-200'
                             : 'bg-[#f0fdfa] text-[#0f766e] border-[#ccfbf1]'
@@ -798,7 +798,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
                 {/* Patient Population */}
                 <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#0d212c]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
                     <Users className="w-4 h-4 text-[#36c0c9]" />
                     <span>Patient Population</span>
                   </div>
@@ -811,7 +811,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     ).map((pop, idx) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-0.5 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200"
+                        className="px-2.5 py-0.5 rounded-lg bg-white text-slate-700 text-xs font-medium border border-slate-200"
                       >
                         {pop}
                       </span>
@@ -821,7 +821,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
                 {/* Clinical Area(s) */}
                 <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#0d212c]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
                     <Stethoscope className="w-4 h-4 text-[#36c0c9]" />
                     <span>Clinical Area(s)</span>
                   </div>
@@ -835,7 +835,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     ).map((area, idx) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-0.5 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200"
+                        className="px-2.5 py-0.5 rounded-lg bg-white text-slate-700 text-xs font-medium border border-slate-200"
                       >
                         {area}
                       </span>
@@ -845,12 +845,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
                 {/* Development Approach */}
                 <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#0d212c]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
                     <Link2 className="w-4 h-4 text-[#36c0c9]" />
                     <span>Development Approach</span>
                   </div>
                   <div>
-                    <span className="px-2.5 py-1 rounded-lg bg-white text-slate-700 text-xs font-semibold border border-slate-200">
+                    <span className="px-2.5 py-1 rounded-lg bg-white text-slate-700 text-xs font-medium border border-slate-200">
                       {request.assessmentAreas.developmentApproach || 'Internally Developed'}
                     </span>
                   </div>
@@ -866,7 +866,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             {/* Top Action Header Bar with Proceed and Reject buttons */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#f1f5f9]">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-[#0d212c]">
+                <h2 className="text-base sm:text-lg font-semibold text-[#0d212c]">
                   Partnership Brief Review
                 </h2>
                 <p className="text-xs text-[#64748b] mt-0.5">
@@ -882,7 +882,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     setDecisionError(null)
                     setShowProceedModal(true)
                   }}
-                  className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                 >
                   <Check className="w-4 h-4 stroke-[2.5]" />
                   <span>Proceed</span>
@@ -894,7 +894,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     setDecisionError(null)
                     setShowRejectModal(true)
                   }}
-                  className="px-4 py-2 rounded-lg bg-white border border-red-500 text-red-600 hover:bg-red-50 font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-white border border-red-500 text-red-600 hover:bg-red-50 font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                 >
                   <X className="w-4 h-4 stroke-[2.5]" />
                   <span>Reject</span>
@@ -915,7 +915,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       onClick={() => scrollToSection(item.id)}
                       className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer ${
                         isActive
-                          ? 'bg-white text-[#36c0c9] font-bold shadow-2xs border-l-3 border-[#36c0c9]'
+                          ? 'bg-white text-[#36c0c9] font-semibold shadow-2xs border-l-3 border-[#36c0c9]'
                           : 'text-[#64748b] hover:bg-white/60 hover:text-[#0d212c]'
                       }`}
                     >
@@ -934,65 +934,68 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div id="company-info" className="pb-8 scroll-mt-24 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">1. Company Information</h3>
+                    <h3 className="text-base font-semibold text-[#0d212c]">
+                      1. Company Information
+                    </h3>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-1">
                     <div>
-                      <div className="text-xs font-semibold text-[#64748b]">
-                        Company Name <span className="text-red-500 font-bold">*</span>
+                      <div className="text-xs font-medium text-[#64748b]">
+                        Company Name <span className="text-red-500 font-semibold">*</span>
                       </div>
-                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                      <div className="text-sm font-medium text-[#0d212c] mt-1">
                         {request.companyInfo.company}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs font-semibold text-[#64748b]">
-                        Contact Person Name <span className="text-red-500 font-bold">*</span>
+                      <div className="text-xs font-medium text-[#64748b]">
+                        Contact Person Name <span className="text-red-500 font-semibold">*</span>
                       </div>
-                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                      <div className="text-sm font-medium text-[#0d212c] mt-1">
                         {request.companyInfo.name}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs font-semibold text-[#64748b]">
-                        Job Title <span className="text-red-500 font-bold">*</span>
+                      <div className="text-xs font-medium text-[#64748b]">
+                        Job Title <span className="text-red-500 font-semibold">*</span>
                       </div>
-                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                      <div className="text-sm font-medium text-[#0d212c] mt-1">
                         {request.companyInfo.jobTitle}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs font-semibold text-[#64748b]">
-                        Email Address <span className="text-red-500 font-bold">*</span>
+                      <div className="text-xs font-medium text-[#64748b]">
+                        Email Address <span className="text-red-500 font-semibold">*</span>
                       </div>
-                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                      <div className="text-sm font-medium text-[#0d212c] mt-1">
                         {request.companyInfo.email}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs font-semibold text-[#64748b]">Phone Number</div>
-                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                      <div className="text-xs font-medium text-[#64748b]">Phone Number</div>
+                      <div className="text-sm font-medium text-[#0d212c] mt-1">
                         {request.companyInfo.phoneNumber || 'Not provided'}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs font-semibold text-[#64748b]">
-                        Year Company Was Founded <span className="text-red-500 font-bold">*</span>
+                      <div className="text-xs font-medium text-[#64748b]">
+                        Year Company Was Founded{' '}
+                        <span className="text-red-500 font-semibold">*</span>
                       </div>
-                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                      <div className="text-sm font-medium text-[#0d212c] mt-1">
                         {request.companyInfo.yearFounded}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs font-semibold text-[#64748b]">Referred By</div>
-                      <div className="text-sm font-semibold text-[#0d212c] mt-1">
+                      <div className="text-xs font-medium text-[#64748b]">Referred By</div>
+                      <div className="text-sm font-medium text-[#0d212c] mt-1">
                         {request.referredBy || '—'}
                       </div>
                     </div>
@@ -1003,7 +1006,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div id="company-experience" className="py-8 scroll-mt-24 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <Award className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">
+                    <h3 className="text-base font-semibold text-[#0d212c]">
                       2. Company&apos;s Stage of Maturity and Experience
                     </h3>
                   </div>
@@ -1012,7 +1015,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     <p>{request.assessmentAreas.stageOfMaturityAndExperience}</p>
 
                     <div>
-                      <div className="font-bold text-[#0d212c] mb-2">Key milestones include:</div>
+                      <div className="font-semibold text-[#0d212c] mb-2">
+                        Key milestones include:
+                      </div>
                       <ul className="list-disc list-inside space-y-1 pl-1 text-[#475569]">
                         {(
                           request.assessmentAreas.milestones || [
@@ -1033,7 +1038,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div id="collaboration-proposal" className="py-8 scroll-mt-24 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <HeartHandshake className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">
+                    <h3 className="text-base font-semibold text-[#0d212c]">
                       3. Proposal of Collaboration
                     </h3>
                   </div>
@@ -1041,7 +1046,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <div className="text-xs sm:text-sm text-[#475569] leading-relaxed flex flex-col gap-3">
                     <p>{request.assessmentAreas.proposalOfCollaboration}</p>
                     <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                      <div className="font-bold text-[#0d212c] mb-1">
+                      <div className="font-semibold text-[#0d212c] mb-1">
                         Product, Platform &amp; Service Details:
                       </div>
                       <p>{request.assessmentAreas.productPlatformServiceDetails}</p>
@@ -1053,8 +1058,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div id="focus-area" className="py-8 scroll-mt-24 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <Target className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">
-                      4. Focus Area(s) <span className="text-red-500 font-bold">*</span>
+                    <h3 className="text-base font-semibold text-[#0d212c]">
+                      4. Focus Area(s) <span className="text-red-500 font-semibold">*</span>
                     </h3>
                   </div>
 
@@ -1062,7 +1067,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     {request.assessmentAreas.focusAreas.map((area, idx) => (
                       <span
                         key={idx}
-                        className="px-3 py-1.5 rounded-xl bg-[#f0fdfa] text-[#0f766e] text-xs font-semibold border border-[#ccfbf1]"
+                        className="px-3 py-1.5 rounded-xl bg-[#f0fdfa] text-[#0f766e] text-xs font-medium border border-[#ccfbf1]"
                       >
                         {area}
                       </span>
@@ -1074,7 +1079,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div id="solution-maturity" className="py-8 scroll-mt-24 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <Activity className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">
+                    <h3 className="text-base font-semibold text-[#0d212c]">
                       5. Solution Maturity &amp; Regulatory Approvals
                     </h3>
                   </div>
@@ -1083,7 +1088,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     <p>{request.assessmentAreas.solutionMaturityLevelAndRegulatory}</p>
                     {request.assessmentAreas.relevantApprovals && (
                       <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                        <span className="font-bold text-[#0d212c]">Regulatory Clearances: </span>
+                        <span className="font-semibold text-[#0d212c]">
+                          Regulatory Clearances:{' '}
+                        </span>
                         <span>{request.assessmentAreas.relevantApprovals}</span>
                       </div>
                     )}
@@ -1094,7 +1101,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div id="regulatory-approvals" className="py-8 scroll-mt-24 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">
+                    <h3 className="text-base font-semibold text-[#0d212c]">
                       6. Regulatory Approvals Checklist
                     </h3>
                   </div>
@@ -1109,7 +1116,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     ).map((appr, idx) => (
                       <span
                         key={idx}
-                        className={`px-3 py-1 rounded-xl text-xs font-semibold border ${
+                        className={`px-3 py-1 rounded-xl text-xs font-medium border ${
                           appr === 'Not applicable'
                             ? 'bg-slate-50 text-slate-500 border-slate-200'
                             : 'bg-[#f0fdfa] text-[#0f766e] border-[#ccfbf1]'
@@ -1128,9 +1135,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 >
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">
+                    <h3 className="text-base font-semibold text-[#0d212c]">
                       7. Innovation &amp; Differentiation{' '}
-                      <span className="text-red-500 font-bold">*</span>
+                      <span className="text-red-500 font-semibold">*</span>
                     </h3>
                   </div>
 
@@ -1143,7 +1150,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div id="development-approach" className="py-8 scroll-mt-24 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <Layers className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">8. Development Approach</h3>
+                    <h3 className="text-base font-semibold text-[#0d212c]">
+                      8. Development Approach
+                    </h3>
                   </div>
 
                   <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
@@ -1156,9 +1165,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div id="support-from-m42" className="py-8 scroll-mt-24 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <HeartHandshake className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">
+                    <h3 className="text-base font-semibold text-[#0d212c]">
                       9. Specific Resources &amp; Support from M42{' '}
-                      <span className="text-red-500 font-bold">*</span>
+                      <span className="text-red-500 font-semibold">*</span>
                     </h3>
                   </div>
 
@@ -1171,7 +1180,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div id="target-population" className="pt-8 scroll-mt-24 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-[#36c0c9]" />
-                    <h3 className="text-base font-bold text-[#0d212c]">
+                    <h3 className="text-base font-semibold text-[#0d212c]">
                       10. Target Patient Population &amp; Impact
                     </h3>
                   </div>
@@ -1196,7 +1205,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                             <Square className="w-4 h-4 text-slate-300 shrink-0" />
                           )}
                           <span
-                            className={`text-xs font-semibold ${isChecked ? 'text-[#0d212c]' : 'text-slate-400'}`}
+                            className={`text-xs font-medium ${isChecked ? 'text-[#0d212c]' : 'text-slate-400'}`}
                           >
                             {pop}
                           </span>
@@ -1215,7 +1224,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           <div className="flex flex-col gap-6 w-full animate-in fade-in duration-150">
             {/* Header: Title reduced by 2 units and reduced subtitle */}
             <div className="flex flex-col gap-1">
-              <h2 className="text-base font-bold text-[#0d212c]">Review &amp; Alignment</h2>
+              <h2 className="text-base font-semibold text-[#0d212c]">Review &amp; Alignment</h2>
               <p className="text-xs text-[#64748b]">
                 Send requests to internal stakeholders and strategy team to review this partnership
                 in sequence.
@@ -1226,10 +1235,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-bold text-[11px] shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-semibold text-[11px] shrink-0">
                     1
                   </div>
-                  <h3 className="text-sm sm:text-base font-bold text-[#0d212c]">
+                  <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">
                     Internal Interest
                   </h3>
                   {/* Subheading data in custom tooltip via i button */}
@@ -1253,7 +1262,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowQuestionnaireModal(true)}
-                    className="text-xs sm:text-sm font-semibold text-[#008a8a] hover:text-[#006e6e] cursor-pointer shrink-0 bg-transparent active:bg-transparent focus:outline-none"
+                    className="text-xs sm:text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer shrink-0 bg-transparent active:bg-transparent focus:outline-none"
                   >
                     View Questionnaire
                   </button>
@@ -1261,7 +1270,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowSendInternalModal(true)}
-                      className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
+                      className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-medium shadow-xs transition cursor-pointer shrink-0"
                     >
                       Send Request
                     </button>
@@ -1274,7 +1283,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div className="overflow-x-auto w-full">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-semibold uppercase tracking-wider">
+                      <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
                         <th className="py-3 px-4">Name</th>
                         {internalRequestSent ? (
                           <>
@@ -1297,7 +1306,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           <td colSpan={4} className="py-12 text-center text-[#64748b]">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <Users className="w-6 h-6 text-slate-300" />
-                              <div className="text-xs font-semibold text-[#0d212c]">
+                              <div className="text-xs font-medium text-[#0d212c]">
                                 No respondents added yet
                               </div>
                               <div className="text-xs text-[#64748b]">
@@ -1312,7 +1321,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                             <td className="py-3.5 px-4">
                               <div className="flex items-center gap-3">
                                 <div
-                                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                                  className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
                                   style={{
                                     backgroundColor: person.avatarColorBg,
                                     color: person.avatarColorText,
@@ -1321,7 +1330,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                                   {person.initials}
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-xs sm:text-sm font-bold text-[#0d212c] truncate">
+                                  <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
                                     {person.name}
                                   </span>
                                   <span className="text-[11px] font-medium text-[#64748b] truncate">
@@ -1407,7 +1416,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       type="button"
                       disabled={stakeholders.length >= 5}
                       onClick={handleOpenAddStakeholder}
-                      className={`px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
+                      className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
                         stakeholders.length >= 5
                           ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
                           : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
@@ -1435,10 +1444,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-bold text-[11px] shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-semibold text-[11px] shrink-0">
                     2
                   </div>
-                  <h3 className="text-sm sm:text-base font-bold text-[#0d212c]">Strategy Team</h3>
+                  <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">
+                    Strategy Team
+                  </h3>
                   {/* Subheading data in custom tooltip via i button */}
                   <div className="relative group inline-flex items-center">
                     <button
@@ -1459,7 +1470,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowJudgementCriteriaModal(true)}
-                    className="text-xs sm:text-sm font-semibold text-[#008a8a] hover:text-[#006e6e] cursor-pointer shrink-0 bg-transparent active:bg-transparent focus:outline-none"
+                    className="text-xs sm:text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer shrink-0 bg-transparent active:bg-transparent focus:outline-none"
                   >
                     View Judgement Criteria
                   </button>
@@ -1467,7 +1478,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowSendStrategyModal(true)}
-                      className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0"
+                      className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-medium shadow-xs transition cursor-pointer shrink-0"
                     >
                       Send Request
                     </button>
@@ -1480,7 +1491,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <div className="overflow-x-auto w-full">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-semibold uppercase tracking-wider">
+                      <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
                         <th className="py-3 px-4">Name</th>
                         {strategyRequestSent ? (
                           <>
@@ -1503,7 +1514,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           <td colSpan={4} className="py-12 text-center text-[#64748b]">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <Users className="w-6 h-6 text-slate-300" />
-                              <div className="text-xs font-semibold text-[#0d212c]">
+                              <div className="text-xs font-medium text-[#0d212c]">
                                 No strategy members added yet
                               </div>
                               <div className="text-xs text-[#64748b]">
@@ -1518,7 +1529,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                             <td className="py-3.5 px-4">
                               <div className="flex items-center gap-3">
                                 <div
-                                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                                  className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
                                   style={{
                                     backgroundColor: person.avatarColorBg,
                                     color: person.avatarColorText,
@@ -1527,7 +1538,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                                   {person.initials}
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-xs sm:text-sm font-bold text-[#0d212c] truncate">
+                                  <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
                                     {person.name}
                                   </span>
                                   <span className="text-[11px] font-medium text-[#64748b] truncate">
@@ -1600,7 +1611,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       type="button"
                       disabled={strategyMembers.length >= 2}
                       onClick={handleOpenAddStrategyMember}
-                      className={`px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
+                      className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
                         strategyMembers.length >= 2
                           ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
                           : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
@@ -1636,7 +1647,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <CheckCircle2 className="w-6 h-6 text-[#36c0c9]" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-[#0d212c]">Proceed to Next Stage</h3>
+                  <h3 className="text-lg font-semibold text-[#0d212c]">Proceed to Next Stage</h3>
                   <p className="text-xs text-[#64748b] mt-0.5">
                     Advance request to Screening &amp; Fit stage
                   </p>
@@ -1651,7 +1662,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="proceed-reason" className="text-xs font-semibold text-[#0d212c]">
+              <label htmlFor="proceed-reason" className="text-xs font-medium text-[#0d212c]">
                 Note
               </label>
               <textarea
@@ -1667,7 +1678,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#f1f5f9]">
               <button
                 onClick={() => setShowProceedModal(false)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -1676,7 +1687,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   onProceed?.(request.id, decisionReason.trim())
                   setShowProceedModal(false)
                 }}
-                className="px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white font-semibold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4 stroke-[2.5]" />
                 <span>Confirm &amp; Proceed</span>
@@ -1696,7 +1707,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <AlertCircle className="w-6 h-6 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-[#0d212c]">Reject Partnership Request</h3>
+                  <h3 className="text-lg font-semibold text-[#0d212c]">
+                    Reject Partnership Request
+                  </h3>
                   <p className="text-xs text-[#64748b] mt-0.5">
                     A mandatory reason is required to reject
                   </p>
@@ -1712,8 +1725,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5">
-                <label htmlFor="reject-reason" className="text-xs font-semibold text-[#0d212c]">
-                  Note <span className="text-red-500 font-bold">*</span>
+                <label htmlFor="reject-reason" className="text-xs font-medium text-[#0d212c]">
+                  Note <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <div className="relative group inline-flex items-center">
                   <div
@@ -1752,7 +1765,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#f1f5f9]">
               <button
                 onClick={() => setShowRejectModal(false)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -1766,7 +1779,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   onReject?.(request.id, decisionReason.trim())
                   setShowRejectModal(false)
                 }}
-                className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
               >
                 <X className="w-4 h-4 stroke-[2.5]" />
                 <span>Confirm Rejection</span>
@@ -1782,7 +1795,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-bold text-[#0d212c]">Add Respondant</h3>
+                <h3 className="text-lg font-semibold text-[#0d212c]">Add Respondant</h3>
                 <p className="text-xs text-[#64748b] mt-0.5">
                   Assign an internal team member to review this partnership request.
                 </p>
@@ -1804,8 +1817,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             <div className="flex flex-col gap-4">
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Select Team Member <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Select Team Member <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <select
                   value={selectedCandidateId}
@@ -1839,8 +1852,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
               {/* Dedicated Input Field: Role */}
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Role <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Role <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <input
                   type="text"
@@ -1856,8 +1869,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
               {/* Dedicated Input Field: Department */}
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Department <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Department <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <input
                   type="text"
@@ -1873,8 +1886,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
               {/* Dedicated Input Field: Domain Expertise */}
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Domain Expertise <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Domain Expertise <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <input
                   type="text"
@@ -1889,8 +1902,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Why you choose them <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Why you choose them <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <textarea
                   rows={3}
@@ -1909,7 +1922,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -1923,7 +1936,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   !whyChosen.trim()
                 }
                 onClick={handleSaveAddStakeholder}
-                className={`px-5 py-2.5 rounded-lg font-bold text-xs shadow-xs transition ${
+                className={`px-5 py-2.5 rounded-lg font-semibold text-xs shadow-xs transition ${
                   !selectedCandidateId ||
                   !newRole.trim() ||
                   !newDepartment.trim() ||
@@ -1954,7 +1967,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <Trash2 className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-[#0d212c]">Remove Respondent</h3>
+              <h3 className="text-lg font-semibold text-[#0d212c]">Remove Respondent</h3>
               <p className="text-xs text-[#64748b] mt-1 leading-relaxed">
                 Are you sure you want to remove{' '}
                 <strong className="text-[#0d212c]">{deletingStakeholder.name}</strong> from the
@@ -1964,13 +1977,13 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <div className="flex items-center justify-center gap-3 w-full mt-2">
               <button
                 onClick={() => setDeletingStakeholder(null)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer flex-1"
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer flex-1"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDeleteStakeholder}
-                className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-xs cursor-pointer flex-1"
+                className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition shadow-xs cursor-pointer flex-1"
               >
                 Delete
               </button>
@@ -1993,7 +2006,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <AlertCircle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-[#0d212c]">Maximum Limit Reached</h3>
+              <h3 className="text-lg font-semibold text-[#0d212c]">Maximum Limit Reached</h3>
               <p className="text-xs text-[#64748b] mt-1 leading-relaxed">
                 You can add up to 5 internal stakeholders per partnership request. Please edit or
                 remove an existing stakeholder to add another.
@@ -2002,7 +2015,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <div className="w-full mt-2">
               <button
                 onClick={() => setMaxLimitWarning(false)}
-                className="w-full px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                className="w-full px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold transition shadow-xs cursor-pointer"
               >
                 Understood
               </button>
@@ -2022,7 +2035,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <Send className="w-5 h-5 -rotate-12" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-[#0d212c]">
+                  <h3 className="text-lg font-semibold text-[#0d212c]">
                     Send Internal Interest Requests
                   </h3>
                 </div>
@@ -2037,7 +2050,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             {/* Selected Respondants list (No scroll) */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-[#0d212c]">
+              <label className="text-xs font-semibold text-[#0d212c]">
                 Selected Respondants ({selectedInternalSendIds.length})
               </label>
               <div className="border border-[#e2e8f0] rounded-xl divide-y divide-[#f1f5f9] bg-white">
@@ -2063,7 +2076,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </div>
                         <div
-                          className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0"
+                          className="w-7 h-7 rounded-full flex items-center justify-center font-semibold text-[11px] shrink-0"
                           style={{
                             backgroundColor: person.avatarColorBg,
                             color: person.avatarColorText,
@@ -2071,7 +2084,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         >
                           {person.initials}
                         </div>
-                        <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
+                        <span className="text-xs sm:text-sm font-medium text-[#0d212c] truncate">
                           {person.name}
                         </span>
                       </div>
@@ -2086,7 +2099,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             {/* Note field */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-[#0d212c]">Note</label>
+              <label className="text-xs font-medium text-[#0d212c]">Note</label>
               <textarea
                 rows={4}
                 value={internalSendNote}
@@ -2098,7 +2111,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             {/* Response due (strictly non-editable) */}
             <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-xs font-semibold text-[#0d212c]">Response due</label>
+              <label className="text-xs font-medium text-[#0d212c]">Response due</label>
               <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-[#e2e8f0] bg-slate-50 text-xs sm:text-sm font-medium text-[#0d212c] select-none">
                 <Calendar className="w-4 h-4 text-[#64748b]" />
                 <span>5 business days</span>
@@ -2110,7 +2123,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setShowSendInternalModal(false)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -2122,7 +2135,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   setInternalRequestSent(true)
                   setReviewToast('Review requests sent successfully to selected stakeholders.')
                 }}
-                className={`px-5 py-2.5 rounded-lg font-bold text-xs shadow-xs transition ${
+                className={`px-5 py-2.5 rounded-lg font-semibold text-xs shadow-xs transition ${
                   selectedInternalSendIds.length === 0
                     ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                     : 'bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer'
@@ -2146,7 +2159,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <Send className="w-5 h-5 -rotate-12" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-[#0d212c]">
+                  <h3 className="text-lg font-semibold text-[#0d212c]">
                     Send Strategy Review Requests
                   </h3>
                 </div>
@@ -2161,7 +2174,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             {/* Selected Respondants list (No scroll) */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-[#0d212c]">
+              <label className="text-xs font-semibold text-[#0d212c]">
                 Selected Respondants ({selectedStrategySendIds.length})
               </label>
               <div className="border border-[#e2e8f0] rounded-xl divide-y divide-[#f1f5f9] bg-white">
@@ -2187,7 +2200,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </div>
                         <div
-                          className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0"
+                          className="w-7 h-7 rounded-full flex items-center justify-center font-semibold text-[11px] shrink-0"
                           style={{
                             backgroundColor: person.avatarColorBg,
                             color: person.avatarColorText,
@@ -2195,7 +2208,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         >
                           {person.initials}
                         </div>
-                        <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
+                        <span className="text-xs sm:text-sm font-medium text-[#0d212c] truncate">
                           {person.name}
                         </span>
                       </div>
@@ -2210,7 +2223,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             {/* Note field */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-[#0d212c]">Note</label>
+              <label className="text-xs font-medium text-[#0d212c]">Note</label>
               <textarea
                 rows={4}
                 value={strategySendNote}
@@ -2222,7 +2235,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             {/* Response due: strictly non-editable, 2-4 working days for strategy team */}
             <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-xs font-semibold text-[#0d212c]">Response due</label>
+              <label className="text-xs font-medium text-[#0d212c]">Response due</label>
               <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-[#e2e8f0] bg-slate-50 text-xs sm:text-sm font-medium text-[#0d212c] select-none">
                 <Calendar className="w-4 h-4 text-[#64748b]" />
                 <span>2-4 working days</span>
@@ -2234,7 +2247,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setShowSendStrategyModal(false)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -2246,7 +2259,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   setStrategyRequestSent(true)
                   setReviewToast('Strategy review requests sent successfully to selected members.')
                 }}
-                className={`px-5 py-2.5 rounded-lg font-bold text-xs shadow-xs transition ${
+                className={`px-5 py-2.5 rounded-lg font-semibold text-xs shadow-xs transition ${
                   selectedStrategySendIds.length === 0
                     ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                     : 'bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer'
@@ -2265,7 +2278,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-bold text-[#0d212c]">Add Team Member</h3>
+                <h3 className="text-lg font-semibold text-[#0d212c]">Add Team Member</h3>
                 <p className="text-xs text-[#64748b] mt-0.5">
                   Assign a strategy team member to evaluate this partnership.
                 </p>
@@ -2287,8 +2300,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             <div className="flex flex-col gap-4">
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Select Team Member <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Select Team Member <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <select
                   value={selectedStrategyCandId}
@@ -2322,8 +2335,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
               {/* Dedicated Input Field: Role */}
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Role <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Role <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <input
                   type="text"
@@ -2339,8 +2352,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
               {/* Dedicated Input Field: Department */}
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Department <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Department <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <input
                   type="text"
@@ -2356,8 +2369,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
               {/* Dedicated Input Field: Domain Expertise */}
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Domain Expertise <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Domain Expertise <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <input
                   type="text"
@@ -2372,8 +2385,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#0d212c]">
-                  Why you choose them <span className="text-red-500 font-bold">*</span>
+                <label className="text-xs font-medium text-[#0d212c]">
+                  Why you choose them <span className="text-red-500 font-semibold">*</span>
                 </label>
                 <textarea
                   rows={3}
@@ -2392,7 +2405,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setIsAddStrategyModalOpen(false)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -2406,7 +2419,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   !whyStrategyChosen.trim()
                 }
                 onClick={handleSaveAddStrategyMember}
-                className={`px-5 py-2.5 rounded-lg font-bold text-xs shadow-xs transition ${
+                className={`px-5 py-2.5 rounded-lg font-semibold text-xs shadow-xs transition ${
                   !selectedStrategyCandId ||
                   !newStrategyRole.trim() ||
                   !newStrategyDepartment.trim() ||
@@ -2437,7 +2450,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <Trash2 className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-[#0d212c]">Remove Strategy Member</h3>
+              <h3 className="text-lg font-semibold text-[#0d212c]">Remove Strategy Member</h3>
               <p className="text-xs text-[#64748b] mt-1 leading-relaxed">
                 Are you sure you want to remove{' '}
                 <strong className="text-[#0d212c]">{deletingStrategyMember.name}</strong> from the
@@ -2447,13 +2460,13 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <div className="flex items-center justify-center gap-3 w-full mt-2">
               <button
                 onClick={() => setDeletingStrategyMember(null)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-bold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer flex-1"
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer flex-1"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDeleteStrategyMember}
-                className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-xs cursor-pointer flex-1"
+                className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition shadow-xs cursor-pointer flex-1"
               >
                 Delete
               </button>
@@ -2476,7 +2489,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <AlertCircle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-[#0d212c]">Maximum Limit Reached</h3>
+              <h3 className="text-lg font-semibold text-[#0d212c]">Maximum Limit Reached</h3>
               <p className="text-xs text-[#64748b] mt-1 leading-relaxed">
                 You can add up to 2 strategy team members per partnership request. Please remove an
                 existing member to add another.
@@ -2485,7 +2498,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <div className="w-full mt-2">
               <button
                 onClick={() => setMaxStrategyLimitWarning(false)}
-                className="w-full px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                className="w-full px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold transition shadow-xs cursor-pointer"
               >
                 Understood
               </button>
@@ -2500,7 +2513,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#e2e8f0] flex flex-col gap-4 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
-              <h3 className="text-base sm:text-lg font-bold text-[#0d212c]">View Questionnaire</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-[#0d212c]">
+                View Questionnaire
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowQuestionnaireModal(false)}
@@ -2521,7 +2536,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 'What would make you say no?',
               ].map((question, idx) => (
                 <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
+                  <div className="w-5 h-5 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-[11px] font-semibold shrink-0 mt-0.5">
                     {idx + 1}
                   </div>
                   <p className="text-xs sm:text-[13px] font-normal text-[#0d212c] leading-relaxed">
@@ -2536,7 +2551,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setShowQuestionnaireModal(false)}
-                className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-medium text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Close
               </button>
@@ -2551,7 +2566,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#e2e8f0] flex flex-col gap-4 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
-              <h3 className="text-base sm:text-lg font-bold text-[#0d212c]">Judgement Criteria</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-[#0d212c]">
+                Judgement Criteria
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowJudgementCriteriaModal(false)}
@@ -2601,7 +2618,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <span className="text-xs sm:text-[13px] font-medium text-slate-700">
                     {item.title}
                   </span>
-                  <span className="text-xs font-semibold text-[#0d212c] sm:text-right">
+                  <span className="text-xs font-medium text-[#0d212c] sm:text-right">
                     {item.value}
                   </span>
                 </div>
@@ -2613,7 +2630,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setShowJudgementCriteriaModal(false)}
-                className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-medium text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Close
               </button>
@@ -2624,7 +2641,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
       {/* TOAST NOTIFICATION */}
       {reviewToast && (
-        <div className="fixed top-5 right-5 z-50 p-4 rounded-xl shadow-lg bg-white border border-[#e2e8f0] text-sm font-semibold flex items-center gap-2.5 animate-in slide-in-from-top-4">
+        <div className="fixed top-5 right-5 z-50 p-4 rounded-xl shadow-lg bg-white border border-[#e2e8f0] text-sm font-medium flex items-center gap-2.5 animate-in slide-in-from-top-4">
           <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
           <span>{reviewToast}</span>
         </div>

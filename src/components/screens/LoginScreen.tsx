@@ -93,7 +93,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           <div className="text-[#0d212c] mb-4">
             <Loader2 className="w-12 h-12 animate-spin text-[#0d212c]" />
           </div>
-          <h2 className="text-[20px] font-semibold text-[#0d212c] mb-2">
+          <h2 className="text-[20px] font-medium text-[#0d212c] mb-2">
             Setting up your workspace...
           </h2>
           <p className="text-[14px] text-slate-500">
@@ -117,7 +117,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               alt="M42 logo"
               className="h-8 w-auto object-contain shrink-0"
             />
-            <h1 className="font-semibold text-xl text-[#0d212c] tracking-tight">
+            <h1 className="font-medium text-xl text-[#0d212c] tracking-tight">
               Tech Due Diligence
             </h1>
           </div>
@@ -133,7 +133,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="flex items-start gap-3.5">
               <ShieldCheck className="w-6 h-6 text-[#0f766e] shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-[#0d212c] text-sm">Intelligent screening</h3>
+                <h3 className="font-semibold text-[#0d212c] text-sm">Intelligent screening</h3>
                 <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">
                   AI-assisted assessment to identify relevant, high-potential partnership
                   opportunities.
@@ -144,7 +144,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="flex items-start gap-3.5">
               <Users className="w-6 h-6 text-[#0f766e] shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-[#0d212c] text-sm">Cross-functional alignment</h3>
+                <h3 className="font-semibold text-[#0d212c] text-sm">Cross-functional alignment</h3>
                 <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">
                   Connect internal experts and strategy teams to evaluate opportunities together.
                 </p>
@@ -154,7 +154,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="flex items-start gap-3.5">
               <PieChart className="w-6 h-6 text-[#0f766e] shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-[#0d212c] text-sm">End-to-end visibility</h3>
+                <h3 className="font-semibold text-[#0d212c] text-sm">End-to-end visibility</h3>
                 <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">
                   Track reviews, decisions, and partnership progress in one centralized workspace.
                 </p>
@@ -169,7 +169,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         {currentStep === 'welcome' ? (
           <div className="w-full max-w-md bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center shadow-xs flex flex-col items-center">
             {/* Welcome Text */}
-            <h2 className="text-2xl font-bold text-[#0d212c] mb-2 tracking-tight">Welcome</h2>
+            <h2 className="text-2xl font-semibold text-[#0d212c] mb-2 tracking-tight">Welcome</h2>
             <p className="text-slate-500 text-sm mb-8 leading-relaxed max-w-sm mx-auto">
               Sign in with your organisational account
             </p>
@@ -183,7 +183,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <Fingerprint className="w-5 h-5 text-gray-500 group-hover:text-[#36c0c9] transition-colors" />
               </div>
               <div className="mt-1">
-                <div className="font-semibold text-[15px] text-[#0d212c] group-hover:text-[#36c0c9] transition-colors">
+                <div className="font-medium text-[15px] text-[#0d212c] group-hover:text-[#36c0c9] transition-colors">
                   Sign in with SSO
                 </div>
                 <div className="text-[13px] text-gray-500 mt-0.5">
@@ -205,7 +205,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                       e.preventDefault()
                       alert('For SSO support, contact support@m42.ae')
                     }}
-                    className="text-[#0f766e] font-semibold hover:underline inline-block"
+                    className="text-[#0f766e] font-medium hover:underline inline-block"
                   >
                     Contact your administrator.
                   </a>
@@ -219,7 +219,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => setCurrentStep('welcome')}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#0d212c] transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#0d212c] transition cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to sign in</span>
@@ -227,7 +227,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             </div>
 
             <div className="flex items-center gap-2 mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-[#0d212c] tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-semibold text-[#0d212c] tracking-tight">
                 Select Profile
               </h2>
               <div className="relative group inline-flex items-center">
@@ -260,7 +260,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                       onClick={() => handleSelectProfile(profile)}
                       className="w-full text-left p-3.5 rounded-xl border border-gray-200 hover:border-[#36c0c9] hover:bg-[#36c0c9]/5 transition-all flex flex-col gap-0.5 group cursor-pointer shadow-2xs hover:shadow-xs"
                     >
-                      <span className="font-bold text-sm text-[#0d212c] group-hover:text-[#36c0c9] transition-colors truncate">
+                      <span className="font-semibold text-sm text-[#0d212c] group-hover:text-[#36c0c9] transition-colors truncate">
                         {profile.roleTitle}
                       </span>
                       <span className="text-xs text-slate-500 truncate">{profile.email}</span>
@@ -273,7 +273,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     key={profile.id}
                     className="w-full text-left p-3.5 rounded-xl border border-gray-200 bg-white flex flex-col gap-0.5 shadow-2xs cursor-default select-none"
                   >
-                    <span className="font-bold text-sm text-[#0d212c] truncate">
+                    <span className="font-semibold text-sm text-[#0d212c] truncate">
                       {profile.roleTitle}
                     </span>
                     <span className="text-xs text-slate-500 truncate">{profile.email}</span>

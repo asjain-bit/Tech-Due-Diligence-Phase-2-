@@ -48,7 +48,7 @@ export default function HomePage() {
       >
         {/* Top Header Bar — Compact, no subheading, no theme toggle */}
         <header className="w-full bg-white border-b border-[#e2e8f0] px-6 lg:px-10 py-3.5 flex items-center justify-between sticky top-0 z-40 text-[#0d212c] shadow-xs">
-          <h1 className="font-extrabold text-lg lg:text-xl tracking-tight text-[#0d212c]">
+          <h1 className="font-semibold text-lg lg:text-xl tracking-tight text-[#0d212c]">
             Dashboard
           </h1>
         </header>

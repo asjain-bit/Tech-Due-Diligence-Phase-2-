@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   alt="M42 logo"
                   className="h-5 w-auto object-contain shrink-0"
                 />
-                <span className="font-extrabold text-xs tracking-tight text-white truncate leading-none">
+                <span className="font-semibold text-xs tracking-tight text-white truncate leading-none">
                   Tech Due Diligence
                 </span>
               </div>
@@ -131,7 +131,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={`flex transition-all cursor-pointer select-none rounded-xl ${
                   collapsed
                     ? 'flex-col items-center justify-center w-full py-3.5 px-1 gap-1 text-center'
-                    : 'items-center gap-3 px-3.5 py-3 text-sm font-semibold'
+                    : 'items-center gap-3 px-3.5 py-3 text-sm font-medium'
                 } ${
                   isActive
                     ? 'bg-[#153443] text-[#36c0c9] shadow-xs'
@@ -142,8 +142,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span
                   className={
                     collapsed
-                      ? 'text-[11px] font-semibold leading-tight text-inherit'
-                      : 'text-sm font-semibold'
+                      ? 'text-[11px] font-medium leading-tight text-inherit'
+                      : 'text-sm font-medium'
                   }
                 >
                   {item.label}
@@ -169,8 +169,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className="bg-[#153443] text-white border-white/20 shrink-0"
                 />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-white truncate">{userName}</span>
-                  <span className="text-[11px] font-semibold text-[#36c0c9] truncate">
+                  <span className="text-xs font-semibold text-white truncate">{userName}</span>
+                  <span className="text-[11px] font-medium text-[#36c0c9] truncate">
                     {userDesignation}
                   </span>
                 </div>
@@ -198,8 +198,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className="bg-[#153443] text-white border border-slate-200 shrink-0"
                     />
                     <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-bold text-[#0d212c] truncate">{userName}</span>
-                      <span className="text-[11px] font-semibold text-[#36c0c9] truncate">
+                      <span className="text-xs font-semibold text-[#0d212c] truncate">
+                        {userName}
+                      </span>
+                      <span className="text-[11px] font-medium text-[#36c0c9] truncate">
                         {userDesignation}
                       </span>
                     </div>
@@ -211,7 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setShowUserOverlay(false)
                         setShowLogoutConfirm(true)
                       }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Logout</span>
@@ -255,8 +257,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className="bg-[#153443] text-white border border-slate-200 shrink-0"
                     />
                     <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-bold text-[#0d212c] truncate">{userName}</span>
-                      <span className="text-[11px] font-semibold text-[#36c0c9] truncate">
+                      <span className="text-xs font-semibold text-[#0d212c] truncate">
+                        {userName}
+                      </span>
+                      <span className="text-[11px] font-medium text-[#36c0c9] truncate">
                         {userDesignation}
                       </span>
                     </div>
@@ -268,7 +272,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setShowUserOverlay(false)
                         setShowLogoutConfirm(true)
                       }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Logout</span>
@@ -297,7 +301,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <LogOut className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-extrabold text-[#0d212c] mb-1.5">Confirm Logout</h3>
+              <h3 className="text-xl font-semibold text-[#0d212c] mb-1.5">Confirm Logout</h3>
               <p className="text-xs text-[#64748b] leading-relaxed max-w-md">
                 Are you sure you want to log out of M42 Tech Due Diligence?
               </p>
@@ -305,7 +309,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center justify-center gap-3 w-full mt-2">
               <button
                 onClick={() => setShowLogoutConfirm(false)}
-                className="px-6 py-3 rounded-xl border border-[#e2e8f0] text-xs font-bold text-[#0d212c] hover:bg-slate-50 cursor-pointer flex-1 bg-transparent transition"
+                className="px-6 py-3 rounded-xl border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer flex-1 bg-transparent transition"
               >
                 Cancel
               </button>
@@ -314,7 +318,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   setShowLogoutConfirm(false)
                   onSignOut?.()
                 }}
-                className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold cursor-pointer flex-1 border-0 transition shadow-2xs"
+                className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer flex-1 border-0 transition shadow-2xs"
               >
                 Logout
               </button>

@@ -86,3 +86,8 @@ body {
 .font-serif {
   font-family: var(--font-serif, Georgia, serif);
 }
+
+strong,
+b {
+  font-weight: 600;
+}
