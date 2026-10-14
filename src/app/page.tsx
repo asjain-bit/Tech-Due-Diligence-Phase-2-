@@ -55,7 +55,7 @@ export default function HomePage() {
 
         {/* Full-Width Dashboard Content */}
         <main className="flex-1 w-full">
-          <DashboardScreen />
+          <DashboardScreen userProfile={userProfile} />
         </main>
       </div>
     </div>

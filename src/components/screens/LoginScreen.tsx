@@ -123,7 +123,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           </div>
 
           <div>
-            <h2 className="text-[22px] lg:text-[28px] font-medium text-[#0d212c] tracking-tight leading-snug">
+            <h2 className="text-[20px] lg:text-[26px] font-semibold text-[#0d212c] tracking-tight leading-snug">
               From partnership request to strategic collaboration.
             </h2>
           </div>
@@ -247,12 +247,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               </div>
             </div>
 
-            {/* List of Profile Views: only role and user email, only Director profile can enter */}
+            {/* List of Profile Views: only role and user email, accessible profiles can enter */}
             <div className="flex flex-col gap-2.5">
               {AVAILABLE_PROFILES.map((profile) => {
-                const isDirector = profile.id === 'director'
+                const isAccessible =
+                  profile.id === 'director' ||
+                  profile.id === 'evaluator' ||
+                  profile.id === 'strategy-fit'
 
-                if (isDirector) {
+                if (isAccessible) {
                   return (
                     <button
                       key={profile.id}

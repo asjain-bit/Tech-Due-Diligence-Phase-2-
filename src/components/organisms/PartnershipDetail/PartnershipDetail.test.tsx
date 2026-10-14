@@ -40,7 +40,7 @@ describe('PartnershipDetail', () => {
     expect(screen.getByText('Founded in 2018')).toBeInTheDocument()
     expect(screen.getByText('UAE, Dubai')).toBeInTheDocument()
     expect(screen.getByText('Referred by:')).toBeInTheDocument()
-    expect(screen.getByText('Dr. Fatima Al Mansoori')).toBeInTheDocument()
+    expect(screen.getByText('Dr. Noura Al Ghaithi')).toBeInTheDocument()
   })
 
   it('renders overview inside single large box with workflow without numbers and Agent Recommendation chip', () => {
@@ -59,15 +59,15 @@ describe('PartnershipDetail', () => {
 
     // Workflow Progress heading without numbers in steps
     expect(screen.getByText('Workflow Progress')).toBeInTheDocument()
-    expect(screen.getByText('Initial Review')).toBeInTheDocument()
-    expect(screen.getByText('Internal Interest')).toBeInTheDocument()
-    expect(screen.getByText('Evaluation')).toBeInTheDocument()
-    expect(screen.getByText('Strategy Alignment')).toBeInTheDocument()
-    expect(screen.getByText('Legal & Sponsor Review')).toBeInTheDocument()
+    expect(screen.getByText('Submission')).toBeInTheDocument()
+    expect(screen.getByText('Intake & Triage')).toBeInTheDocument()
+    expect(screen.getByText('Screening & Fit')).toBeInTheDocument()
+    expect(screen.getByText('NDA & Discovery')).toBeInTheDocument()
+    expect(screen.getByText('Value Assessment')).toBeInTheDocument()
 
     // Numbers 1., 2., 3. removed from step titles
-    expect(screen.queryByText('1. Initial Review')).not.toBeInTheDocument()
-    expect(screen.queryByText('2. Internal Interest')).not.toBeInTheDocument()
+    expect(screen.queryByText('1. Submission')).not.toBeInTheDocument()
+    expect(screen.queryByText('2. Intake & Triage')).not.toBeInTheDocument()
 
     // Agent Recommendation chip only (one word proceed/reject and confidence high/medium/low)
     expect(screen.getByText(/Agent Recommendation:/i)).toBeInTheDocument()
@@ -103,7 +103,7 @@ describe('PartnershipDetail', () => {
       />
     )
 
-    const briefTab = screen.getByRole('button', { name: /Partnership Brief/i })
+    const briefTab = screen.getByRole('tab', { name: /Partnership Brief/i })
     await user.click(briefTab)
 
     // Proceed and Reject buttons visible in the Brief tab
@@ -135,7 +135,7 @@ describe('PartnershipDetail', () => {
     )
 
     // Switch to Internal Review tab
-    const internalTab = screen.getByRole('button', { name: /Internal Review/i })
+    const internalTab = screen.getByRole('tab', { name: /Internal Review/i })
     await user.click(internalTab)
 
     // Heading without icon and subtitle
@@ -148,14 +148,12 @@ describe('PartnershipDetail', () => {
       )
     ).toBeInTheDocument()
 
-    // Table columns: count column removed, role & department removed from separate headers, Why Agent Suggested added
+    // Table columns: count column removed, role & department removed from separate headers, Recommended added
     expect(screen.queryByRole('columnheader', { name: '#' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('columnheader', { name: 'Name' })[0]).toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: 'Role' })).not.toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: 'Department' })).not.toBeInTheDocument()
-    expect(
-      screen.getAllByRole('columnheader', { name: 'Why Agent Suggested' })[0]
-    ).toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader', { name: 'Recommended' })[0]).toBeInTheDocument()
     expect(screen.getAllByRole('columnheader', { name: 'Expertise' })[0]).toBeInTheDocument()
     expect(screen.getAllByRole('columnheader', { name: 'Actions' })[0]).toBeInTheDocument()
 
@@ -170,9 +168,9 @@ describe('PartnershipDetail', () => {
 
     // Table renders stakeholders from Image 1 with role just below name
     expect(screen.getByText('Riza Sayeed')).toBeInTheDocument()
-    expect(screen.getByText('Head of AI & Analytics')).toBeInTheDocument()
+    expect(screen.getByText(/Head of AI & Analytics/i)).toBeInTheDocument()
     expect(screen.getByText('Parag Agarwal')).toBeInTheDocument()
-    expect(screen.getByText('Radiology & Imaging Lead')).toBeInTheDocument()
+    expect(screen.getByText(/Radiology & Imaging Lead/i)).toBeInTheDocument()
     expect(screen.getByText('Najla Al Mansoori')).toBeInTheDocument()
     expect(screen.getByText('Khalid Al Zaabi')).toBeInTheDocument()
     expect(screen.getByText('Sara Malik')).toBeInTheDocument()
@@ -203,11 +201,11 @@ describe('PartnershipDetail', () => {
     const whyInput = screen.getByPlaceholderText(/Enter reason why/i)
     await user.type(whyInput, 'Extensive expertise in clinical diagnostics.')
 
-    const confirmAddBtn = screen.getByRole('button', { name: 'Add Respondant' })
-    await user.click(confirmAddBtn)
+    const confirmAddBtns = screen.getAllByRole('button', { name: 'Add Respondant' })
+    await user.click(confirmAddBtns[confirmAddBtns.length - 1])
 
     expect(screen.getByText('Dr. Mona Al Hashimi')).toBeInTheDocument()
-    expect(screen.getByText('Chief Medical Officer')).toBeInTheDocument()
+    expect(screen.getByText(/Chief Medical Officer/i)).toBeInTheDocument()
   })
 
   it('triggers onBack when Back to Partnership Requests is clicked', async () => {
@@ -244,8 +242,8 @@ describe('PartnershipDetail', () => {
     await user.click(sendButtons[0])
 
     // Inside modal, click Send Request
-    const modalSendBtn = screen.getByRole('button', { name: 'Send Request' })
-    await user.click(modalSendBtn)
+    const allSendBtns = screen.getAllByRole('button', { name: 'Send Request' })
+    await user.click(allSendBtns[allSendBtns.length - 1])
 
     // Table transforms: shows Status, Deadline (5 days), Decision without Questionnaire column
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()

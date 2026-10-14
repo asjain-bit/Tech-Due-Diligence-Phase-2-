@@ -30,6 +30,8 @@ import {
   Trash2,
   Info,
   Send,
+  FileText,
+  UserPlus,
 } from 'lucide-react'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import type { PartnershipDetailProps, DetailTab } from './PartnershipDetail.types'
@@ -140,8 +142,87 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   onBack,
   onProceed,
   onReject,
+  userProfile,
   className = '',
 }) => {
+  const isInternalTeam =
+    userProfile?.id === 'evaluator' || userProfile?.roleTitle === 'Internal Interest Team'
+  const isStrategyTeam =
+    userProfile?.id === 'strategy-fit' || userProfile?.roleTitle === 'Strategy Team'
+  const isNonDirector = isInternalTeam || isStrategyTeam
+
+  // Delete note state
+  const [deleteNote, setDeleteNote] = useState('')
+
+  // View member response modal state
+  const [viewingResponseMember, setViewingResponseMember] =
+    useState<InternalInterestStakeholder | null>(null)
+
+  // Questionnaire states for Internal Interest Team profile
+  const [q1Problem, setQ1Problem] = useState(
+    'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics.'
+  )
+  const [q2Kpi, setQ2Kpi] = useState('ICU sepsis mortality')
+  const [q2Baseline, setQ2Baseline] = useState('21% over 12 months')
+  const [q2Change, setQ2Change] = useState('3 points lower in 12 months')
+  const [q3Sponsor, setQ3Sponsor] = useState('Yes, we would sponsor')
+  const [q4Budget, setQ4Budget] = useState('Existing budget line')
+  const [q5SayNo, setQ5SayNo] = useState(
+    'High latency in EHR synchronization or high false positive alarm fatigue among nursing staff.'
+  )
+  const [aiStatementChoice, setAiStatementChoice] = useState<'yes' | 'change'>('yes')
+  const [customStatement, setCustomStatement] = useState(
+    'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics. An alert that reads vitals and labs continuously could get antibiotics started sooner and bring ICU sepsis mortality down.'
+  )
+  const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false)
+
+  const allQuestionsAnswered = Boolean(
+    q1Problem.trim() &&
+    q2Kpi &&
+    q2Baseline.trim() &&
+    q2Change.trim() &&
+    q3Sponsor &&
+    q4Budget &&
+    q5SayNo.trim()
+  )
+
+  const dynamicAiStatement = q1Problem.trim()
+    ? `${q1Problem.trim().endsWith('.') ? q1Problem.trim() : q1Problem.trim() + '.'} An alert that reads vitals and labs continuously could get antibiotics started sooner and bring ${q2Kpi || 'clinical mortality'} down.`
+    : 'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics. An alert that reads vitals and labs continuously could get antibiotics started sooner and bring ICU sepsis mortality down.'
+
+  const handleSendQuestionnaire = () => {
+    const finalStatement =
+      aiStatementChoice === 'change' && customStatement.trim()
+        ? customStatement.trim()
+        : dynamicAiStatement
+
+    const responsePayload = {
+      problemAndCurrentApproach: q1Problem,
+      targetKpi: q2Kpi,
+      baselineToday: q2Baseline,
+      changeThatMatters: q2Change,
+      sponsorPilot: q3Sponsor,
+      budgetLine: q4Budget,
+      whatWouldMakeYouSayNo: q5SayNo,
+      valueAndNeedStatement: finalStatement,
+      submittedAt: 'Just now',
+    }
+
+    setStakeholders((prev) =>
+      prev.map((s, idx) =>
+        idx === 0
+          ? {
+              ...s,
+              status: 'Completed',
+              decision: 'Proceed',
+              response: responsePayload,
+            }
+          : s
+      )
+    )
+    setQuestionnaireSubmitted(true)
+  }
+
   const [activeTab, setActiveTab] = useState<DetailTab>('overview')
   const [activeNavSection, setActiveNavSection] = useState('company-info')
 
@@ -225,6 +306,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   // Open delete respondent confirmation
   const handleOpenDeleteStakeholder = (person: InternalInterestStakeholder) => {
     setDeletingStakeholder(person)
+    setDeleteNote('')
   }
 
   // Save new respondent with dedicated fields
@@ -251,6 +333,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       whySuggested: whyChosen.trim(),
       avatarColorBg: candidate.avatarColorBg,
       avatarColorText: candidate.avatarColorText,
+      source: 'manual',
     }
 
     setStakeholders([...stakeholders, newRespondent])
@@ -262,6 +345,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     if (!deletingStakeholder) return
     setStakeholders(stakeholders.filter((p) => p.id !== deletingStakeholder.id))
     setDeletingStakeholder(null)
+    setDeleteNote('')
   }
 
   // Strategy Team state (starts with only 1 person)
@@ -395,6 +479,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       whySuggested: whyStrategyChosen.trim(),
       avatarColorBg: candidate.avatarColorBg,
       avatarColorText: candidate.avatarColorText,
+      source: 'manual',
     }
 
     setStrategyMembers([...strategyMembers, newMember])
@@ -498,21 +583,25 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         {/* Metadata items row — Vendor designation removed, Referred by retained inside, Submitted on on bottom right */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-x-6 gap-y-2 pt-4 border-t border-[#f1f5f9] text-xs text-[#64748b]">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <div className="flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-medium text-[#0d212c]">{request.companyInfo.name}</span>
-            </div>
+            {!isNonDirector && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="font-medium text-[#0d212c]">{request.companyInfo.name}</span>
+                </div>
 
-            <div className="flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-slate-400" />
-              <span>{request.companyInfo.email}</span>
-            </div>
+                <div className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{request.companyInfo.email}</span>
+                </div>
 
-            {request.companyInfo.phoneNumber && (
-              <div className="flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-slate-400" />
-                <span>{request.companyInfo.phoneNumber}</span>
-              </div>
+                {request.companyInfo.phoneNumber && (
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{request.companyInfo.phoneNumber}</span>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="flex items-center gap-1.5">
@@ -527,10 +616,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               </div>
             )}
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-400">Referred by:</span>
-              <span className="font-medium text-[#0d212c]">{request.referredBy || '—'}</span>
-            </div>
+            {!isNonDirector && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400">Referred by:</span>
+                <span className="font-medium text-[#0d212c]">{request.referredBy || '—'}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-1 text-xs text-[#64748b] sm:ml-auto shrink-0 self-end sm:self-auto">
@@ -572,8 +663,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       {/* LARGE WHITE BOX ENCLOSING TABS AND ALL CONTENT */}
       <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col gap-6">
         {/* Tabs Bar inside the large white box */}
-        <div className="flex items-center gap-8 border-b border-[#f1f5f9] pb-0">
+        <div role="tablist" className="flex items-center gap-8 border-b border-[#f1f5f9] pb-0">
           <button
+            role="tab"
+            aria-selected={activeTab === 'overview'}
             onClick={() => setActiveTab('overview')}
             className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
               activeTab === 'overview'
@@ -585,6 +678,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           </button>
 
           <button
+            role="tab"
+            aria-selected={activeTab === 'brief'}
             onClick={() => setActiveTab('brief')}
             className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
               activeTab === 'brief'
@@ -595,16 +690,35 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <span>Partnership Brief</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('internal_review')}
-            className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
-              activeTab === 'internal_review' || activeTab === 'internal_interest'
-                ? 'text-[#36c0c9] font-semibold border-b-2 border-[#36c0c9]'
-                : 'text-[#64748b] hover:text-[#0d212c] border-b-2 border-transparent'
-            }`}
-          >
-            <span>Internal Review</span>
-          </button>
+          {isInternalTeam && (
+            <button
+              role="tab"
+              aria-selected={activeTab === 'questionnaire'}
+              onClick={() => setActiveTab('questionnaire')}
+              className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
+                activeTab === 'questionnaire'
+                  ? 'text-[#36c0c9] font-semibold border-b-2 border-[#36c0c9]'
+                  : 'text-[#64748b] hover:text-[#0d212c] border-b-2 border-transparent'
+              }`}
+            >
+              <span>Questionnaire</span>
+            </button>
+          )}
+
+          {!isNonDirector && (
+            <button
+              role="tab"
+              aria-selected={activeTab === 'internal_review' || activeTab === 'internal_interest'}
+              onClick={() => setActiveTab('internal_review')}
+              className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
+                activeTab === 'internal_review' || activeTab === 'internal_interest'
+                  ? 'text-[#36c0c9] font-semibold border-b-2 border-[#36c0c9]'
+                  : 'text-[#64748b] hover:text-[#0d212c] border-b-2 border-transparent'
+              }`}
+            >
+              <span>Internal Review</span>
+            </button>
+          )}
         </div>
 
         {/* TAB 1: OVERVIEW */}
@@ -874,32 +988,34 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 </p>
               </div>
 
-              {/* Proceed and Reject Buttons displayed on the Partnership Brief tab */}
-              <div className="flex items-center gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDecisionError(null)
-                    setShowProceedModal(true)
-                  }}
-                  className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-                >
-                  <Check className="w-4 h-4 stroke-[2.5]" />
-                  <span>Proceed</span>
-                </button>
+              {/* Proceed and Reject Buttons displayed on the Partnership Brief tab — Director only */}
+              {!isNonDirector && (
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDecisionError(null)
+                      setShowProceedModal(true)
+                    }}
+                    className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  >
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                    <span>Proceed</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDecisionError(null)
-                    setShowRejectModal(true)
-                  }}
-                  className="px-4 py-2 rounded-lg bg-white border border-red-500 text-red-600 hover:bg-red-50 font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-                >
-                  <X className="w-4 h-4 stroke-[2.5]" />
-                  <span>Reject</span>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDecisionError(null)
+                      setShowRejectModal(true)
+                    }}
+                    className="px-4 py-2 rounded-lg bg-white border border-red-500 text-red-600 hover:bg-red-50 font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4 stroke-[2.5]" />
+                    <span>Reject</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Two-Column Layout: Left nav is fixed beside scrollable brief content */}
@@ -949,39 +1065,44 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       </div>
                     </div>
 
-                    <div>
-                      <div className="text-xs font-medium text-[#64748b]">
-                        Contact Person Name <span className="text-red-500 font-semibold">*</span>
-                      </div>
-                      <div className="text-sm font-medium text-[#0d212c] mt-1">
-                        {request.companyInfo.name}
-                      </div>
-                    </div>
+                    {!isNonDirector && (
+                      <>
+                        <div>
+                          <div className="text-xs font-medium text-[#64748b]">
+                            Contact Person Name{' '}
+                            <span className="text-red-500 font-semibold">*</span>
+                          </div>
+                          <div className="text-sm font-medium text-[#0d212c] mt-1">
+                            {request.companyInfo.name}
+                          </div>
+                        </div>
 
-                    <div>
-                      <div className="text-xs font-medium text-[#64748b]">
-                        Job Title <span className="text-red-500 font-semibold">*</span>
-                      </div>
-                      <div className="text-sm font-medium text-[#0d212c] mt-1">
-                        {request.companyInfo.jobTitle}
-                      </div>
-                    </div>
+                        <div>
+                          <div className="text-xs font-medium text-[#64748b]">
+                            Job Title <span className="text-red-500 font-semibold">*</span>
+                          </div>
+                          <div className="text-sm font-medium text-[#0d212c] mt-1">
+                            {request.companyInfo.jobTitle}
+                          </div>
+                        </div>
 
-                    <div>
-                      <div className="text-xs font-medium text-[#64748b]">
-                        Email Address <span className="text-red-500 font-semibold">*</span>
-                      </div>
-                      <div className="text-sm font-medium text-[#0d212c] mt-1">
-                        {request.companyInfo.email}
-                      </div>
-                    </div>
+                        <div>
+                          <div className="text-xs font-medium text-[#64748b]">
+                            Email Address <span className="text-red-500 font-semibold">*</span>
+                          </div>
+                          <div className="text-sm font-medium text-[#0d212c] mt-1">
+                            {request.companyInfo.email}
+                          </div>
+                        </div>
 
-                    <div>
-                      <div className="text-xs font-medium text-[#64748b]">Phone Number</div>
-                      <div className="text-sm font-medium text-[#0d212c] mt-1">
-                        {request.companyInfo.phoneNumber || 'Not provided'}
-                      </div>
-                    </div>
+                        <div>
+                          <div className="text-xs font-medium text-[#64748b]">Phone Number</div>
+                          <div className="text-sm font-medium text-[#0d212c] mt-1">
+                            {request.companyInfo.phoneNumber || 'Not provided'}
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     <div>
                       <div className="text-xs font-medium text-[#64748b]">
@@ -993,12 +1114,14 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       </div>
                     </div>
 
-                    <div>
-                      <div className="text-xs font-medium text-[#64748b]">Referred By</div>
-                      <div className="text-sm font-medium text-[#0d212c] mt-1">
-                        {request.referredBy || '—'}
+                    {!isNonDirector && (
+                      <div>
+                        <div className="text-xs font-medium text-[#64748b]">Referred By</div>
+                        <div className="text-sm font-medium text-[#0d212c] mt-1">
+                          {request.referredBy || '—'}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -1219,420 +1342,895 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           </div>
         )}
 
-        {/* TAB 3: INTERNAL REVIEW (2 tables: Internal Interest & Strategy Team) */}
-        {(activeTab === 'internal_review' || activeTab === 'internal_interest') && (
-          <div className="flex flex-col gap-6 w-full animate-in fade-in duration-150">
-            {/* Header: Title reduced by 2 units and reduced subtitle */}
+        {/* TAB: QUESTIONNAIRE (Internal Interest Profile) */}
+        {isInternalTeam && activeTab === 'questionnaire' && (
+          <div className="flex flex-col gap-6 w-full max-w-4xl animate-in fade-in duration-150">
+            {/* Header */}
             <div className="flex flex-col gap-1">
-              <h2 className="text-base font-semibold text-[#0d212c]">Review &amp; Alignment</h2>
+              <h2 className="text-base font-semibold text-[#0d212c]">
+                Internal Evaluation Questionnaire
+              </h2>
               <p className="text-xs text-[#64748b]">
-                Send requests to internal stakeholders and strategy team to review this partnership
-                in sequence.
+                Complete the questions below to evaluate clinical need, pilot sponsorship, and
+                strategic feasibility.
               </p>
             </div>
 
-            {/* STEP 1: Internal Interest (No outer bounding box) */}
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-semibold text-[11px] shrink-0">
-                    1
-                  </div>
-                  <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">
-                    Internal Interest
+            {questionnaireSubmitted ? (
+              <div className="bg-white rounded-2xl border border-[#e2e8f0] p-8 shadow-xs flex flex-col items-center text-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-[#f0fdfa] text-[#0f766e] flex items-center justify-center border border-[#ccfbf1]">
+                  <CheckCircle2 className="w-6 h-6 text-[#0f766e]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-[#0d212c]">
+                    Questionnaire Submitted Successfully
                   </h3>
-                  {/* Subheading data in custom tooltip via i button */}
-                  <div className="relative group inline-flex items-center">
-                    <button
-                      type="button"
-                      className="text-slate-400 hover:text-slate-600 transition cursor-pointer flex items-center"
-                      aria-label="Info"
-                    >
-                      <Info className="w-3.5 h-3.5 text-slate-400" />
-                    </button>
-                    <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl text-center">
-                      Select up to 5 internal stakeholders to request their interest in this
-                      partnership.
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0d212c]" />
+                  <p className="text-xs text-[#64748b] mt-1 max-w-md">
+                    Your evaluation and value &amp; need statement have been recorded and shared
+                    with the clinical partnership committee.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setQuestionnaireSubmitted(false)}
+                  className="mt-2 px-4 py-2 text-xs font-semibold text-[#008a8a] border border-[#36c0c9]/40 rounded-lg hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Edit Answers
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-6">
+                {/* Questions Container (Matching design from Image 1) */}
+                <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col divide-y divide-[#f1f5f9]">
+                  {/* Question 1 */}
+                  <div className="pb-8 flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <label
+                        htmlFor="q1-problem"
+                        className="text-sm font-medium text-[#0d212c] leading-relaxed"
+                      >
+                        Is this a real problem for you today, and what do you do about it now?
+                      </label>
+                    </div>
+                    <textarea
+                      id="q1-problem"
+                      rows={4}
+                      value={q1Problem}
+                      onChange={(e) => setQ1Problem(e.target.value)}
+                      placeholder="Describe the current clinical or operational problem and existing workarounds..."
+                      className="w-full p-3.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white transition leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Question 2 */}
+                  <div className="py-8 flex flex-col gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <span className="text-sm font-medium text-[#0d212c] leading-relaxed">
+                        Which KPI would move, what is the baseline today, and what change would
+                        matter?
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-[#0d212c]">KPI</label>
+                        <select
+                          value={q2Kpi}
+                          onChange={(e) => setQ2Kpi(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] bg-white focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 transition cursor-pointer"
+                        >
+                          <option value="">Choose a KPI</option>
+                          <option value="ICU sepsis mortality">ICU sepsis mortality</option>
+                          <option value="30-day readmission rate">30-day readmission rate</option>
+                          <option value="Time to antibiotic therapy">
+                            Time to antibiotic therapy
+                          </option>
+                          <option value="Average length of stay (ALOS)">
+                            Average length of stay (ALOS)
+                          </option>
+                          <option value="Bed occupancy rate">Bed occupancy rate</option>
+                          <option value="Emergency department wait time">
+                            Emergency department wait time
+                          </option>
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-[#0d212c]">
+                          Baseline today
+                        </label>
+                        <input
+                          type="text"
+                          value={q2Baseline}
+                          onChange={(e) => setQ2Baseline(e.target.value)}
+                          placeholder="e.g. 21% over 12 months"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] bg-white focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 transition"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[#0d212c]">
+                        Change that would matter
+                      </label>
+                      <input
+                        type="text"
+                        value={q2Change}
+                        onChange={(e) => setQ2Change(e.target.value)}
+                        placeholder="e.g. 3 points lower in 12 months"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] bg-white focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 transition"
+                      />
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-4 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowQuestionnaireModal(true)}
-                    className="text-xs sm:text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer shrink-0 bg-transparent active:bg-transparent focus:outline-none"
-                  >
-                    View Questionnaire
-                  </button>
-                  {!internalRequestSent && (
-                    <button
-                      type="button"
-                      onClick={() => setShowSendInternalModal(true)}
-                      className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-medium shadow-xs transition cursor-pointer shrink-0"
-                    >
-                      Send Request
-                    </button>
-                  )}
-                </div>
-              </div>
+                  {/* Question 3 */}
+                  <div className="py-8 flex flex-col gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <span className="text-sm font-medium text-[#0d212c] leading-relaxed">
+                        Would you sponsor a pilot, who would the named sponsor be, and what capacity
+                        can you commit?
+                      </span>
+                    </div>
 
-              {/* Table 1: Internal Interest Stakeholders */}
-              <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
-                <div className="overflow-x-auto w-full">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
-                        <th className="py-3 px-4">Name</th>
-                        {internalRequestSent ? (
-                          <>
-                            <th className="py-3 px-4">Status</th>
-                            <th className="py-3 px-4">Deadline</th>
-                            <th className="py-3 px-4">Decision</th>
-                          </>
-                        ) : (
-                          <>
-                            <th className="py-3 px-4">Why Agent Suggested</th>
-                            <th className="py-3 px-4">Expertise</th>
-                            <th className="py-3 px-4 text-right">Actions</th>
-                          </>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#e2e8f0]">
-                      {stakeholders.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="py-12 text-center text-[#64748b]">
-                            <div className="flex flex-col items-center justify-center gap-2">
-                              <Users className="w-6 h-6 text-slate-300" />
-                              <div className="text-xs font-medium text-[#0d212c]">
-                                No respondents added yet
-                              </div>
-                              <div className="text-xs text-[#64748b]">
-                                Click &quot;+ Add Respondant&quot; to assign review team members.
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        stakeholders.map((person, idx) => (
-                          <tr key={person.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
-                                  style={{
-                                    backgroundColor: person.avatarColorBg,
-                                    color: person.avatarColorText,
-                                  }}
-                                >
-                                  {person.initials}
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
-                                    {person.name}
-                                  </span>
-                                  <span className="text-[11px] font-medium text-[#64748b] truncate">
-                                    {person.role}
-                                    {person.department ? ` • ${person.department}` : ''}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
+                    <div className="flex flex-wrap gap-3">
+                      {['Yes, we would sponsor', 'No', 'Not sure yet'].map((opt) => {
+                        const isSelected = q3Sponsor === opt
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => setQ3Sponsor(opt)}
+                            className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition text-xs sm:text-sm font-medium cursor-pointer ${
+                              isSelected
+                                ? 'bg-slate-50 border-[#0d212c] text-[#0d212c] ring-1 ring-[#0d212c]'
+                                : 'bg-white border-[#e2e8f0] text-[#475569] hover:bg-slate-50'
+                            }`}
+                          >
+                            <span
+                              className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                isSelected
+                                  ? 'border-[#0d212c] bg-white'
+                                  : 'border-slate-300 bg-white'
+                              }`}
+                            >
+                              {isSelected && <span className="w-2 h-2 rounded-full bg-[#0d212c]" />}
+                            </span>
+                            <span>{opt}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
 
-                            {internalRequestSent ? (
-                              <>
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  {renderRequestStatusBadge(
-                                    person.status ||
-                                      (idx === 0
-                                        ? 'Completed'
-                                        : idx === 1
-                                          ? 'In Progress'
-                                          : 'Pending')
-                                  )}
-                                </td>
+                  {/* Question 4 */}
+                  <div className="py-8 flex flex-col gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5">
+                        4
+                      </div>
+                      <span className="text-sm font-medium text-[#0d212c] leading-relaxed">
+                        Is there a budget line, or would it need central funding?
+                      </span>
+                    </div>
 
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
-                                    {person.deadline || '5 days'}
-                                  </span>
-                                </td>
-
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  {renderDecisionBadge(
-                                    person.decision !== undefined
-                                      ? person.decision
-                                      : idx === 0
-                                        ? 'Proceed'
-                                        : '-'
-                                  )}
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
-                                  <span className="text-[#334155] leading-relaxed">
-                                    {person.whySuggested ||
-                                      'Selected based on clinical domain expertise and alignment.'}
-                                  </span>
-                                </td>
-
-                                <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
-                                  <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
-                                    {person.expertise}
-                                  </span>
-                                </td>
-
-                                <td className="py-3.5 px-4 text-right">
-                                  <div className="inline-flex items-center gap-2 justify-end">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenDeleteStakeholder(person)}
-                                      title="Delete respondent"
-                                      aria-label="Delete respondent"
-                                      className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </>
-                            )}
-                          </tr>
-                        ))
+                    <div className="flex flex-wrap gap-3">
+                      {['Existing budget line', 'Needs central funding', "Don't know"].map(
+                        (opt) => {
+                          const isSelected = q4Budget === opt
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => setQ4Budget(opt)}
+                              className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition text-xs sm:text-sm font-medium cursor-pointer ${
+                                isSelected
+                                  ? 'bg-slate-50 border-[#0d212c] text-[#0d212c] ring-1 ring-[#0d212c]'
+                                  : 'bg-white border-[#e2e8f0] text-[#475569] hover:bg-slate-50'
+                              }`}
+                            >
+                              <span
+                                className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                  isSelected
+                                    ? 'border-[#0d212c] bg-white'
+                                    : 'border-slate-300 bg-white'
+                                }`}
+                              >
+                                {isSelected && (
+                                  <span className="w-2 h-2 rounded-full bg-[#0d212c]" />
+                                )}
+                              </span>
+                              <span>{opt}</span>
+                            </button>
+                          )
+                        }
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Table 1 Bottom Actions (hidden when request is sent) */}
-              {!internalRequestSent && (
-                <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
-                  <div className="relative group inline-block shrink-0">
-                    <button
-                      type="button"
-                      disabled={stakeholders.length >= 5}
-                      onClick={handleOpenAddStakeholder}
-                      className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
-                        stakeholders.length >= 5
-                          ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
-                          : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
-                      }`}
-                    >
-                      <Plus className="w-4 h-4 stroke-[2.5]" />
-                      <span>Add Respondant</span>
-                    </button>
-                    <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
-                      {stakeholders.length >= 5
-                        ? 'Maximum 5 respondents reached'
-                        : 'Add up to 5 respondents'}
-                      <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
                     </div>
                   </div>
-                  <span className="text-xs text-[#64748b]">You can add up to 5 respondents.</span>
-                </div>
-              )}
-            </div>
 
-            {/* Horizontal Line Separator */}
-            <div className="h-[1px] bg-[#e2e8f0] w-full my-4" />
-
-            {/* STEP 2: Strategy Team (No outer bounding box, shows only 1 person by default) */}
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-semibold text-[11px] shrink-0">
-                    2
-                  </div>
-                  <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">
-                    Strategy Team
-                  </h3>
-                  {/* Subheading data in custom tooltip via i button */}
-                  <div className="relative group inline-flex items-center">
-                    <button
-                      type="button"
-                      className="text-slate-400 hover:text-slate-600 transition cursor-pointer flex items-center"
-                      aria-label="Info"
-                    >
-                      <Info className="w-3.5 h-3.5 text-slate-400" />
-                    </button>
-                    <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl text-center">
-                      Select the strategy team members to review this partnership.
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0d212c]" />
+                  {/* Question 5 */}
+                  <div className="pt-8 flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5">
+                        5
+                      </div>
+                      <label
+                        htmlFor="q5-sayno"
+                        className="text-sm font-medium text-[#0d212c] leading-relaxed"
+                      >
+                        What would make you say no?
+                      </label>
                     </div>
+                    <textarea
+                      id="q5-sayno"
+                      rows={4}
+                      value={q5SayNo}
+                      onChange={(e) => setQ5SayNo(e.target.value)}
+                      placeholder="Identify dealbreakers, clinical blockers, integration risks, or IT hurdles..."
+                      className="w-full p-3.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white transition leading-relaxed"
+                    />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowJudgementCriteriaModal(true)}
-                    className="text-xs sm:text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer shrink-0 bg-transparent active:bg-transparent focus:outline-none"
-                  >
-                    View Judgement Criteria
-                  </button>
-                  {!strategyRequestSent && (
-                    <button
-                      type="button"
-                      onClick={() => setShowSendStrategyModal(true)}
-                      className="px-4 py-2 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-medium shadow-xs transition cursor-pointer shrink-0"
-                    >
-                      Send Request
-                    </button>
-                  )}
-                </div>
-              </div>
+                {/* AI-GENERATED VALUE AND NEED STATEMENT (Shown when questions are answered - Matching Image 2) */}
+                {allQuestionsAnswered && (
+                  <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+                    {/* Value and need statement card */}
+                    <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-7 shadow-xs flex flex-col gap-5">
+                      <h3 className="text-base font-semibold text-[#0d212c]">
+                        Value and need statement
+                      </h3>
 
-              {/* Table 2: Strategy Team Members */}
-              <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
-                <div className="overflow-x-auto w-full">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
-                        <th className="py-3 px-4">Name</th>
-                        {strategyRequestSent ? (
-                          <>
-                            <th className="py-3 px-4">Status</th>
-                            <th className="py-3 px-4">Deadline</th>
-                            <th className="py-3 px-4">Decision</th>
-                          </>
-                        ) : (
-                          <>
-                            <th className="py-3 px-4">Why Agent Suggested</th>
-                            <th className="py-3 px-4">Expertise</th>
-                            <th className="py-3 px-4 text-right">Actions</th>
-                          </>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#e2e8f0]">
-                      {strategyMembers.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="py-12 text-center text-[#64748b]">
-                            <div className="flex flex-col items-center justify-center gap-2">
-                              <Users className="w-6 h-6 text-slate-300" />
-                              <div className="text-xs font-medium text-[#0d212c]">
-                                No strategy members added yet
-                              </div>
-                              <div className="text-xs text-[#64748b]">
-                                Click &quot;+ Add Member&quot; to assign strategy reviewers.
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        strategyMembers.map((person) => (
-                          <tr key={person.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
-                                  style={{
-                                    backgroundColor: person.avatarColorBg,
-                                    color: person.avatarColorText,
-                                  }}
-                                >
-                                  {person.initials}
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
-                                    {person.name}
-                                  </span>
-                                  <span className="text-[11px] font-medium text-[#64748b] truncate">
-                                    {person.role}
-                                    {person.department ? ` • ${person.department}` : ''}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
+                      {/* Cyan callout block with dark teal left border */}
+                      <div className="p-4 sm:p-5 rounded-xl bg-[#f0f9fa] border-l-4 border-[#0e7490] text-xs sm:text-sm text-[#0f172a] leading-relaxed font-normal">
+                        {dynamicAiStatement}
+                      </div>
 
-                            {strategyRequestSent ? (
-                              <>
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  {renderRequestStatusBadge(person.status || 'In Progress')}
-                                </td>
+                      {/* KPI / Baseline / Change summary table */}
+                      <div className="bg-slate-50/70 border border-[#e2e8f0] rounded-xl overflow-hidden">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-semibold uppercase tracking-wider">
+                              <th className="py-2.5 px-4">KPI</th>
+                              <th className="py-2.5 px-4">BASELINE</th>
+                              <th className="py-2.5 px-4">CHANGE THAT WOULD MATTER</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="py-3 px-4 font-medium text-[#0d212c]">
+                                {q2Kpi || 'ICU sepsis mortality'}
+                              </td>
+                              <td className="py-3 px-4 text-[#475569]">
+                                {q2Baseline || '21% over 12 months'}
+                              </td>
+                              <td className="py-3 px-4 text-[#475569]">
+                                {q2Change || '3 points lower in 12 months'}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
 
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
-                                    {person.deadline || '2-3 days'}
-                                  </span>
-                                </td>
-
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  {renderDecisionBadge(person.decision)}
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
-                                  <span className="text-[#334155] leading-relaxed">
-                                    {person.whySuggested ||
-                                      'Selected based on market strategy alignment and expansion feasibility.'}
-                                  </span>
-                                </td>
-
-                                <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
-                                  <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
-                                    {person.expertise}
-                                  </span>
-                                </td>
-
-                                <td className="py-3.5 px-4 text-right">
-                                  <div className="inline-flex items-center gap-2 justify-end">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenDeleteStrategyMember(person)}
-                                      title="Delete respondent"
-                                      aria-label="Delete respondent"
-                                      className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </>
+                    {/* Bottom Alignment & Send Card (Image 2 bottom box) */}
+                    <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setAiStatementChoice('yes')}
+                          className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition text-xs sm:text-sm font-medium cursor-pointer ${
+                            aiStatementChoice === 'yes'
+                              ? 'bg-slate-50 border-[#0d212c] text-[#0d212c] ring-1 ring-[#0d212c]'
+                              : 'bg-white border-[#e2e8f0] text-[#475569] hover:bg-slate-50'
+                          }`}
+                        >
+                          <span
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                              aiStatementChoice === 'yes'
+                                ? 'border-[#0d212c] bg-white'
+                                : 'border-slate-300 bg-white'
+                            }`}
+                          >
+                            {aiStatementChoice === 'yes' && (
+                              <span className="w-2 h-2 rounded-full bg-[#0d212c]" />
                             )}
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                          </span>
+                          <span>Yes, this is right</span>
+                        </button>
 
-              {/* Table 2 Bottom Actions (hidden when request is sent) */}
-              {!strategyRequestSent && (
-                <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
-                  <div className="relative group inline-block shrink-0">
-                    <button
-                      type="button"
-                      disabled={strategyMembers.length >= 2}
-                      onClick={handleOpenAddStrategyMember}
-                      className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
-                        strategyMembers.length >= 2
-                          ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
-                          : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
-                      }`}
-                    >
-                      <Plus className="w-4 h-4 stroke-[2.5]" />
-                      <span>Add Member</span>
-                    </button>
-                    <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
-                      {strategyMembers.length >= 2
-                        ? 'Maximum 2 members reached'
-                        : 'Add up to 2 members'}
-                      <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
+                        <button
+                          type="button"
+                          onClick={() => setAiStatementChoice('change')}
+                          className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition text-xs sm:text-sm font-medium cursor-pointer ${
+                            aiStatementChoice === 'change'
+                              ? 'bg-slate-50 border-[#0d212c] text-[#0d212c] ring-1 ring-[#0d212c]'
+                              : 'bg-white border-[#e2e8f0] text-[#475569] hover:bg-slate-50'
+                          }`}
+                        >
+                          <span
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                              aiStatementChoice === 'change'
+                                ? 'border-[#0d212c] bg-white'
+                                : 'border-slate-300 bg-white'
+                            }`}
+                          >
+                            {aiStatementChoice === 'change' && (
+                              <span className="w-2 h-2 rounded-full bg-[#0d212c]" />
+                            )}
+                          </span>
+                          <span>Something needs changing</span>
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSendQuestionnaire}
+                        className="px-8 py-2.5 rounded-full bg-[#0e5c68] hover:bg-[#0b4b55] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0 self-end sm:self-auto"
+                      >
+                        Send
+                      </button>
                     </div>
+
+                    {/* If user selected "Something needs changing", let them write their own */}
+                    {aiStatementChoice === 'change' && (
+                      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 sm:p-6 shadow-xs flex flex-col gap-2 animate-in fade-in">
+                        <label className="text-xs font-semibold text-[#0d212c]">
+                          Provide your updated Value and Need Statement
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={customStatement}
+                          onChange={(e) => setCustomStatement(e.target.value)}
+                          placeholder="Write your customized statement here..."
+                          className="w-full p-3.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white transition leading-relaxed"
+                        />
+                      </div>
+                    )}
                   </div>
-                  <span className="text-xs text-[#64748b]">You can add up to 2 members.</span>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         )}
+
+        {/* TAB 3: INTERNAL REVIEW (2 tables: Internal Interest & Strategy Team) */}
+        {!isNonDirector &&
+          (activeTab === 'internal_review' || activeTab === 'internal_interest') && (
+            <div className="flex flex-col gap-6 w-full animate-in fade-in duration-150">
+              {/* Header: Title reduced by 2 units and reduced subtitle */}
+              <div className="flex flex-col gap-1">
+                <h2 className="text-base font-semibold text-[#0d212c]">Review &amp; Alignment</h2>
+                <p className="text-xs text-[#64748b]">
+                  Send requests to internal stakeholders and strategy team to review this
+                  partnership in sequence.
+                </p>
+              </div>
+
+              {/* STEP 1: Internal Interest (No outer bounding box) */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-semibold text-[11px] shrink-0">
+                      1
+                    </div>
+                    <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">
+                      Internal Interest
+                    </h3>
+                    {/* Subheading data in custom tooltip via i button */}
+                    <div className="relative group inline-flex items-center">
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-slate-600 transition cursor-pointer flex items-center"
+                        aria-label="Info"
+                      >
+                        <Info className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
+                      <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl text-center">
+                        Select up to 5 internal stakeholders to request their interest in this
+                        partnership.
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0d212c]" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowQuestionnaireModal(true)}
+                      className="text-xs sm:text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer shrink-0 bg-transparent active:bg-transparent focus:outline-none"
+                    >
+                      View Questionnaire
+                    </button>
+                    {!internalRequestSent && (
+                      <button
+                        type="button"
+                        disabled={stakeholders.length === 0}
+                        onClick={() => setShowSendInternalModal(true)}
+                        className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-xs transition shrink-0 ${
+                          stakeholders.length === 0
+                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                            : 'bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer'
+                        }`}
+                      >
+                        Send Request
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Table 1: Internal Interest Stakeholders */}
+                <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
+                          <th className="py-3 px-4">Name</th>
+                          {internalRequestSent ? (
+                            <>
+                              <th className="py-3 px-4">Status</th>
+                              <th className="py-3 px-4">Deadline</th>
+                              <th className="py-3 px-4">Decision</th>
+                              <th className="py-3 px-4">Type</th>
+                              <th className="py-3 px-4 text-right">Actions</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="py-3 px-4">Recommended</th>
+                              <th className="py-3 px-4">Expertise</th>
+                              <th className="py-3 px-4">Type</th>
+                              <th className="py-3 px-4 text-right">Actions</th>
+                            </>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#e2e8f0]">
+                        {stakeholders.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-12 text-center text-[#64748b]">
+                              <div className="flex flex-col items-center justify-center gap-2">
+                                <Users className="w-6 h-6 text-slate-300" />
+                                <div className="text-xs font-medium text-[#0d212c]">
+                                  No respondents added yet
+                                </div>
+                                <div className="text-xs text-[#64748b]">
+                                  Click &quot;+ Add Respondant&quot; to assign review team members.
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          stakeholders.map((person, idx) => (
+                            <tr key={person.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
+                                    style={{
+                                      backgroundColor: person.avatarColorBg,
+                                      color: person.avatarColorText,
+                                    }}
+                                  >
+                                    {person.initials}
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
+                                      {person.name}
+                                    </span>
+                                    <span className="text-[11px] font-medium text-[#64748b] truncate">
+                                      {person.role}
+                                      {person.department ? ` • ${person.department}` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {internalRequestSent ? (
+                                <>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {renderRequestStatusBadge(
+                                      person.status ||
+                                        (idx === 0
+                                          ? 'Completed'
+                                          : idx === 1
+                                            ? 'In Progress'
+                                            : 'Pending')
+                                    )}
+                                  </td>
+
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
+                                      {person.deadline || '5 days'}
+                                    </span>
+                                  </td>
+
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {renderDecisionBadge(
+                                      person.decision !== undefined
+                                        ? person.decision
+                                        : idx === 0
+                                          ? 'Proceed'
+                                          : '-'
+                                    )}
+                                  </td>
+
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {person.source === 'manual' ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                        <UserPlus className="w-3 h-3 text-slate-500" />
+                                        <span>Manually Added</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                                        <Sparkles className="w-3 h-3 text-[#0f766e]" />
+                                        <span>AI Recommended</span>
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewingResponseMember(person)}
+                                      title="View member response"
+                                      aria-label="View member response"
+                                      className="p-1.5 text-slate-500 hover:text-[#008a8a] hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                                    >
+                                      <FileText className="w-4 h-4" />
+                                    </button>
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
+                                    <span className="text-[#334155] leading-relaxed">
+                                      {person.whySuggested ||
+                                        'Selected based on clinical domain expertise and alignment.'}
+                                    </span>
+                                  </td>
+
+                                  <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
+                                    <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
+                                      {person.expertise}
+                                    </span>
+                                  </td>
+
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {person.source === 'manual' ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                        <UserPlus className="w-3 h-3 text-slate-500" />
+                                        <span>Manually Added</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                                        <Sparkles className="w-3 h-3 text-[#0f766e]" />
+                                        <span>AI Recommended</span>
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-2 justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => setViewingResponseMember(person)}
+                                        title="View member response"
+                                        aria-label="View member response"
+                                        className="p-1.5 text-slate-500 hover:text-[#008a8a] hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                                      >
+                                        <FileText className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenDeleteStakeholder(person)}
+                                        title="Delete respondent"
+                                        aria-label="Delete respondent"
+                                        className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Table 1 Bottom Actions (hidden when request is sent) */}
+                {!internalRequestSent && (
+                  <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
+                    <div className="relative group inline-block shrink-0">
+                      <button
+                        type="button"
+                        disabled={stakeholders.length >= 5}
+                        onClick={handleOpenAddStakeholder}
+                        className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
+                          stakeholders.length >= 5
+                            ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
+                            : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
+                        }`}
+                      >
+                        <Plus className="w-4 h-4 stroke-[2.5]" />
+                        <span>Add Respondant</span>
+                      </button>
+                      <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
+                        {stakeholders.length >= 5
+                          ? 'Maximum 5 respondents reached'
+                          : 'Add up to 5 respondents'}
+                        <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
+                      </div>
+                    </div>
+                    <span className="text-xs text-[#64748b]">You can add up to 5 respondents.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Horizontal Line Separator */}
+              <div className="h-[1px] bg-[#e2e8f0] w-full my-4" />
+
+              {/* STEP 2: Strategy Team (No outer bounding box, shows only 1 person by default) */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-semibold text-[11px] shrink-0">
+                      2
+                    </div>
+                    <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">
+                      Strategy Team
+                    </h3>
+                    {/* Subheading data in custom tooltip via i button */}
+                    <div className="relative group inline-flex items-center">
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-slate-600 transition cursor-pointer flex items-center"
+                        aria-label="Info"
+                      >
+                        <Info className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
+                      <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl text-center">
+                        Select the strategy team members to review this partnership.
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0d212c]" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowJudgementCriteriaModal(true)}
+                      className="text-xs sm:text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer shrink-0 bg-transparent active:bg-transparent focus:outline-none"
+                    >
+                      View Evaluation Criteria
+                    </button>
+                    {!strategyRequestSent && (
+                      <button
+                        type="button"
+                        disabled={strategyMembers.length === 0}
+                        onClick={() => setShowSendStrategyModal(true)}
+                        className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-xs transition shrink-0 ${
+                          strategyMembers.length === 0
+                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                            : 'bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer'
+                        }`}
+                      >
+                        Send Request
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Table 2: Strategy Team Members */}
+                <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
+                          <th className="py-3 px-4">Name</th>
+                          {strategyRequestSent ? (
+                            <>
+                              <th className="py-3 px-4">Status</th>
+                              <th className="py-3 px-4">Deadline</th>
+                              <th className="py-3 px-4">Decision</th>
+                              <th className="py-3 px-4">Type</th>
+                              <th className="py-3 px-4 text-right">Actions</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="py-3 px-4">Recommended</th>
+                              <th className="py-3 px-4">Expertise</th>
+                              <th className="py-3 px-4">Type</th>
+                              <th className="py-3 px-4 text-right">Actions</th>
+                            </>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#e2e8f0]">
+                        {strategyMembers.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-12 text-center text-[#64748b]">
+                              <div className="flex flex-col items-center justify-center gap-2">
+                                <Users className="w-6 h-6 text-slate-300" />
+                                <div className="text-xs font-medium text-[#0d212c]">
+                                  No strategy members added yet
+                                </div>
+                                <div className="text-xs text-[#64748b]">
+                                  Click &quot;+ Add Member&quot; to assign strategy reviewers.
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          strategyMembers.map((person) => (
+                            <tr key={person.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
+                                    style={{
+                                      backgroundColor: person.avatarColorBg,
+                                      color: person.avatarColorText,
+                                    }}
+                                  >
+                                    {person.initials}
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
+                                      {person.name}
+                                    </span>
+                                    <span className="text-[11px] font-medium text-[#64748b] truncate">
+                                      {person.role}
+                                      {person.department ? ` • ${person.department}` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {strategyRequestSent ? (
+                                <>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {renderRequestStatusBadge(person.status || 'In Progress')}
+                                  </td>
+
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
+                                      {person.deadline || '2-3 days'}
+                                    </span>
+                                  </td>
+
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {renderDecisionBadge(person.decision)}
+                                  </td>
+
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {person.source === 'manual' ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                        <UserPlus className="w-3 h-3 text-slate-500" />
+                                        <span>Manually Added</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                                        <Sparkles className="w-3 h-3 text-[#0f766e]" />
+                                        <span>AI Recommended</span>
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewingResponseMember(person)}
+                                      title="View member response"
+                                      aria-label="View member response"
+                                      className="p-1.5 text-slate-500 hover:text-[#008a8a] hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                                    >
+                                      <FileText className="w-4 h-4" />
+                                    </button>
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
+                                    <span className="text-[#334155] leading-relaxed">
+                                      {person.whySuggested ||
+                                        'Selected based on market strategy alignment and expansion feasibility.'}
+                                    </span>
+                                  </td>
+
+                                  <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
+                                    <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
+                                      {person.expertise}
+                                    </span>
+                                  </td>
+
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {person.source === 'manual' ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                        <UserPlus className="w-3 h-3 text-slate-500" />
+                                        <span>Manually Added</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                                        <Sparkles className="w-3 h-3 text-[#0f766e]" />
+                                        <span>AI Recommended</span>
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-2 justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => setViewingResponseMember(person)}
+                                        title="View member response"
+                                        aria-label="View member response"
+                                        className="p-1.5 text-slate-500 hover:text-[#008a8a] hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                                      >
+                                        <FileText className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenDeleteStrategyMember(person)}
+                                        title="Delete respondent"
+                                        aria-label="Delete respondent"
+                                        className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Table 2 Bottom Actions (hidden when request is sent) */}
+                {!strategyRequestSent && (
+                  <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
+                    <div className="relative group inline-block shrink-0">
+                      <button
+                        type="button"
+                        disabled={strategyMembers.length >= 2}
+                        onClick={handleOpenAddStrategyMember}
+                        className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
+                          strategyMembers.length >= 2
+                            ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
+                            : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
+                        }`}
+                      >
+                        <Plus className="w-4 h-4 stroke-[2.5]" />
+                        <span>Add Member</span>
+                      </button>
+                      <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
+                        {strategyMembers.length >= 2
+                          ? 'Maximum 2 members reached'
+                          : 'Add up to 2 members'}
+                        <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
+                      </div>
+                    </div>
+                    <span className="text-xs text-[#64748b]">You can add up to 2 members.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
       </div>
 
       {/* POPUP MODALS — Designed strictly matching SOW Generator App */}
@@ -1686,6 +2284,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 onClick={() => {
                   onProceed?.(request.id, decisionReason.trim())
                   setShowProceedModal(false)
+                  setActiveTab('internal_review')
                 }}
                 className="px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white font-semibold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
               >
@@ -1778,6 +2377,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   setDecisionError(null)
                   onReject?.(request.id, decisionReason.trim())
                   setShowRejectModal(false)
+                  setActiveTab('internal_review')
                 }}
                 className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
               >
@@ -1974,9 +2574,28 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 internal review panel?
               </p>
             </div>
+            <div className="flex flex-col gap-1.5 w-full text-left">
+              <label
+                htmlFor="delete-stakeholder-note"
+                className="text-xs font-medium text-[#0d212c]"
+              >
+                Note
+              </label>
+              <textarea
+                id="delete-stakeholder-note"
+                rows={2}
+                value={deleteNote}
+                onChange={(e) => setDeleteNote(e.target.value)}
+                placeholder="Mention note for removing respondent..."
+                className="w-full p-2.5 rounded-xl border border-[#e2e8f0] text-xs text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white"
+              />
+            </div>
             <div className="flex items-center justify-center gap-3 w-full mt-2">
               <button
-                onClick={() => setDeletingStakeholder(null)}
+                onClick={() => {
+                  setDeletingStakeholder(null)
+                  setDeleteNote('')
+                }}
                 className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer flex-1"
               >
                 Cancel
@@ -2560,26 +3179,26 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       )}
 
-      {/* VIEW JUDGEMENT CRITERIA POPUP MODAL (Strategy Team) */}
+      {/* VIEW EVALUATION CRITERIA POPUP MODAL (Strategy Team) */}
       {showJudgementCriteriaModal && (
         <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#e2e8f0] flex flex-col gap-4 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
               <h3 className="text-base sm:text-lg font-semibold text-[#0d212c]">
-                Judgement Criteria
+                Evaluation Criteria
               </h3>
               <button
                 type="button"
                 onClick={() => setShowJudgementCriteriaModal(false)}
                 className="text-[#94a3b8] hover:text-[#0d212c] p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-                aria-label="Close judgement criteria modal"
+                aria-label="Close evaluation criteria modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* List of 7 judgement criteria (no agent data, no dropdown input fields, only data visible) */}
+            {/* List of 7 evaluation criteria (no agent data, no dropdown input fields, only data visible) */}
             <div className="rounded-xl border border-[#e2e8f0] bg-white divide-y divide-[#f1f5f9] overflow-hidden">
               {[
                 {
@@ -2631,6 +3250,209 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 type="button"
                 onClick={() => setShowJudgementCriteriaModal(false)}
                 className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-medium text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW MEMBER RESPONSE POPUP MODAL */}
+      {viewingResponseMember && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
+                  style={{
+                    backgroundColor: viewingResponseMember.avatarColorBg,
+                    color: viewingResponseMember.avatarColorText,
+                  }}
+                >
+                  {viewingResponseMember.initials}
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base sm:text-lg font-semibold text-[#0d212c]">
+                      {viewingResponseMember.name}
+                    </h3>
+                    {viewingResponseMember.source === 'manual' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                        <UserPlus className="w-3 h-3 text-slate-500" />
+                        <span>Manually Added</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                        <Sparkles className="w-3 h-3 text-[#0f766e]" />
+                        <span>AI Recommended</span>
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-[#64748b]">
+                    {viewingResponseMember.role}
+                    {viewingResponseMember.department
+                      ? ` • ${viewingResponseMember.department}`
+                      : ''}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingResponseMember(null)}
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body: Response Content or Empty State */}
+            {viewingResponseMember.response ? (
+              <div className="flex flex-col gap-4">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-2">
+                  <span className="text-xs font-semibold text-[#0d212c]">
+                    1. Problem &amp; Workaround
+                  </span>
+                  <p className="text-xs sm:text-[13px] text-[#475569] leading-relaxed">
+                    {viewingResponseMember.response.problemAndCurrentApproach}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-2">
+                  <span className="text-xs font-semibold text-[#0d212c]">
+                    2. Target KPI &amp; Impact
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">KPI</span>
+                      <span className="font-medium text-[#0d212c]">
+                        {viewingResponseMember.response.targetKpi}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Baseline</span>
+                      <span className="font-medium text-[#0d212c]">
+                        {viewingResponseMember.response.baselineToday}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Change That Matters</span>
+                      <span className="font-medium text-[#0d212c]">
+                        {viewingResponseMember.response.changeThatMatters}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-1.5">
+                    <span className="text-xs font-semibold text-[#0d212c]">
+                      3. Pilot Sponsorship
+                    </span>
+                    <span className="text-xs text-[#0f766e] font-medium bg-[#f0fdfa] border border-[#ccfbf1] px-2.5 py-1 rounded-lg w-fit">
+                      {viewingResponseMember.response.sponsorPilot}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-1.5">
+                    <span className="text-xs font-semibold text-[#0d212c]">4. Budget Line</span>
+                    <span className="text-xs text-[#0d212c] font-medium bg-white border border-slate-200 px-2.5 py-1 rounded-lg w-fit">
+                      {viewingResponseMember.response.budgetLine}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-2">
+                  <span className="text-xs font-semibold text-[#0d212c]">
+                    5. What would make you say no?
+                  </span>
+                  <p className="text-xs sm:text-[13px] text-[#475569] leading-relaxed">
+                    {viewingResponseMember.response.whatWouldMakeYouSayNo}
+                  </p>
+                </div>
+
+                {viewingResponseMember.response.valueAndNeedStatement && (
+                  <div className="p-4 rounded-xl bg-[#f0f9fa] border-l-4 border-[#0e7490] flex flex-col gap-1.5">
+                    <span className="text-xs font-semibold text-[#0d212c]">
+                      Value and Need Statement
+                    </span>
+                    <p className="text-xs sm:text-[13px] text-[#0f172a] leading-relaxed">
+                      {viewingResponseMember.response.valueAndNeedStatement}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : viewingResponseMember.strategyResponse ? (
+              <div className="flex flex-col gap-4">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-3">
+                  <span className="text-xs font-semibold text-[#0d212c]">
+                    Strategy Review Assessment
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    <div className="flex justify-between py-1 border-b border-slate-200">
+                      <span className="text-slate-600">Strategic Alignment:</span>
+                      <span className="font-medium text-[#0d212c]">
+                        {viewingResponseMember.strategyResponse.strategicAlignment ||
+                          'Strong Alignment'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200">
+                      <span className="text-slate-600">Market Potential:</span>
+                      <span className="font-medium text-[#0d212c]">
+                        {viewingResponseMember.strategyResponse.marketPotential || 'High'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200">
+                      <span className="text-slate-600">Recommendation:</span>
+                      <span className="font-medium text-[#0f766e]">
+                        {viewingResponseMember.strategyResponse.recommendation || 'Proceed'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200">
+                      <span className="text-slate-600">Submitted:</span>
+                      <span className="font-medium text-[#0d212c]">
+                        {viewingResponseMember.strategyResponse.submittedAt || '1 day ago'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {viewingResponseMember.strategyResponse.notes && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-1.5">
+                    <span className="text-xs font-semibold text-[#0d212c]">
+                      Strategic Assessment Notes
+                    </span>
+                    <p className="text-xs sm:text-[13px] text-[#475569] leading-relaxed">
+                      {viewingResponseMember.strategyResponse.notes}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-3 bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-[#0d212c]">
+                    No response submitted yet
+                  </h4>
+                  <p className="text-xs text-[#64748b] mt-0.5">
+                    This reviewer has not submitted their responses yet.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-end pt-3 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setViewingResponseMember(null)}
+                className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
               >
                 Close
               </button>

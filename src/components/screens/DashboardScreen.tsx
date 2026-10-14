@@ -1,13 +1,33 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Layers, Clock, FileSignature, GitFork, Inbox } from 'lucide-react'
+import {
+  Layers,
+  Clock,
+  FileSignature,
+  GitFork,
+  Inbox,
+  ClipboardList,
+  CheckCircle2,
+  Briefcase,
+  CalendarClock,
+} from 'lucide-react'
 import { SearchBar } from '@/components/molecules/SearchBar'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import { PartnershipDetail } from '@/components/organisms/PartnershipDetail'
 import { type PartnershipRequest, INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
+import { type UserProfile } from './LoginScreen'
 
-export const DashboardScreen: React.FC = () => {
+export interface DashboardScreenProps {
+  userProfile?: UserProfile
+}
+
+export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile }) => {
+  const isInternalTeam =
+    userProfile?.id === 'evaluator' || userProfile?.roleTitle === 'Internal Interest Team'
+  const isStrategyTeam =
+    userProfile?.id === 'strategy-fit' || userProfile?.roleTitle === 'Strategy Team'
+  const isNonDirector = isInternalTeam || isStrategyTeam
   const [requests, setRequests] = useState<PartnershipRequest[]>(INITIAL_PARTNERSHIP_REQUESTS)
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -116,6 +136,11 @@ export const DashboardScreen: React.FC = () => {
 
   // Filter requests
   const filteredRequests = requests.filter((req) => {
+    // Exited status hidden from internal and strategy teams
+    if (isNonDirector && req.status.toLowerCase() === 'exited') {
+      return false
+    }
+
     const matchesFilter =
       selectedStatusFilter === 'all' ||
       req.status.toLowerCase() === selectedStatusFilter.toLowerCase()
@@ -126,7 +151,7 @@ export const DashboardScreen: React.FC = () => {
     const q = searchTerm.toLowerCase()
     return (
       req.companyName.toLowerCase().includes(q) ||
-      req.vendorName.toLowerCase().includes(q) ||
+      (!isNonDirector && req.vendorName.toLowerCase().includes(q)) ||
       req.solution.toLowerCase().includes(q) ||
       req.focusArea.toLowerCase().includes(q) ||
       req.solutionMaturity.toLowerCase().includes(q)
@@ -134,8 +159,12 @@ export const DashboardScreen: React.FC = () => {
   })
 
   // Filter options with dynamic counts (Pending, In progress, At Risk, Exited)
+  const visibleRequestsForCount = isNonDirector
+    ? requests.filter((r) => r.status.toLowerCase() !== 'exited')
+    : requests
+
   const filterOptions = [
-    { key: 'all', label: 'All requests', count: requests.length },
+    { key: 'all', label: 'All requests', count: visibleRequestsForCount.length },
     {
       key: 'pending',
       label: 'Pending',
@@ -151,11 +180,15 @@ export const DashboardScreen: React.FC = () => {
       label: 'At Risk',
       count: requests.filter((r) => r.status === 'At Risk').length,
     },
-    {
-      key: 'exited',
-      label: 'Exited',
-      count: requests.filter((r) => r.status === 'Exited').length,
-    },
+    ...(!isNonDirector
+      ? [
+          {
+            key: 'exited',
+            label: 'Exited',
+            count: requests.filter((r) => r.status === 'Exited').length,
+          },
+        ]
+      : []),
   ]
 
   // Detailed view rendering
@@ -173,6 +206,7 @@ export const DashboardScreen: React.FC = () => {
           onBack={() => setSelectedRequest(null)}
           onProceed={handleProceed}
           onReject={handleReject}
+          userProfile={userProfile}
         />
       </div>
     )
@@ -187,71 +221,209 @@ export const DashboardScreen: React.FC = () => {
         </div>
       )}
 
-      {/* 4 KPI Cards — Icons without background per specification */}
+      {/* 4 KPI Cards — Exact same design as director flow, role-tailored metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        {/* KPI Card 1: Total Partnership Requests */}
-        <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-              Total Partnership Requests
-            </span>
-            <div className="flex items-center justify-center shrink-0">
-              <Layers className="w-5 h-5 text-[#0284c7] stroke-[2]" />
+        {isInternalTeam ? (
+          <>
+            {/* KPI Card 1: Assigned to Me */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Assigned to Me
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <Inbox className="w-5 h-5 text-[#0284c7] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">8</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">
+                Partnerships requiring my review
+              </div>
             </div>
-          </div>
-          <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">24</div>
-          <div className="h-[1px] bg-slate-100 w-full" />
-          <div className="flex items-center gap-1.5 text-xs font-medium text-[#16a34a]">
-            <span>+1 this month ↗</span>
-          </div>
-        </div>
 
-        {/* KPI Card 2: Pending Director Review */}
-        <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-              Pending Director Review
-            </span>
-            <div className="flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5 text-[#d97706] stroke-[2]" />
+            {/* KPI Card 2: Pending My Review */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Pending My Review
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <ClipboardList className="w-5 h-5 text-[#d97706] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">4</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">Questionnaire not submitted</div>
             </div>
-          </div>
-          <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">8</div>
-          <div className="h-[1px] bg-slate-100 w-full" />
-          <div className="text-xs font-medium text-[#64748b]">Require PMO action</div>
-        </div>
 
-        {/* KPI Card 3: NDA in Progress */}
-        <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-              NDA in Progress
-            </span>
-            <div className="flex items-center justify-center shrink-0">
-              <FileSignature className="w-5 h-5 text-[#6366f1] stroke-[2]" />
+            {/* KPI Card 3: Completed Reviews */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Completed Reviews
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5 text-[#16a34a] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">3</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">
+                Verdicts submitted this month
+              </div>
             </div>
-          </div>
-          <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">6</div>
-          <div className="h-[1px] bg-slate-100 w-full" />
-          <div className="text-xs font-medium text-[#64748b]">Needs monitoring</div>
-        </div>
 
-        {/* KPI Card 4: EXITED BEFORE DIRECTOR REVIEW */}
-        <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-              EXITED BEFORE DIRECTOR REVIEW
-            </span>
-            <div className="flex items-center justify-center shrink-0">
-              <GitFork className="w-5 h-5 text-[#ef4444] stroke-[2]" />
+            {/* KPI Card 4: Overdue */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Overdue
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5 text-[#ef4444] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">1</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">Reviews past their deadline</div>
             </div>
-          </div>
-          <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">12</div>
-          <div className="h-[1px] bg-slate-100 w-full" />
-          <div className="text-xs font-medium text-[#64748b]">
-            Filtered out during initial agent screening
-          </div>
-        </div>
+          </>
+        ) : isStrategyTeam ? (
+          <>
+            {/* KPI Card 1: Assigned Evaluations */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Assigned Evaluations
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <Briefcase className="w-5 h-5 text-[#0284c7] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">5</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">Requests assigned to me</div>
+            </div>
+
+            {/* KPI Card 2: Pending Evaluation */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Pending Evaluation
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <ClipboardList className="w-5 h-5 text-[#d97706] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">3</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">
+                Judgement criteria awaiting review
+              </div>
+            </div>
+
+            {/* KPI Card 3: Verdicts Submitted */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Verdicts Submitted
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5 text-[#16a34a] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">6</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">
+                Completed evaluations this month
+              </div>
+            </div>
+
+            {/* KPI Card 4: Due Soon */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Due Soon
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <CalendarClock className="w-5 h-5 text-[#ef4444] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">1</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">
+                Evaluation approaching deadline
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* KPI Card 1: Total Request */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Total Request
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <Layers className="w-5 h-5 text-[#0284c7] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">24</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="flex items-center gap-1.5 text-xs font-medium text-[#16a34a]">
+                <span>+1 this month ↗</span>
+              </div>
+            </div>
+
+            {/* KPI Card 2: Pending */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  Pending
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5 text-[#d97706] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">8</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">Require PMO action</div>
+            </div>
+
+            {/* KPI Card 3: NDA in Progress */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  NDA in Progress
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <FileSignature className="w-5 h-5 text-[#6366f1] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">6</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">Needs monitoring</div>
+            </div>
+
+            {/* KPI Card 4: EXITED BEFORE REVIEW */}
+            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                  EXITED BEFORE REVIEW
+                </span>
+                <div className="flex items-center justify-center shrink-0">
+                  <GitFork className="w-5 h-5 text-[#ef4444] stroke-[2]" />
+                </div>
+              </div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">12</div>
+              <div className="h-[1px] bg-slate-100 w-full" />
+              <div className="text-xs font-medium text-[#64748b]">
+                Filtered out during initial agent screening
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Title */}
@@ -305,7 +477,7 @@ export const DashboardScreen: React.FC = () => {
               {/* Column titles: font size text-[11px], font weight font-medium */}
               <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
                 <th className="py-4 px-4">Company name</th>
-                <th className="py-4 px-4">Vendor Name</th>
+                {!isNonDirector && <th className="py-4 px-4">Vendor Name</th>}
                 <th className="py-4 px-4">Solution</th>
                 <th className="py-4 px-4">Focus Area</th>
                 <th className="py-4 px-4">Solution Maturity</th>
@@ -316,7 +488,7 @@ export const DashboardScreen: React.FC = () => {
             <tbody className="divide-y divide-[#e2e8f0]/60">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-[#64748b]">
+                  <td colSpan={isNonDirector ? 6 : 7} className="py-16 text-center text-[#64748b]">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
                         <Inbox className="w-6 h-6 stroke-[1.5]" />
@@ -342,10 +514,12 @@ export const DashboardScreen: React.FC = () => {
                       {req.companyName}
                     </td>
 
-                    {/* Vendor Name */}
-                    <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c]">
-                      {req.vendorName}
-                    </td>
+                    {/* Vendor Name — only for Director profile */}
+                    {!isNonDirector && (
+                      <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c]">
+                        {req.vendorName}
+                      </td>
+                    )}
 
                     <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] max-w-xs truncate">
                       {req.solution}

@@ -69,6 +69,46 @@ describe('LoginScreen', () => {
     vi.useRealTimers()
   })
 
+  it('selects Internal Interest Team profile and triggers onLogin', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const handleLogin = vi.fn()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+    renderWithTheme(<LoginScreen onLogin={handleLogin} />)
+
+    await user.click(screen.getByText('Sign in with SSO'))
+    await user.click(screen.getByText('Internal Interest Team'))
+
+    expect(screen.getByText('Setting up your workspace...')).toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(800)
+    })
+
+    expect(handleLogin).toHaveBeenCalledWith(AVAILABLE_PROFILES[1])
+    vi.useRealTimers()
+  })
+
+  it('selects Strategy Team profile and triggers onLogin', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const handleLogin = vi.fn()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+    renderWithTheme(<LoginScreen onLogin={handleLogin} />)
+
+    await user.click(screen.getByText('Sign in with SSO'))
+    await user.click(screen.getByText('Strategy Team'))
+
+    expect(screen.getByText('Setting up your workspace...')).toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(800)
+    })
+
+    expect(handleLogin).toHaveBeenCalledWith(AVAILABLE_PROFILES[2])
+    vi.useRealTimers()
+  })
+
   it('ensures other role profiles are not clickable and do not trigger onLogin', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const handleLogin = vi.fn()

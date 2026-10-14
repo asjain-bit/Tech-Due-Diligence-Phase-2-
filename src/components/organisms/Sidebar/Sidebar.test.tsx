@@ -75,7 +75,8 @@ describe('Sidebar', () => {
     )
 
     await user.click(screen.getByTitle('Sign out'))
-    await user.click(screen.getByRole('button', { name: 'Logout' }))
+    const logoutButtons = screen.getAllByRole('button', { name: 'Logout' })
+    await user.click(logoutButtons[logoutButtons.length - 1])
     expect(handleSignOut).toHaveBeenCalled()
   })
 

@@ -11,12 +11,12 @@ describe('DashboardScreen', () => {
     // Breadcrumb removed
     expect(screen.queryByText('M42 admin')).not.toBeInTheDocument()
 
-    // 4 KPI Cards
-    expect(screen.getByText('Total Partnership Requests')).toBeInTheDocument()
+    // 4 KPI Cards (Updated Titles)
+    expect(screen.getByText('Total Request')).toBeInTheDocument()
     expect(screen.getByText('24')).toBeInTheDocument()
     expect(screen.getByText('+1 this month ↗')).toBeInTheDocument()
 
-    expect(screen.getByText('Pending Director Review')).toBeInTheDocument()
+    expect(screen.getAllByText('Pending').length).toBeGreaterThan(0)
     expect(screen.getByText('8')).toBeInTheDocument()
     expect(screen.getByText('Require PMO action')).toBeInTheDocument()
 
@@ -24,7 +24,7 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('6')).toBeInTheDocument()
     expect(screen.getByText('Needs monitoring')).toBeInTheDocument()
 
-    expect(screen.getByText('EXITED BEFORE DIRECTOR REVIEW')).toBeInTheDocument()
+    expect(screen.getByText('EXITED BEFORE REVIEW')).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('Filtered out during initial agent screening')).toBeInTheDocument()
   })
@@ -86,5 +86,113 @@ describe('DashboardScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Back to Partnership Requests' }))
     expect(screen.getByText('Partnership Requests')).toBeInTheDocument()
     expect(screen.getByText('MedTech Innovations')).toBeInTheDocument()
+  })
+
+  it('renders Internal Interest Team KPI cards and excludes Vendor Name column', () => {
+    const internalProfile = {
+      id: 'evaluator',
+      name: 'Mariam Al-Zaabi',
+      designation: 'Internal Interest Team',
+      email: 'mariam.alzaabi@m42.ae',
+      roleTitle: 'Internal Interest Team',
+    }
+    render(<DashboardScreen userProfile={internalProfile} />)
+
+    // 4 KPI Cards for Internal Interest Team (Image 1)
+    expect(screen.getByText('Assigned to Me')).toBeInTheDocument()
+    expect(screen.getByText('8')).toBeInTheDocument()
+    expect(screen.getByText('Partnerships requiring my review')).toBeInTheDocument()
+
+    expect(screen.getByText('Pending My Review')).toBeInTheDocument()
+    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByText('Questionnaire not submitted')).toBeInTheDocument()
+
+    expect(screen.getByText('Completed Reviews')).toBeInTheDocument()
+    expect(screen.getAllByText('3').length).toBeGreaterThan(0)
+    expect(screen.getByText('Verdicts submitted this month')).toBeInTheDocument()
+
+    expect(screen.getByText('Overdue')).toBeInTheDocument()
+    expect(screen.getAllByText('1').length).toBeGreaterThan(0)
+    expect(screen.getByText('Reviews past their deadline')).toBeInTheDocument()
+
+    // Vendor Name column should NOT be rendered in outside table
+    expect(screen.queryByRole('columnheader', { name: 'Vendor Name' })).not.toBeInTheDocument()
+    // Other columns remain
+    expect(screen.getByRole('columnheader', { name: 'Company name' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Solution' })).toBeInTheDocument()
+  })
+
+  it('renders Strategy Team KPI cards and excludes Vendor Name column', () => {
+    const strategyProfile = {
+      id: 'strategy-fit',
+      name: 'Omar Al-Hashemi',
+      designation: 'Strategy Team',
+      email: 'omar.alhashemi@m42.ae',
+      roleTitle: 'Strategy Team',
+    }
+    render(<DashboardScreen userProfile={strategyProfile} />)
+
+    // 4 KPI Cards for Strategy Team (Image 2)
+    expect(screen.getByText('Assigned Evaluations')).toBeInTheDocument()
+    expect(screen.getByText('5')).toBeInTheDocument()
+    expect(screen.getByText('Requests assigned to me')).toBeInTheDocument()
+
+    expect(screen.getByText('Pending Evaluation')).toBeInTheDocument()
+    expect(screen.getAllByText('3').length).toBeGreaterThan(0)
+    expect(screen.getByText('Judgement criteria awaiting review')).toBeInTheDocument()
+
+    expect(screen.getByText('Verdicts Submitted')).toBeInTheDocument()
+    expect(screen.getByText('6')).toBeInTheDocument()
+    expect(screen.getByText('Completed evaluations this month')).toBeInTheDocument()
+
+    expect(screen.getByText('Due Soon')).toBeInTheDocument()
+    expect(screen.getAllByText('1').length).toBeGreaterThan(0)
+    expect(screen.getByText('Evaluation approaching deadline')).toBeInTheDocument()
+
+    // Vendor Name column should NOT be rendered in outside table
+    expect(screen.queryByRole('columnheader', { name: 'Vendor Name' })).not.toBeInTheDocument()
+  })
+
+  it('hides vendor details, referred by, and internal review tab in detailed view for internal/strategy team', async () => {
+    const user = userEvent.setup()
+    const internalProfile = {
+      id: 'evaluator',
+      name: 'Mariam Al-Zaabi',
+      designation: 'Internal Interest Team',
+      email: 'mariam.alzaabi@m42.ae',
+      roleTitle: 'Internal Interest Team',
+    }
+    render(<DashboardScreen userProfile={internalProfile} />)
+
+    const row = screen.getByText('MedTech Innovations')
+    await user.click(row)
+
+    // Should not show Referred by or Internal Review tab
+    expect(screen.queryByText(/Referred by:/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /Internal Review/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Internal Review/i })).not.toBeInTheDocument()
+
+    // Should show Questionnaire tab for Internal Interest Team
+    expect(screen.getByRole('tab', { name: /Questionnaire/i })).toBeInTheDocument()
+
+    // Brief tab should not have Proceed or Reject buttons
+    const briefTab = screen.getByRole('tab', { name: /Partnership Brief/i })
+    await user.click(briefTab)
+    expect(screen.queryByRole('button', { name: /Proceed/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Reject/i })).not.toBeInTheDocument()
+  })
+
+  it('does not display Exited status or Exited filter chip to internal and strategy teams', () => {
+    const internalProfile = {
+      id: 'evaluator',
+      name: 'Mariam Al-Zaabi',
+      designation: 'Internal Interest Team',
+      email: 'mariam.alzaabi@m42.ae',
+      roleTitle: 'Internal Interest Team',
+    }
+    render(<DashboardScreen userProfile={internalProfile} />)
+
+    // Exited filter chip should not be present
+    expect(screen.queryByRole('button', { name: /^Exited/i })).not.toBeInTheDocument()
   })
 })

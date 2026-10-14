@@ -50,6 +50,26 @@ export interface UploadedDoc {
   type: string
 }
 
+export interface QuestionnaireResponse {
+  problemAndCurrentApproach?: string
+  targetKpi?: string
+  baselineToday?: string
+  changeThatMatters?: string
+  sponsorPilot?: string
+  budgetLine?: string
+  whatWouldMakeYouSayNo?: string
+  valueAndNeedStatement?: string
+  submittedAt?: string
+}
+
+export interface StrategyMemberResponse {
+  strategicAlignment?: string
+  marketPotential?: string
+  recommendation?: string
+  notes?: string
+  submittedAt?: string
+}
+
 export interface InternalInterestStakeholder {
   id: string
   name: string
@@ -63,6 +83,9 @@ export interface InternalInterestStakeholder {
   status?: string
   deadline?: string
   decision?: string
+  source?: 'ai' | 'manual'
+  response?: QuestionnaireResponse
+  strategyResponse?: StrategyMemberResponse
 }
 
 export interface AgentRecommendation {
@@ -121,6 +144,21 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     status: 'Completed',
     deadline: '5 days',
     decision: 'Proceed',
+    source: 'ai',
+    response: {
+      problemAndCurrentApproach:
+        'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics.',
+      targetKpi: 'ICU sepsis mortality',
+      baselineToday: '21% over 12 months',
+      changeThatMatters: '3 points lower in 12 months',
+      sponsorPilot: 'Yes, we would sponsor',
+      budgetLine: 'Existing budget line',
+      whatWouldMakeYouSayNo:
+        'High latency in EHR synchronization or high false positive alarm fatigue among nursing staff.',
+      valueAndNeedStatement:
+        'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics. An alert that reads vitals and labs continuously could get antibiotics started sooner and bring ICU sepsis mortality down.',
+      submittedAt: 'Today at 2:15 PM',
+    },
   },
   {
     id: 'int-2',
@@ -135,6 +173,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     status: 'In Progress',
     deadline: '5 days',
     decision: '-',
+    source: 'ai',
   },
   {
     id: 'int-3',
@@ -149,6 +188,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     status: 'Pending',
     deadline: '5 days',
     decision: '-',
+    source: 'ai',
   },
   {
     id: 'int-4',
@@ -163,6 +203,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     status: 'Pending',
     deadline: '5 days',
     decision: '-',
+    source: 'ai',
   },
   {
     id: 'int-5',
@@ -177,6 +218,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     status: 'Pending',
     deadline: '5 days',
     decision: '-',
+    source: 'ai',
   },
 ]
 
@@ -191,9 +233,18 @@ export const DEFAULT_STRATEGY_MEMBERS: InternalInterestStakeholder[] = [
     whySuggested: 'Assesses overall strategic alignment and healthcare market expansion',
     avatarColorBg: '#dbeafe',
     avatarColorText: '#1e40af',
-    status: 'In Progress',
+    status: 'Completed',
     deadline: '2-3 days',
-    decision: '-',
+    decision: 'Proceed',
+    source: 'ai',
+    strategyResponse: {
+      strategicAlignment:
+        'High strategic alignment with M42 regional healthcare innovation roadmap.',
+      marketPotential: 'Substantial market potential across inpatient tertiary hospitals in GCC.',
+      recommendation: 'Proceed with structured pilot evaluation.',
+      notes: 'Ensure SLA benchmarks are established prior to formal contracting.',
+      submittedAt: 'Yesterday at 4:30 PM',
+    },
   },
 ]
 
