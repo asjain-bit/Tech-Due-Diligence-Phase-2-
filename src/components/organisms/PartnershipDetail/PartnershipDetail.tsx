@@ -32,6 +32,7 @@ import {
   Send,
   FileText,
   UserPlus,
+  ChevronDown,
 } from 'lucide-react'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import type { PartnershipDetailProps, DetailTab } from './PartnershipDetail.types'
@@ -170,31 +171,44 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [q5SayNo, setQ5SayNo] = useState(
     'High latency in EHR synchronization or high false positive alarm fatigue among nursing staff.'
   )
-  const [aiStatementChoice, setAiStatementChoice] = useState<'yes' | 'change'>('yes')
-  const [customStatement, setCustomStatement] = useState(
-    'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics. An alert that reads vitals and labs continuously could get antibiotics started sooner and bring ICU sepsis mortality down.'
-  )
+  const [isAiGenerating, setIsAiGenerating] = useState(false)
+  const [showValueNeedPopup, setShowValueNeedPopup] = useState(false)
+  const [aiFeedbackChoice, setAiFeedbackChoice] = useState<'yes' | 'no' | null>(null)
+  const [aiFeedbackNote, setAiFeedbackNote] = useState('')
+  const [showQuestionnaireConfirmModal, setShowQuestionnaireConfirmModal] = useState(false)
   const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false)
 
-  const allQuestionsAnswered = Boolean(
-    q1Problem.trim() &&
-    q2Kpi &&
-    q2Baseline.trim() &&
-    q2Change.trim() &&
-    q3Sponsor &&
-    q4Budget &&
-    q5SayNo.trim()
+  // Questions 1 to 4 answered check
+  const areQuestionsAnswered = Boolean(
+    q1Problem.trim() && q2Kpi && q2Baseline.trim() && q2Change.trim() && q3Sponsor && q4Budget
   )
 
-  const dynamicAiStatement = q1Problem.trim()
-    ? `${q1Problem.trim().endsWith('.') ? q1Problem.trim() : q1Problem.trim() + '.'} An alert that reads vitals and labs continuously could get antibiotics started sooner and bring ${q2Kpi || 'clinical mortality'} down.`
-    : 'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics. An alert that reads vitals and labs continuously could get antibiotics started sooner and bring ICU sepsis mortality down.'
+  const generatedValueStatement = `Addressing delays in early sepsis recognition on inpatient wards will enable timely antimicrobial intervention. With continuous automated surveillance of patient vitals and laboratory results, ${q2Kpi || 'ICU sepsis mortality'} is projected to reduce from baseline (${q2Baseline || '21% over 12 months'}) by ${q2Change || '3 points lower in 12 months'}, directly lowering critical care complications and inpatient mortality.`
 
-  const handleSendQuestionnaire = () => {
+  const generatedNeedStatement = `Pilot deployment has confirmed operational sponsorship (${q3Sponsor || 'Yes, we would sponsor'}) with financing supported via ${q4Budget?.toLowerCase() || 'existing budget line'}. Proactive workflow integrations and threshold tuning are required to safeguard against ${q5SayNo.trim() || 'clinical alert fatigue'} prior to network-wide scaling.`
+
+  const handleSaveAndGenerate = () => {
+    setIsAiGenerating(true)
+    setAiFeedbackChoice(null)
+    setAiFeedbackNote('')
+    setTimeout(() => {
+      setIsAiGenerating(false)
+      setShowValueNeedPopup(true)
+    }, 1600)
+  }
+
+  const handleCancelQuestionnaire = () => {
+    setIsAiGenerating(false)
+    setAiFeedbackChoice(null)
+    setAiFeedbackNote('')
+    setShowValueNeedPopup(false)
+  }
+
+  const handleConfirmSubmitQuestionnaire = () => {
     const finalStatement =
-      aiStatementChoice === 'change' && customStatement.trim()
-        ? customStatement.trim()
-        : dynamicAiStatement
+      aiFeedbackChoice === 'no' && aiFeedbackNote.trim()
+        ? `${generatedValueStatement} [Adjustment Note: ${aiFeedbackNote.trim()}]`
+        : generatedValueStatement
 
     const responsePayload = {
       problemAndCurrentApproach: q1Problem,
@@ -204,7 +218,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       sponsorPilot: q3Sponsor,
       budgetLine: q4Budget,
       whatWouldMakeYouSayNo: q5SayNo,
-      valueAndNeedStatement: finalStatement,
+      valueAndNeedStatement: `${finalStatement} — ${generatedNeedStatement}`,
       submittedAt: 'Just now',
     }
 
@@ -220,7 +234,47 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           : s
       )
     )
+    setShowQuestionnaireConfirmModal(false)
+    setShowValueNeedPopup(false)
     setQuestionnaireSubmitted(true)
+    setReviewToast('Questionnaire submitted successfully for Director Review.')
+  }
+
+  // Strategy Judgement states
+  const [j1FocusAreas, setJ1FocusAreas] = useState('In scope')
+  const [j2Roadmap, setJ2Roadmap] = useState('Overlap a roadmap item')
+  const [j3BuildBuy, setJ3BuildBuy] = useState('Build')
+  const [j4Architecture, setJ4Architecture] = useState('Does not fit')
+  const [j5OwnRent, setJ5OwnRent] = useState('Mixed')
+  const [j6Scale, setJ6Scale] = useState('High')
+  const [j7Sovereignty, setJ7Sovereignty] = useState('Partially meets')
+
+  const [strategyOutcome, setStrategyOutcome] = useState<
+    'Proceed' | 'Proceed with conditions' | 'Reject' | null
+  >(null)
+  const [strategyOutcomeReason, setStrategyOutcomeReason] = useState('')
+  const [showStrategyRecommendationModal, setShowStrategyRecommendationModal] = useState(false)
+  const [showStrategyConfirmModal, setShowStrategyConfirmModal] = useState(false)
+  const [strategyJudgementSubmitted, setStrategyJudgementSubmitted] = useState(false)
+
+  const handleCancelStrategyJudgement = () => {
+    setJ1FocusAreas('In scope')
+    setJ2Roadmap('Overlap a roadmap item')
+    setJ3BuildBuy('Build')
+    setJ4Architecture('Does not fit')
+    setJ5OwnRent('Mixed')
+    setJ6Scale('High')
+    setJ7Sovereignty('Partially meets')
+    setStrategyOutcome(null)
+    setStrategyOutcomeReason('')
+    setShowStrategyRecommendationModal(false)
+  }
+
+  const handleConfirmSubmitStrategyJudgement = () => {
+    setShowStrategyConfirmModal(false)
+    setShowStrategyRecommendationModal(false)
+    setStrategyJudgementSubmitted(true)
+    setReviewToast('Strategy judgement submitted successfully for Director Review.')
   }
 
   const [activeTab, setActiveTab] = useState<DetailTab>('overview')
@@ -529,7 +583,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     deletingStrategyMember ||
     maxStrategyLimitWarning ||
     showQuestionnaireModal ||
-    showJudgementCriteriaModal
+    showJudgementCriteriaModal ||
+    showQuestionnaireConfirmModal ||
+    showStrategyConfirmModal ||
+    isAiGenerating ||
+    showValueNeedPopup ||
+    showStrategyRecommendationModal
   )
 
   React.useEffect(() => {
@@ -702,6 +761,21 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               }`}
             >
               <span>Questionnaire</span>
+            </button>
+          )}
+
+          {isStrategyTeam && (
+            <button
+              role="tab"
+              aria-selected={activeTab === 'judgement'}
+              onClick={() => setActiveTab('judgement')}
+              className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
+                activeTab === 'judgement'
+                  ? 'text-[#36c0c9] font-semibold border-b-2 border-[#36c0c9]'
+                  : 'text-[#64748b] hover:text-[#0d212c] border-b-2 border-transparent'
+              }`}
+            >
+              <span>Judgement</span>
             </button>
           )}
 
@@ -1357,30 +1431,171 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             </div>
 
             {questionnaireSubmitted ? (
-              <div className="bg-white rounded-2xl border border-[#e2e8f0] p-8 shadow-xs flex flex-col items-center text-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#f0fdfa] text-[#0f766e] flex items-center justify-center border border-[#ccfbf1]">
-                  <CheckCircle2 className="w-6 h-6 text-[#0f766e]" />
+              <div className="flex flex-col gap-6 animate-in fade-in">
+                {/* Submitted View Only Banner */}
+                <div className="bg-[#f0fdfa] border border-[#ccfbf1] p-4 sm:p-5 rounded-2xl flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shadow-2xs">
+                      <CheckCircle2 className="w-5 h-5 text-[#0f766e]" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-[#0f766e]">
+                        Questionnaire Submitted to Director Review
+                      </h4>
+                      <p className="text-xs text-[#115e59]">
+                        Your evaluation responses and value &amp; need statements are recorded and
+                        view-only.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#ccfbf1] text-[#0f766e]">
+                    View Only
+                  </span>
                 </div>
-                <div>
-                  <h3 className="text-base font-semibold text-[#0d212c]">
-                    Questionnaire Submitted Successfully
-                  </h3>
-                  <p className="text-xs text-[#64748b] mt-1 max-w-md">
-                    Your evaluation and value &amp; need statement have been recorded and shared
-                    with the clinical partnership committee.
-                  </p>
+
+                {/* Questions Readonly Card */}
+                <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col divide-y divide-[#f1f5f9]">
+                  {/* Q1 Readonly */}
+                  <div className="pb-6 flex flex-col gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold">
+                        1
+                      </span>
+                      <span className="text-xs font-medium text-[#64748b]">
+                        Is this a real problem for you today, and what do you do about it now?
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-[#0d212c] pl-8.5 font-medium leading-relaxed">
+                      {q1Problem}
+                    </p>
+                  </div>
+
+                  {/* Q2 Readonly */}
+                  <div className="py-6 flex flex-col gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold">
+                        2
+                      </span>
+                      <span className="text-xs font-medium text-[#64748b]">
+                        Which KPI would move, baseline today, and change that would matter:
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pl-8.5 pt-1">
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <span className="text-[11px] text-[#64748b] block">Target KPI</span>
+                        <span className="text-xs font-semibold text-[#0d212c]">{q2Kpi}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <span className="text-[11px] text-[#64748b] block">Baseline Today</span>
+                        <span className="text-xs font-semibold text-[#0d212c]">{q2Baseline}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <span className="text-[11px] text-[#64748b] block">
+                          Change That Matters
+                        </span>
+                        <span className="text-xs font-semibold text-[#0d212c]">{q2Change}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Q3 Readonly */}
+                  <div className="py-6 flex flex-col gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold">
+                        3
+                      </span>
+                      <span className="text-xs font-medium text-[#64748b]">
+                        Would you sponsor a pilot?
+                      </span>
+                    </div>
+                    <div className="pl-8.5 pt-1">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{q3Sponsor}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Q4 Readonly */}
+                  <div className="py-6 flex flex-col gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold">
+                        4
+                      </span>
+                      <span className="text-xs font-medium text-[#64748b]">
+                        Budget funding status:
+                      </span>
+                    </div>
+                    <div className="pl-8.5 pt-1">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{q4Budget}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Q5 Readonly */}
+                  <div className="pt-6 flex flex-col gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold">
+                        5
+                      </span>
+                      <span className="text-xs font-medium text-[#64748b]">
+                        What would make you say no?
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-[#0d212c] pl-8.5 font-medium leading-relaxed">
+                      {q5SayNo}
+                    </p>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setQuestionnaireSubmitted(false)}
-                  className="mt-2 px-4 py-2 text-xs font-semibold text-[#008a8a] border border-[#36c0c9]/40 rounded-lg hover:bg-slate-50 transition cursor-pointer"
-                >
-                  Edit Answers
-                </button>
+
+                {/* Value and Need Statements Card */}
+                <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col gap-6">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-[12px]">
+                      <h3 className="text-base font-semibold text-[#0d212c]">Value Statement</h3>
+                      <span className="text-[11px] font-medium text-[#0e7490] bg-[#f0f9fa] border border-[#cffafe] px-2.5 py-0.5 rounded-full">
+                        AI Generated
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-[#0d212c] leading-relaxed font-normal">
+                      {generatedValueStatement}
+                    </p>
+                  </div>
+
+                  <hr className="border-t border-[#f1f5f9]" />
+
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-[12px]">
+                      <h3 className="text-base font-semibold text-[#0d212c]">Need Statement</h3>
+                      <span className="text-[11px] font-medium text-[#0e7490] bg-[#f0f9fa] border border-[#cffafe] px-2.5 py-0.5 rounded-full">
+                        AI Generated
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-[#0d212c] leading-relaxed font-normal">
+                      {generatedNeedStatement}
+                    </p>
+                  </div>
+
+                  {aiFeedbackNote.trim() && (
+                    <>
+                      <hr className="border-t border-[#f1f5f9]" />
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold text-[#0d212c]">
+                          Feedback Note Attached
+                        </span>
+                        <p className="text-xs text-[#64748b] italic">
+                          &ldquo;{aiFeedbackNote.trim()}&rdquo;
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                {/* Questions Container (Matching design from Image 1) */}
+                {/* Questions Container */}
                 <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col divide-y divide-[#f1f5f9]">
                   {/* Question 1 */}
                   <div className="pb-8 flex flex-col gap-3">
@@ -1469,7 +1684,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     </div>
                   </div>
 
-                  {/* Question 3 */}
+                  {/* Question 3 (Updated Clicked State & Primary Light Radio Color) */}
                   <div className="py-8 flex flex-col gap-4">
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5">
@@ -1491,18 +1706,18 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                             onClick={() => setQ3Sponsor(opt)}
                             className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition text-xs sm:text-sm font-medium cursor-pointer ${
                               isSelected
-                                ? 'bg-slate-50 border-[#0d212c] text-[#0d212c] ring-1 ring-[#0d212c]'
+                                ? 'bg-white border-slate-300 text-[#0d212c] ring-2 ring-slate-100'
                                 : 'bg-white border-[#e2e8f0] text-[#475569] hover:bg-slate-50'
                             }`}
                           >
                             <span
                               className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                                 isSelected
-                                  ? 'border-[#0d212c] bg-white'
+                                  ? 'border-[#36c0c9] bg-white'
                                   : 'border-slate-300 bg-white'
                               }`}
                             >
-                              {isSelected && <span className="w-2 h-2 rounded-full bg-[#0d212c]" />}
+                              {isSelected && <span className="w-2 h-2 rounded-full bg-[#36c0c9]" />}
                             </span>
                             <span>{opt}</span>
                           </button>
@@ -1511,7 +1726,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     </div>
                   </div>
 
-                  {/* Question 4 */}
+                  {/* Question 4 (Updated Clicked State & Primary Light Radio Color) */}
                   <div className="py-8 flex flex-col gap-4">
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5">
@@ -1533,19 +1748,19 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                               onClick={() => setQ4Budget(opt)}
                               className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition text-xs sm:text-sm font-medium cursor-pointer ${
                                 isSelected
-                                  ? 'bg-slate-50 border-[#0d212c] text-[#0d212c] ring-1 ring-[#0d212c]'
+                                  ? 'bg-white border-slate-300 text-[#0d212c] ring-2 ring-slate-100'
                                   : 'bg-white border-[#e2e8f0] text-[#475569] hover:bg-slate-50'
                               }`}
                             >
                               <span
                                 className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                                   isSelected
-                                    ? 'border-[#0d212c] bg-white'
+                                    ? 'border-[#36c0c9] bg-white'
                                     : 'border-slate-300 bg-white'
                                 }`}
                               >
                                 {isSelected && (
-                                  <span className="w-2 h-2 rounded-full bg-[#0d212c]" />
+                                  <span className="w-2 h-2 rounded-full bg-[#36c0c9]" />
                                 )}
                               </span>
                               <span>{opt}</span>
@@ -1578,127 +1793,209 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       className="w-full p-3.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white transition leading-relaxed"
                     />
                   </div>
-                </div>
 
-                {/* AI-GENERATED VALUE AND NEED STATEMENT (Shown when questions are answered - Matching Image 2) */}
-                {allQuestionsAnswered && (
-                  <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-                    {/* Value and need statement card */}
-                    <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-7 shadow-xs flex flex-col gap-5">
-                      <h3 className="text-base font-semibold text-[#0d212c]">
-                        Value and need statement
-                      </h3>
-
-                      {/* Cyan callout block with dark teal left border */}
-                      <div className="p-4 sm:p-5 rounded-xl bg-[#f0f9fa] border-l-4 border-[#0e7490] text-xs sm:text-sm text-[#0f172a] leading-relaxed font-normal">
-                        {dynamicAiStatement}
-                      </div>
-
-                      {/* KPI / Baseline / Change summary table */}
-                      <div className="bg-slate-50/70 border border-[#e2e8f0] rounded-xl overflow-hidden">
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead>
-                            <tr className="border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-semibold uppercase tracking-wider">
-                              <th className="py-2.5 px-4">KPI</th>
-                              <th className="py-2.5 px-4">BASELINE</th>
-                              <th className="py-2.5 px-4">CHANGE THAT WOULD MATTER</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td className="py-3 px-4 font-medium text-[#0d212c]">
-                                {q2Kpi || 'ICU sepsis mortality'}
-                              </td>
-                              <td className="py-3 px-4 text-[#475569]">
-                                {q2Baseline || '21% over 12 months'}
-                              </td>
-                              <td className="py-3 px-4 text-[#475569]">
-                                {q2Change || '3 points lower in 12 months'}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    {/* Bottom Alignment & Send Card (Image 2 bottom box) */}
-                    <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setAiStatementChoice('yes')}
-                          className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition text-xs sm:text-sm font-medium cursor-pointer ${
-                            aiStatementChoice === 'yes'
-                              ? 'bg-slate-50 border-[#0d212c] text-[#0d212c] ring-1 ring-[#0d212c]'
-                              : 'bg-white border-[#e2e8f0] text-[#475569] hover:bg-slate-50'
-                          }`}
-                        >
-                          <span
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                              aiStatementChoice === 'yes'
-                                ? 'border-[#0d212c] bg-white'
-                                : 'border-slate-300 bg-white'
-                            }`}
-                          >
-                            {aiStatementChoice === 'yes' && (
-                              <span className="w-2 h-2 rounded-full bg-[#0d212c]" />
-                            )}
-                          </span>
-                          <span>Yes, this is right</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setAiStatementChoice('change')}
-                          className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition text-xs sm:text-sm font-medium cursor-pointer ${
-                            aiStatementChoice === 'change'
-                              ? 'bg-slate-50 border-[#0d212c] text-[#0d212c] ring-1 ring-[#0d212c]'
-                              : 'bg-white border-[#e2e8f0] text-[#475569] hover:bg-slate-50'
-                          }`}
-                        >
-                          <span
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                              aiStatementChoice === 'change'
-                                ? 'border-[#0d212c] bg-white'
-                                : 'border-slate-300 bg-white'
-                            }`}
-                          >
-                            {aiStatementChoice === 'change' && (
-                              <span className="w-2 h-2 rounded-full bg-[#0d212c]" />
-                            )}
-                          </span>
-                          <span>Something needs changing</span>
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleSendQuestionnaire}
-                        className="px-8 py-2.5 rounded-full bg-[#0e5c68] hover:bg-[#0b4b55] text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer shrink-0 self-end sm:self-auto"
-                      >
-                        Send
-                      </button>
-                    </div>
-
-                    {/* If user selected "Something needs changing", let them write their own */}
-                    {aiStatementChoice === 'change' && (
-                      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 sm:p-6 shadow-xs flex flex-col gap-2 animate-in fade-in">
-                        <label className="text-xs font-semibold text-[#0d212c]">
-                          Provide your updated Value and Need Statement
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={customStatement}
-                          onChange={(e) => setCustomStatement(e.target.value)}
-                          placeholder="Write your customized statement here..."
-                          className="w-full p-3.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white transition leading-relaxed"
-                        />
-                      </div>
-                    )}
+                  {/* Save and Cancel Buttons (Shown after user fills answers) */}
+                  <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#f1f5f9]">
+                    <button
+                      type="button"
+                      onClick={handleCancelQuestionnaire}
+                      className="px-5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm font-semibold text-[#64748b] hover:bg-slate-50 cursor-pointer transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!areQuestionsAnswered || isAiGenerating}
+                      onClick={handleSaveAndGenerate}
+                      className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold shadow-xs cursor-pointer transition"
+                    >
+                      Save
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB: JUDGEMENT (Strategy Team Profile) */}
+        {isStrategyTeam && activeTab === 'judgement' && (
+          <div className="flex flex-col gap-6 w-full max-w-4xl animate-in fade-in duration-150">
+            {/* Header */}
+            <div className="flex flex-col gap-1">
+              <h2 className="text-xl font-semibold text-[#0d212c]">Your judgement</h2>
+              <p className="text-xs text-[#64748b]">
+                Pre-filled by the agent. Change any you disagree with.
+              </p>
+            </div>
+
+            {strategyJudgementSubmitted && (
+              <div className="bg-[#f0fdfa] border border-[#ccfbf1] p-4 sm:p-5 rounded-2xl flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shadow-2xs">
+                    <CheckCircle2 className="w-5 h-5 text-[#0f766e]" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-[#0f766e]">
+                      Strategy Judgement Submitted to Director Review
+                    </h4>
+                    <p className="text-xs text-[#115e59]">
+                      Your recommendation and criteria judgements are finalized and view-only.
+                    </p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#ccfbf1] text-[#0f766e]">
+                  View Only
+                </span>
+              </div>
+            )}
+
+            {/* Judgement Criteria Card (7 Questions matching Snapshot 2) */}
+            <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col divide-y divide-[#f1f5f9]">
+              {[
+                {
+                  id: 'focus_areas',
+                  title: 'Fit to current focus areas',
+                  agentRationale:
+                    'Touches "Clinical decision support" and "Patient safety analytics", both in scope.',
+                  agentDefault: 'In scope',
+                  options: ['In scope', 'Adjacent', 'Out of scope'],
+                  currentValue: j1FocusAreas,
+                  onChange: setJ1FocusAreas,
+                },
+                {
+                  id: 'roadmap',
+                  title: 'Duplication on the roadmap',
+                  agentRationale: '"Deterioration alerts in the EMR" is planned for 2027.',
+                  agentDefault: 'Overlap a roadmap item',
+                  options: ['None', 'Overlap a roadmap item', 'Duplicates a roadmap item'],
+                  currentValue: j2Roadmap,
+                  onChange: setJ2Roadmap,
+                },
+                {
+                  id: 'build_buy',
+                  title: 'Build, buy or partner',
+                  agentRationale:
+                    'Strategy lists predictive clinical models as build, through the Agentic CoE.',
+                  agentDefault: 'Build',
+                  options: ['Partner', 'Buy', 'Build'],
+                  currentValue: j3BuildBuy,
+                  onChange: setJ3BuildBuy,
+                },
+                {
+                  id: 'architecture',
+                  title: 'Architecture, hosting and data residency',
+                  agentRationale: 'EU hosting does not meet the in-country residency rule.',
+                  agentDefault: 'Does not fit',
+                  options: ['Fits', 'Fits with conditions', 'Does not fit'],
+                  currentValue: j4Architecture,
+                  onChange: setJ4Architecture,
+                },
+                {
+                  id: 'own_rent',
+                  title: 'Own versus rent',
+                  agentRationale: 'Shared IP proposed on a model trained with Bubble data.',
+                  agentDefault: 'Mixed',
+                  options: ['Own', 'Rent', 'Mixed'],
+                  currentValue: j5OwnRent,
+                  onChange: setJ5OwnRent,
+                },
+                {
+                  id: 'scale',
+                  title: 'Scale across the network',
+                  agentRationale: 'Would apply across all ICUs.',
+                  agentDefault: 'High',
+                  options: ['High', 'Medium', 'Low'],
+                  currentValue: j6Scale,
+                  onChange: setJ6Scale,
+                },
+                {
+                  id: 'sovereignty',
+                  title: 'Sovereignty and local content',
+                  agentRationale: 'No local entity yet; one promised within 12 months (claim).',
+                  agentDefault: 'Partially meets',
+                  options: ['Meets', 'Partially meets', 'Does not meet'],
+                  currentValue: j7Sovereignty,
+                  onChange: setJ7Sovereignty,
+                },
+              ].map((item, idx) => {
+                const isFirst = idx === 0
+                const isChanged = item.currentValue !== item.agentDefault
+                return (
+                  <div
+                    key={item.id}
+                    className={`${isFirst ? 'pb-6' : 'py-6'} flex flex-col md:flex-row md:items-center justify-between gap-4`}
+                  >
+                    {/* Left: Question title & Agent note */}
+                    <div className="flex flex-col gap-1.5 max-w-lg">
+                      <span className="text-sm font-semibold text-[#0d212c] leading-snug">
+                        {item.title}
+                      </span>
+                      <div className="flex items-start sm:items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-[#e0f2fe] text-[#0369a1] shrink-0">
+                          Agent
+                        </span>
+                        <span className="text-xs text-[#64748b] leading-relaxed">
+                          {item.agentRationale}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right: Dropdown & pre-filled / changed indicator */}
+                    <div className="flex flex-col items-start md:items-end gap-1.5 shrink-0 w-full sm:w-auto">
+                      <div className="relative w-full sm:w-72">
+                        <select
+                          disabled={strategyJudgementSubmitted}
+                          value={item.currentValue}
+                          onChange={(e) => item.onChange(e.target.value)}
+                          className={`w-full appearance-none pl-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium transition cursor-pointer bg-white ${
+                            isChanged
+                              ? 'border-slate-300 ring-1 ring-slate-200 text-[#0d212c]'
+                              : 'border-[#e2e8f0] text-[#0d212c] hover:border-slate-300'
+                          } focus:outline-none focus:border-slate-300 focus:ring-1 focus:ring-slate-200 disabled:bg-slate-50 disabled:cursor-not-allowed`}
+                        >
+                          {item.options.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+
+                      <span
+                        className={`text-[11px] ${
+                          isChanged ? 'text-slate-600 font-medium' : 'text-[#94a3b8]'
+                        }`}
+                      >
+                        {isChanged
+                          ? `Changed by you (agent suggested: ${item.agentDefault})`
+                          : 'Agent pre-filled'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+              {/* Save & Cancel Buttons for Strategy Judgement */}
+              <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#f1f5f9]">
+                <button
+                  type="button"
+                  disabled={strategyJudgementSubmitted}
+                  onClick={handleCancelStrategyJudgement}
+                  className="px-5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm font-semibold text-[#64748b] hover:bg-slate-50 cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={strategyJudgementSubmitted}
+                  onClick={() => setShowStrategyRecommendationModal(true)}
+                  className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold shadow-xs cursor-pointer transition"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -3461,10 +3758,445 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       )}
 
-      {/* TOAST NOTIFICATION */}
+      {/* AI THINKING POPUP (SOW Creator Style Thinking Mode) */}
+      {isAiGenerating && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl border border-[#e2e8f0] flex flex-col items-center justify-center text-center gap-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative flex items-center justify-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#e6fffa] text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shadow-xs">
+                <Sparkles
+                  className="w-7 h-7 text-[#36c0c9] animate-spin"
+                  style={{ animationDuration: '3s' }}
+                />
+              </div>
+              <div className="absolute inset-0 rounded-2xl bg-[#36c0c9]/20 blur-md -z-10 animate-ping" />
+            </div>
+
+            <div className="flex flex-col gap-1.5 max-w-xs">
+              <div className="flex items-center justify-center gap-1.5">
+                <h3 className="text-base font-semibold text-[#0d212c]">Thinking</h3>
+                <span className="flex items-center gap-1 mt-1">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-[#36c0c9] animate-bounce"
+                    style={{ animationDelay: '0ms' }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-[#36c0c9] animate-bounce"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-[#36c0c9] animate-bounce"
+                    style={{ animationDelay: '300ms' }}
+                  />
+                </span>
+              </div>
+              <p className="text-xs text-[#64748b] leading-relaxed">
+                Synthesizing Value &amp; Need Statements from your responses...
+              </p>
+            </div>
+
+            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1">
+              <div className="bg-[#36c0c9] h-full rounded-full animate-pulse w-3/4" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VALUE & NEED STATEMENTS POPUP (Entire info in popup) */}
+      {showValueNeedPopup && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-[#e2e8f0] flex flex-col gap-6 animate-in fade-in zoom-in-95 my-auto max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 pb-2 border-b border-[#f1f5f9]">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-semibold text-[#0d212c]">
+                  Value &amp; Need Statements
+                </h3>
+                <p className="text-xs text-[#64748b]">
+                  AI synthesized evaluation based on your questionnaire responses.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowValueNeedPopup(false)}
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 1. Value Statement (Clean layout without card or icon) */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-[12px]">
+                <h4 className="text-sm font-semibold text-[#0d212c]">Value Statement</h4>
+                <span className="text-[11px] font-medium text-[#0e7490] bg-[#f0f9fa] border border-[#cffafe] px-2.5 py-0.5 rounded-full">
+                  AI Generated
+                </span>
+              </div>
+
+              <p className="text-xs sm:text-sm text-[#0d212c] leading-relaxed font-normal">
+                {generatedValueStatement}
+              </p>
+
+              {/* KPI / Baseline / Change summary table */}
+              <div className="bg-slate-50/70 border border-[#e2e8f0] rounded-xl overflow-hidden mt-1">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-semibold uppercase tracking-wider">
+                      <th className="py-2.5 px-4">KPI</th>
+                      <th className="py-2.5 px-4">BASELINE</th>
+                      <th className="py-2.5 px-4">CHANGE THAT WOULD MATTER</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="py-3 px-4 font-medium text-[#0d212c]">
+                        {q2Kpi || 'ICU sepsis mortality'}
+                      </td>
+                      <td className="py-3 px-4 text-[#475569]">
+                        {q2Baseline || '21% over 12 months'}
+                      </td>
+                      <td className="py-3 px-4 text-[#475569]">
+                        {q2Change || '3 points lower in 12 months'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Horizontal Line Separator */}
+            <hr className="border-t border-[#f1f5f9]" />
+
+            {/* 2. Need Statement (Generated Separately, Clean layout without card or icon) */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-[12px]">
+                <h4 className="text-sm font-semibold text-[#0d212c]">Need Statement</h4>
+                <span className="text-[11px] font-medium text-[#0e7490] bg-[#f0f9fa] border border-[#cffafe] px-2.5 py-0.5 rounded-full">
+                  AI Generated
+                </span>
+              </div>
+
+              <p className="text-xs sm:text-sm text-[#0d212c] leading-relaxed font-normal">
+                {generatedNeedStatement}
+              </p>
+            </div>
+
+            {/* Horizontal Line Separator */}
+            <hr className="border-t border-[#f1f5f9]" />
+
+            {/* CTA Actions Section */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs sm:text-sm font-semibold text-[#0d212c] whitespace-nowrap">
+                  Do these statements represent your clinical evaluation?
+                </span>
+                <span className="text-xs text-[#64748b]">
+                  Confirm as accurate or provide your specific adjustments.
+                </span>
+              </div>
+
+              {/* CTA Buttons: placed below the text, No on left, Yes on right */}
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setAiFeedbackChoice('no')}
+                  className={`px-5 py-2.5 rounded-xl border border-[#cbd5e1] text-xs sm:text-sm font-semibold cursor-pointer transition ${
+                    aiFeedbackChoice === 'no'
+                      ? 'bg-slate-50 text-[#0d212c]'
+                      : 'bg-white text-[#0d212c] hover:bg-slate-50'
+                  }`}
+                >
+                  <span>No, something else</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAiFeedbackChoice('yes')
+                    setShowQuestionnaireConfirmModal(true)
+                  }}
+                  className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs sm:text-sm font-semibold shadow-xs cursor-pointer transition"
+                >
+                  <span>Yes</span>
+                </button>
+              </div>
+
+              {/* If user clicks "No, something else", mandatory input field + submit button */}
+              {aiFeedbackChoice === 'no' && (
+                <div className="pt-4 border-t border-[#f1f5f9] flex flex-col gap-3 animate-in fade-in">
+                  <label
+                    htmlFor="ai-feedback-note"
+                    className="text-xs font-semibold text-[#0d212c]"
+                  >
+                    Specify your required adjustments <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="ai-feedback-note"
+                    rows={3}
+                    value={aiFeedbackNote}
+                    onChange={(e) => setAiFeedbackNote(e.target.value)}
+                    placeholder="Enter your mandatory notes or required adjustments to the statements..."
+                    className="w-full p-3.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white leading-relaxed"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      disabled={!aiFeedbackNote.trim()}
+                      onClick={() => setShowQuestionnaireConfirmModal(true)}
+                      className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold shadow-xs cursor-pointer transition"
+                    >
+                      Submit
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUBMIT QUESTIONNAIRE CONFIRMATION MODAL (SOW Creator Style) */}
+      {showQuestionnaireConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#e6fffa] text-[#0f766e] flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6 text-[#36c0c9]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-[#0d212c]">Submit Questionnaire</h3>
+                  <p className="text-xs text-[#64748b] mt-0.5">
+                    Are you sure you want to send this questionnaire for Director Review?
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuestionnaireConfirmModal(false)}
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-[#64748b] leading-relaxed">
+              {aiFeedbackChoice === 'no' && aiFeedbackNote.trim() ? (
+                <div>
+                  <span className="font-semibold text-[#0d212c]">Mandatory feedback note: </span>
+                  <span className="italic">&ldquo;{aiFeedbackNote.trim()}&rdquo;</span>
+                </div>
+              ) : (
+                <div>
+                  <span className="font-semibold text-[#0d212c]">Approval: </span>
+                  <span>
+                    You have confirmed that the AI-generated Value &amp; Need Statements are
+                    accurate and ready for Director Review.
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setShowQuestionnaireConfirmModal(false)}
+                className="px-5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer bg-transparent transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSubmitQuestionnaire}
+                className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold cursor-pointer border-0 transition shadow-xs"
+              >
+                Confirm &amp; Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STRATEGY FINAL RECOMMENDATION POPUP */}
+      {showStrategyRecommendationModal && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#e2e8f0] flex flex-col gap-6 animate-in fade-in zoom-in-95 my-auto max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 pb-2 border-b border-[#f1f5f9]">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-semibold text-[#0d212c]">Final Recommendation</h3>
+                <p className="text-xs text-[#64748b]">
+                  Record whether you recommend to proceed, proceed with conditions, or reject.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStrategyRecommendationModal(false)}
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 3 options: 1 below the other, do not change stroke and fill color of the input field */}
+            <div className="flex flex-col gap-3">
+              {(
+                [
+                  { label: 'Proceed', value: 'Proceed' },
+                  { label: 'Proceed with conditions', value: 'Proceed with conditions' },
+                  { label: 'Reject', value: 'Reject' },
+                ] as const
+              ).map((opt) => {
+                const isSelected = strategyOutcome === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setStrategyOutcome(opt.value)}
+                    className="p-3.5 rounded-xl border border-[#e2e8f0] bg-white text-[#0d212c] flex items-center justify-between text-xs sm:text-sm font-medium cursor-pointer transition hover:bg-slate-50/60"
+                  >
+                    <span>{opt.label}</span>
+                    <span className="w-4 h-4 rounded-full border border-slate-300 bg-white flex items-center justify-center">
+                      {isSelected && <span className="w-2 h-2 rounded-full bg-[#36c0c9]" />}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* If Proceed with conditions or Reject, show mandatory input field */}
+            {(strategyOutcome === 'Proceed with conditions' || strategyOutcome === 'Reject') && (
+              <div className="flex flex-col gap-2 pt-2 animate-in fade-in">
+                <label
+                  htmlFor="strategy-outcome-reason"
+                  className="text-xs font-semibold text-[#0d212c]"
+                >
+                  {strategyOutcome === 'Proceed with conditions'
+                    ? 'Specify Conditions'
+                    : 'Rejection Reason'}{' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="strategy-outcome-reason"
+                  rows={3}
+                  value={strategyOutcomeReason}
+                  onChange={(e) => setStrategyOutcomeReason(e.target.value)}
+                  placeholder={
+                    strategyOutcome === 'Proceed with conditions'
+                      ? 'Detail the specific mandatory conditions for clinical deployment or technical fit...'
+                      : 'Explain the strategic misalignment or rationale for rejecting this partnership...'
+                  }
+                  className="w-full p-3.5 rounded-xl border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white leading-relaxed"
+                />
+              </div>
+            )}
+
+            {/* Bottom Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setShowStrategyRecommendationModal(false)}
+                className="px-5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer bg-transparent transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={
+                  !strategyOutcome ||
+                  ((strategyOutcome === 'Proceed with conditions' ||
+                    strategyOutcome === 'Reject') &&
+                    !strategyOutcomeReason.trim())
+                }
+                onClick={() => setShowStrategyConfirmModal(true)}
+                className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold shadow-xs cursor-pointer transition"
+              >
+                Submit Judgement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUBMIT STRATEGY JUDGEMENT CONFIRMATION MODAL (SOW Creator Style) */}
+      {showStrategyConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#e6fffa] text-[#0f766e] flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6 text-[#36c0c9]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-[#0d212c]">
+                    Submit Strategy Judgement
+                  </h3>
+                  <p className="text-xs text-[#64748b] mt-0.5">
+                    Are you sure you want to send this judgement for Director Review?
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStrategyConfirmModal(false)}
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[#64748b]">Selected Verdict:</span>
+                <span
+                  className={`font-semibold px-2 py-0.5 rounded-md ${
+                    strategyOutcome === 'Proceed'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : strategyOutcome === 'Proceed with conditions'
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-red-50 text-red-700'
+                  }`}
+                >
+                  {strategyOutcome}
+                </span>
+              </div>
+              {strategyOutcomeReason.trim() && (
+                <div className="flex flex-col gap-1 pt-2 border-t border-slate-200">
+                  <span className="text-[#64748b]">Conditions / Rationale:</span>
+                  <p className="text-[#0d212c] italic">
+                    &ldquo;{strategyOutcomeReason.trim()}&rdquo;
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setShowStrategyConfirmModal(false)}
+                className="px-5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer bg-transparent transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSubmitStrategyJudgement}
+                className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold cursor-pointer border-0 transition shadow-xs"
+              >
+                Confirm &amp; Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST NOTIFICATION (SOW Creator Design - No Dot) */}
       {reviewToast && (
-        <div className="fixed top-5 right-5 z-50 p-4 rounded-xl shadow-lg bg-white border border-[#e2e8f0] text-sm font-medium flex items-center gap-2.5 animate-in slide-in-from-top-4">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+        <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl bg-white border border-[#e2e8f0] text-xs sm:text-sm font-medium text-[#0d212c] flex items-center gap-2.5 animate-in slide-in-from-top-4 duration-200">
+          <div className="w-6 h-6 rounded-lg bg-[#e6fffa] text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-[#36c0c9]" />
+          </div>
           <span>{reviewToast}</span>
         </div>
       )}

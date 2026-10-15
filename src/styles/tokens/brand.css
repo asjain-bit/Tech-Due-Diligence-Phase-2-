@@ -26,6 +26,12 @@
   --app-text: #0d212c;
   --app-text-muted: #64748b;
   --app-border: #e2e8f0;
+
+  /* Primary Light Action Button Tokens */
+  --action-primary-bg-default: #36c0c9;
+  --action-primary-bg-hover: #2fb0b9;
+  --action-primary-bg-pressed: #26969e;
+  --action-primary-text: #ffffff;
 }
 
 [data-theme='dark'] {
@@ -47,4 +53,10 @@
   --app-text: #ffffff;
   --app-text-muted: #94a3b8;
   --app-border: #1e4558;
+
+  /* Primary Light Action Button Tokens */
+  --action-primary-bg-default: #36c0c9;
+  --action-primary-bg-hover: #2fb0b9;
+  --action-primary-bg-pressed: #26969e;
+  --action-primary-text: #ffffff;
 }

@@ -196,8 +196,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
     return (
       <div className="flex flex-col gap-6 w-full px-3 py-3 text-[#0d212c]">
         {toastMessage && (
-          <div className="fixed top-5 right-5 z-50 p-4 rounded-xl shadow-lg bg-white border border-[#e2e8f0] text-sm font-medium flex items-center gap-2.5 animate-in slide-in-from-top-4">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+          <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl bg-white border border-[#e2e8f0] text-xs sm:text-sm font-medium text-[#0d212c] flex items-center gap-2.5 animate-in slide-in-from-top-4 duration-200">
+            <div className="w-6 h-6 rounded-lg bg-[#e6fffa] text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shrink-0">
+              <CheckCircle2 className="w-4 h-4 text-[#36c0c9]" />
+            </div>
             <span>{toastMessage}</span>
           </div>
         )}
@@ -215,8 +217,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
   return (
     <div className="flex flex-col gap-6 w-full px-6 lg:px-10 py-3 text-[#0d212c]">
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 p-4 rounded-xl shadow-lg bg-white border border-[#e2e8f0] text-sm font-medium flex items-center gap-2.5 animate-in slide-in-from-top-4">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+        <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl bg-white border border-[#e2e8f0] text-xs sm:text-sm font-medium text-[#0d212c] flex items-center gap-2.5 animate-in slide-in-from-top-4 duration-200">
+          <div className="w-6 h-6 rounded-lg bg-[#e6fffa] text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-[#36c0c9]" />
+          </div>
           <span>{toastMessage}</span>
         </div>
       )}

@@ -179,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setShowLogoutConfirm(true)}
                 title="Sign out"
                 aria-label="Sign out"
-                className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-white/10 transition cursor-pointer shrink-0"
+                className="p-2 rounded-lg text-slate-400 hover:text-red-400 bg-transparent hover:bg-transparent active:bg-transparent cursor-pointer shrink-0"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -213,7 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setShowUserOverlay(false)
                         setShowLogoutConfirm(true)
                       }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition cursor-pointer"
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:text-red-700 bg-transparent hover:bg-transparent active:bg-transparent cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Logout</span>
@@ -272,7 +272,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setShowUserOverlay(false)
                         setShowLogoutConfirm(true)
                       }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition cursor-pointer"
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:text-red-700 bg-transparent hover:bg-transparent active:bg-transparent cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Logout</span>

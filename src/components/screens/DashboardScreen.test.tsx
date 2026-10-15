@@ -195,4 +195,61 @@ describe('DashboardScreen', () => {
     // Exited filter chip should not be present
     expect(screen.queryByRole('button', { name: /^Exited/i })).not.toBeInTheDocument()
   })
+
+  it('renders Judgement tab for strategy team with 7 questions and confirmation popup', async () => {
+    const user = userEvent.setup()
+    const strategyProfile = {
+      id: 'strategy-fit',
+      name: 'Omar Al-Hashemi',
+      designation: 'Strategy Team',
+      email: 'omar.alhashemi@m42.ae',
+      roleTitle: 'Strategy Team',
+    }
+    render(<DashboardScreen userProfile={strategyProfile} />)
+
+    const row = screen.getByText('MedTech Innovations')
+    await user.click(row)
+
+    // Verify Judgement tab exists for Strategy Team
+    const judgementTab = screen.getByRole('tab', { name: /Judgement/i })
+    expect(judgementTab).toBeInTheDocument()
+    await user.click(judgementTab)
+
+    // Verify header and criteria questions
+    expect(screen.getByText('Your judgement')).toBeInTheDocument()
+    expect(screen.getByText('Fit to current focus areas')).toBeInTheDocument()
+    expect(screen.getByText('Duplication on the roadmap')).toBeInTheDocument()
+    expect(screen.getByText('Build, buy or partner')).toBeInTheDocument()
+    expect(screen.getByText('Architecture, hosting and data residency')).toBeInTheDocument()
+    expect(screen.getByText('Own versus rent')).toBeInTheDocument()
+    expect(screen.getByText('Scale across the network')).toBeInTheDocument()
+    expect(screen.getByText('Sovereignty and local content')).toBeInTheDocument()
+
+    // Click Save to open Final Recommendation popup
+    const saveJudgementBtn = screen.getByRole('button', { name: /^Save$/i })
+    await user.click(saveJudgementBtn)
+
+    // Select Proceed outcome in the popup
+    const proceedBtn = screen.getByRole('button', { name: /^Proceed$/i })
+    await user.click(proceedBtn)
+
+    // Submit Judgement button in popup
+    const submitBtn = screen.getByRole('button', { name: 'Submit Judgement' })
+    await user.click(submitBtn)
+
+    // Verify confirmation modal
+    expect(screen.getByText('Submit Strategy Judgement')).toBeInTheDocument()
+    expect(
+      screen.getByText('Are you sure you want to send this judgement for Director Review?')
+    ).toBeInTheDocument()
+
+    // Confirm submission
+    const confirmBtn = screen.getByRole('button', { name: 'Confirm & Submit' })
+    await user.click(confirmBtn)
+
+    // Modal closes and becomes view only
+    expect(screen.queryByText('Submit Strategy Judgement')).not.toBeInTheDocument()
+    expect(screen.getByText(/Strategy Judgement Submitted to Director Review/i)).toBeInTheDocument()
+    expect(screen.getByText('View Only')).toBeInTheDocument()
+  })
 })

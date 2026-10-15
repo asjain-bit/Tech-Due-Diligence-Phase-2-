@@ -257,4 +257,71 @@ describe('PartnershipDetail', () => {
     expect(screen.queryByRole('button', { name: /Add Respondant/i })).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /^Send Request$/i }).length).toBe(1)
   })
+
+  it('handles Questionnaire flow with Save, AI synthesis, separate statements, and confirmation modal', async () => {
+    const user = userEvent.setup()
+    const internalProfile = {
+      id: 'evaluator',
+      name: 'Mariam Al-Zaabi',
+      designation: 'Internal Interest Team',
+      email: 'mariam.alzaabi@m42.ae',
+      roleTitle: 'Internal Interest Team',
+    }
+    render(
+      <PartnershipDetail
+        request={mockRequest}
+        onBack={onBack}
+        onProceed={onProceed}
+        onReject={onReject}
+        userProfile={internalProfile}
+      />
+    )
+
+    // Switch to Questionnaire tab
+    const qTab = screen.getByRole('tab', { name: /Questionnaire/i })
+    await user.click(qTab)
+
+    expect(screen.getByText('Internal Evaluation Questionnaire')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Save/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument()
+
+    // Click Save to trigger AI synthesis
+    const saveBtn = screen.getByRole('button', { name: /Save/i })
+    await user.click(saveBtn)
+
+    // Verify AI synthesizing animation or wait for statements to generate
+    expect(await screen.findByText('Value Statement', {}, { timeout: 3500 })).toBeInTheDocument()
+    expect(await screen.findByText('Need Statement', {}, { timeout: 3500 })).toBeInTheDocument()
+
+    // 2 CTA buttons
+    const yesBtn = screen.getByRole('button', { name: /^Yes$/i })
+    const noBtn = screen.getByRole('button', { name: /No, something else/i })
+    expect(yesBtn).toBeInTheDocument()
+    expect(noBtn).toBeInTheDocument()
+
+    // Test No flow: shows mandatory feedback input
+    await user.click(noBtn)
+    expect(screen.getByLabelText(/Specify your required adjustments/i)).toBeInTheDocument()
+
+    const feedbackInput = screen.getByLabelText(/Specify your required adjustments/i)
+    await user.type(feedbackInput, 'Include emergency department cohort metrics')
+
+    const submitBtn = screen.getByRole('button', { name: /^Submit$/i })
+    await user.click(submitBtn)
+
+    // Verify confirmation popup
+    expect(screen.getByText('Submit Questionnaire')).toBeInTheDocument()
+    expect(
+      screen.getByText('Are you sure you want to send this questionnaire for Director Review?')
+    ).toBeInTheDocument()
+
+    // Confirm submit
+    const confirmBtn = screen.getByRole('button', { name: 'Confirm & Send' })
+    await user.click(confirmBtn)
+
+    // Questionnaire becomes View Only
+    expect(screen.queryByText('Submit Questionnaire')).not.toBeInTheDocument()
+    expect(screen.getByText(/Questionnaire Submitted to Director Review/i)).toBeInTheDocument()
+    expect(screen.getByText('View Only')).toBeInTheDocument()
+  })
 })

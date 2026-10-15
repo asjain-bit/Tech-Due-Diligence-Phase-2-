@@ -2,7 +2,7 @@ import type { PartnershipRequest } from '@/types/partnership.types'
 import type { UserProfile } from '@/components/screens/LoginScreen'
 
 export type DetailTab =
-  'overview' | 'brief' | 'internal_interest' | 'internal_review' | 'questionnaire'
+  'overview' | 'brief' | 'internal_interest' | 'internal_review' | 'questionnaire' | 'judgement'
 
 export interface PartnershipDetailProps {
   request: PartnershipRequest
