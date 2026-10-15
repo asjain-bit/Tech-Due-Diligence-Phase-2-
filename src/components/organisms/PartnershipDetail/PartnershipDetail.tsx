@@ -1432,27 +1432,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             {questionnaireSubmitted ? (
               <div className="flex flex-col gap-6 animate-in fade-in">
-                {/* Submitted View Only Banner */}
-                <div className="bg-[#f0fdfa] border border-[#ccfbf1] p-4 sm:p-5 rounded-2xl flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shadow-2xs">
-                      <CheckCircle2 className="w-5 h-5 text-[#0f766e]" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-[#0f766e]">
-                        Questionnaire Submitted to Director Review
-                      </h4>
-                      <p className="text-xs text-[#115e59]">
-                        Your evaluation responses and value &amp; need statements are recorded and
-                        view-only.
-                      </p>
-                    </div>
-                  </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#ccfbf1] text-[#0f766e]">
-                    View Only
-                  </span>
-                </div>
-
                 {/* Questions Readonly Card */}
                 <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col divide-y divide-[#f1f5f9]">
                   {/* Q1 Readonly */}
@@ -1828,27 +1807,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 Pre-filled by the agent. Change any you disagree with.
               </p>
             </div>
-
-            {strategyJudgementSubmitted && (
-              <div className="bg-[#f0fdfa] border border-[#ccfbf1] p-4 sm:p-5 rounded-2xl flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shadow-2xs">
-                    <CheckCircle2 className="w-5 h-5 text-[#0f766e]" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-[#0f766e]">
-                      Strategy Judgement Submitted to Director Review
-                    </h4>
-                    <p className="text-xs text-[#115e59]">
-                      Your recommendation and criteria judgements are finalized and view-only.
-                    </p>
-                  </div>
-                </div>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#ccfbf1] text-[#0f766e]">
-                  View Only
-                </span>
-              </div>
-            )}
 
             {/* Judgement Criteria Card (7 Questions matching Snapshot 2) */}
             <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col divide-y divide-[#f1f5f9]">

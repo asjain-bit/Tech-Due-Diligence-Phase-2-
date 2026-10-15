@@ -319,9 +319,9 @@ describe('PartnershipDetail', () => {
     const confirmBtn = screen.getByRole('button', { name: 'Confirm & Send' })
     await user.click(confirmBtn)
 
-    // Questionnaire becomes View Only
+    // Modal closes and questionnaire is submitted in read-only card
     expect(screen.queryByText('Submit Questionnaire')).not.toBeInTheDocument()
-    expect(screen.getByText(/Questionnaire Submitted to Director Review/i)).toBeInTheDocument()
-    expect(screen.getByText('View Only')).toBeInTheDocument()
+    expect(screen.getByText('Value Statement')).toBeInTheDocument()
+    expect(screen.getByText('Need Statement')).toBeInTheDocument()
   })
 })

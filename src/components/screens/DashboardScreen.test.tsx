@@ -247,9 +247,8 @@ describe('DashboardScreen', () => {
     const confirmBtn = screen.getByRole('button', { name: 'Confirm & Submit' })
     await user.click(confirmBtn)
 
-    // Modal closes and becomes view only
+    // Modal closes and judgement is finalized
     expect(screen.queryByText('Submit Strategy Judgement')).not.toBeInTheDocument()
-    expect(screen.getByText(/Strategy Judgement Submitted to Director Review/i)).toBeInTheDocument()
-    expect(screen.getByText('View Only')).toBeInTheDocument()
+    expect(screen.getByText('Your judgement')).toBeInTheDocument()
   })
 })
