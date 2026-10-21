@@ -18,7 +18,7 @@ describe('DashboardScreen', () => {
 
     expect(screen.getAllByText('Pending').length).toBeGreaterThan(0)
     expect(screen.getByText('8')).toBeInTheDocument()
-    expect(screen.getByText('Require PMO action')).toBeInTheDocument()
+    expect(screen.getByText('Require Director Action')).toBeInTheDocument()
 
     expect(screen.getByText('NDA in Progress')).toBeInTheDocument()
     expect(screen.getByText('6')).toBeInTheDocument()
@@ -38,12 +38,16 @@ describe('DashboardScreen', () => {
     expect(screen.getByRole('columnheader', { name: 'Vendor Name' })).toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: 'Referred by' })).not.toBeInTheDocument()
     expect(
-      screen.getByRole('columnheader', { name: (content) => content === 'Solution' })
-    ).toBeInTheDocument()
+      screen.queryByRole('columnheader', { name: (content) => content === 'Solution' })
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Focus Area' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Solution Maturity' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Deadline' })).toBeInTheDocument()
+
+    // Submitted Date is the last column
+    const headers = screen.getAllByRole('columnheader')
+    expect(headers[headers.length - 1]).toHaveTextContent('Submitted Date')
   })
 
   it('filters records via search bar and filter chips', async () => {
@@ -103,7 +107,7 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('8')).toBeInTheDocument()
     expect(screen.getByText('Partnerships requiring my review')).toBeInTheDocument()
 
-    expect(screen.getByText('Pending My Review')).toBeInTheDocument()
+    expect(screen.getByText('Pending Review')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(screen.getByText('Questionnaire not submitted')).toBeInTheDocument()
 
@@ -119,7 +123,7 @@ describe('DashboardScreen', () => {
     expect(screen.queryByRole('columnheader', { name: 'Vendor Name' })).not.toBeInTheDocument()
     // Other columns remain
     expect(screen.getByRole('columnheader', { name: 'Company name' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Solution' })).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Solution' })).not.toBeInTheDocument()
   })
 
   it('renders Strategy Team KPI cards and excludes Vendor Name column', () => {
@@ -196,7 +200,7 @@ describe('DashboardScreen', () => {
     expect(screen.queryByRole('button', { name: /^Exited/i })).not.toBeInTheDocument()
   })
 
-  it('renders Judgement tab for strategy team with 7 questions and confirmation popup', async () => {
+  it('renders Judgement tab for strategy team with 7 criteria and a decision flow', async () => {
     const user = userEvent.setup()
     const strategyProfile = {
       id: 'strategy-fit',
@@ -207,16 +211,12 @@ describe('DashboardScreen', () => {
     }
     render(<DashboardScreen userProfile={strategyProfile} />)
 
-    const row = screen.getByText('MedTech Innovations')
-    await user.click(row)
+    await user.click(screen.getByText('MedTech Innovations'))
 
-    // Verify Judgement tab exists for Strategy Team
     const judgementTab = screen.getByRole('tab', { name: /Judgement/i })
-    expect(judgementTab).toBeInTheDocument()
     await user.click(judgementTab)
 
-    // Verify header and criteria questions
-    expect(screen.getByText('Your judgement')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Your judgement' })).toBeInTheDocument()
     expect(screen.getByText('Fit to current focus areas')).toBeInTheDocument()
     expect(screen.getByText('Duplication on the roadmap')).toBeInTheDocument()
     expect(screen.getByText('Build, buy or partner')).toBeInTheDocument()
@@ -225,30 +225,22 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('Scale across the network')).toBeInTheDocument()
     expect(screen.getByText('Sovereignty and local content')).toBeInTheDocument()
 
-    // Click Save to open Final Recommendation popup
-    const saveJudgementBtn = screen.getByRole('button', { name: /^Save$/i })
-    await user.click(saveJudgementBtn)
+    // Save and Cancel are gone; Submit stays disabled until a decision is picked
+    expect(screen.queryByRole('button', { name: /^Save$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Cancel$/i })).not.toBeInTheDocument()
+    const submitBtn = screen.getByRole('button', { name: /Submit decision/i })
+    expect(submitBtn).toBeDisabled()
 
-    // Select Proceed outcome in the popup
-    const proceedBtn = screen.getByRole('button', { name: /^Proceed$/i })
-    await user.click(proceedBtn)
-
-    // Submit Judgement button in popup
-    const submitBtn = screen.getByRole('button', { name: 'Submit Judgement' })
+    await user.click(screen.getByRole('radio', { name: /Yes, proceed/i }))
+    expect(submitBtn).toBeEnabled()
     await user.click(submitBtn)
 
-    // Verify confirmation modal
-    expect(screen.getByText('Submit Strategy Judgement')).toBeInTheDocument()
-    expect(
-      screen.getByText('Are you sure you want to send this judgement for Director Review?')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Submit Strategy Decision')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Confirm & Submit' }))
 
-    // Confirm submission
-    const confirmBtn = screen.getByRole('button', { name: 'Confirm & Submit' })
-    await user.click(confirmBtn)
-
-    // Modal closes and judgement is finalized
-    expect(screen.queryByText('Submit Strategy Judgement')).not.toBeInTheDocument()
-    expect(screen.getByText('Your judgement')).toBeInTheDocument()
+    // Finalized: confirmation closes and the form is view-only
+    expect(screen.queryByText('Submit Strategy Decision')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Submit decision/i })).not.toBeInTheDocument()
+    screen.getAllByRole('combobox').forEach((c) => expect(c).toBeDisabled())
   })
 })

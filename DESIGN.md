@@ -113,22 +113,28 @@ _2+ atoms composed together for a single focused purpose._
 
 _Distinct self-contained sections; orchestrates multiple molecules and atoms._
 
-| Name            | Path                                   | Description                                                                                     | Used in             |
-| :-------------- | :------------------------------------- | :---------------------------------------------------------------------------------------------- | :------------------ |
-| `SiteHeader`    | `@/components/organisms/SiteHeader`    | Top navigation bar containing branding, search, nav links, ThemeToggle, and user Avatar.        | AppShell, Page      |
-| `DataTable`     | `@/components/organisms/DataTable`     | Tabular data grid with client-side sorting, SearchBar filtering, and pagination controls.       | Page, SettingsPanel |
-| `SettingsPanel` | `@/components/organisms/SettingsPanel` | Comprehensive configuration panel combining multiple FormFields, ThemeToggle, and save actions. | AppShell, Page      |
-| `Sidebar`       | `@/components/organisms/Sidebar`       | Expandable dark left navigation sidebar with user profile, Director designation & logout modal. | HomePage, AppShell  |
+| Name                  | Path                                         | Description                                                                                                                               | Used in             |
+| :-------------------- | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- | :------------------ |
+| `SiteHeader`          | `@/components/organisms/SiteHeader`          | Top navigation bar containing branding, search, nav links, ThemeToggle, and user Avatar.                                                  | AppShell, Page      |
+| `DataTable`           | `@/components/organisms/DataTable`           | Tabular data grid with client-side sorting, SearchBar filtering, and pagination controls.                                                 | Page, SettingsPanel |
+| `SettingsPanel`       | `@/components/organisms/SettingsPanel`       | Comprehensive configuration panel combining multiple FormFields, ThemeToggle, and save actions.                                           | AppShell, Page      |
+| `Sidebar`             | `@/components/organisms/Sidebar`             | Expandable dark left navigation sidebar with user profile, Director designation & logout modal.                                           | HomePage, AppShell  |
+| `PartnershipDetail`   | `@/components/organisms/PartnershipDetail`   | Request detail view: Overview, Internal Assessment Brief (Director), Internal Review, Questionnaire and Judgement tabs.                   | DashboardScreen     |
+| `AgentRecommendation` | `@/components/organisms/AgentRecommendation` | Agent verdict (proceed or reject), confidence, reasoning and the signals it weighed.                                                      | PartnershipDetail   |
+| `AgentActions`        | `@/components/organisms/AgentActions`        | Expandable timeline of agent steps: duplicate check, classification, maturity, KPI mapping, baseline, commodity test, assessment brief.   | PartnershipDetail   |
+| `VendorFormResponse`  | `@/components/organisms/VendorFormResponse`  | Large read-only dialog showing the vendor's original submission form.                                                                     | PartnershipDetail   |
+| `QuestionnaireForm`   | `@/components/organisms/QuestionnaireForm`   | Five-question internal interest questionnaire; same layout editable or view-only.                                                         | PartnershipDetail   |
+| `JudgementForm`       | `@/components/organisms/JudgementForm`       | Strategy judgement (7 agent pre-filled criteria, reasons required on edits) plus the final strategic-fit decision; editable or view-only. | PartnershipDetail   |
 
 ### Screens & Pages
 
 _Next.js route entries assembling templates, organisms, and views._
 
-| Name              | Path                                         | Description                                                                            | Used in          |
-| :---------------- | :------------------------------------------- | :------------------------------------------------------------------------------------- | :--------------- |
-| `LoginScreen`     | `src/components/screens/LoginScreen.tsx`     | M42 SSO authentication screen with persona role selection (Director, Evaluator, etc.). | HomePage (`/`)   |
-| `DashboardScreen` | `src/components/screens/DashboardScreen.tsx` | Vendor assessment dashboard with 3 KPI cards and structured empty assessment table.    | HomePage (`/`)   |
-| `HomePage`        | `src/app/page.tsx`                           | Main application page integrating authentication state, Sidebar, and DashboardScreen.  | App Router (`/`) |
+| Name              | Path                                         | Description                                                                                                                        | Used in          |
+| :---------------- | :------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- | :--------------- |
+| `LoginScreen`     | `src/components/screens/LoginScreen.tsx`     | M42 SSO authentication screen with persona role selection (Director, Evaluator, etc.).                                             | HomePage (`/`)   |
+| `DashboardScreen` | `src/components/screens/DashboardScreen.tsx` | Vendor assessment dashboard with 4 role-specific KPI cards and the partnership requests table (Submitted Date is the last column). | HomePage (`/`)   |
+| `HomePage`        | `src/app/page.tsx`                           | Main application page integrating authentication state, Sidebar, and DashboardScreen.                                              | App Router (`/`) |
 
 ---
 

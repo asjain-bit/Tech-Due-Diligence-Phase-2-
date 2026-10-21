@@ -24,12 +24,12 @@ describe('LoginScreen', () => {
     await user.click(screen.getByText('Sign in with SSO'))
     expect(screen.getByText('Select Profile')).toBeInTheDocument()
 
-    // Assert all 5 profiles are listed
+    // Legal Team is hidden; the other 4 profiles are listed
     expect(screen.getByText('Director')).toBeInTheDocument()
     expect(screen.getByText('Internal Interest Team')).toBeInTheDocument()
     expect(screen.getByText('Strategy Team')).toBeInTheDocument()
     expect(screen.getByText('Sponsor')).toBeInTheDocument()
-    expect(screen.getByText('Legal Team')).toBeInTheDocument()
+    expect(screen.queryByText('Legal Team')).not.toBeInTheDocument()
     // Assert prototype navigation tooltip
     expect(
       screen.getByText(
@@ -117,8 +117,8 @@ describe('LoginScreen', () => {
     renderWithTheme(<LoginScreen onLogin={handleLogin} />)
 
     await user.click(screen.getByText('Sign in with SSO'))
-    const legalRole = screen.getByText('Legal Team')
-    await user.click(legalRole)
+    const sponsorRole = screen.getByText('Sponsor')
+    await user.click(sponsorRole)
 
     act(() => {
       vi.advanceTimersByTime(800)
@@ -133,7 +133,7 @@ describe('LoginScreen', () => {
     renderWithTheme(<LoginScreen onLogin={vi.fn()} />)
 
     await user.click(screen.getByText('Sign in with SSO'))
-    AVAILABLE_PROFILES.forEach((p) => {
+    AVAILABLE_PROFILES.filter((p) => p.id !== 'legal-director').forEach((p) => {
       expect(screen.getByText(p.roleTitle)).toBeInTheDocument()
     })
   })

@@ -1,3 +1,5 @@
+import type { StrategyDecision } from './judgementCriteria'
+
 export type PartnershipStatus = 'Pending' | 'In Progress' | 'At Risk' | 'Exited'
 
 export type StageStatus = 'completed' | 'in_progress' | 'not_started'
@@ -58,15 +60,20 @@ export interface QuestionnaireResponse {
   sponsorPilot?: string
   budgetLine?: string
   whatWouldMakeYouSayNo?: string
-  valueAndNeedStatement?: string
   submittedAt?: string
 }
 
+export interface StrategyJudgementResponse {
+  criterionId: string
+  value: string
+  /** Why the reviewer changed the agent's pre-fill (only when edited) */
+  reason?: string
+}
+
 export interface StrategyMemberResponse {
-  strategicAlignment?: string
-  marketPotential?: string
-  recommendation?: string
-  notes?: string
+  judgements?: StrategyJudgementResponse[]
+  finalDecision?: StrategyDecision
+  finalDecisionNote?: string
   submittedAt?: string
 }
 
@@ -155,8 +162,6 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
       budgetLine: 'Existing budget line',
       whatWouldMakeYouSayNo:
         'High latency in EHR synchronization or high false positive alarm fatigue among nursing staff.',
-      valueAndNeedStatement:
-        'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics. An alert that reads vitals and labs continuously could get antibiotics started sooner and bring ICU sepsis mortality down.',
       submittedAt: 'Today at 2:15 PM',
     },
   },
@@ -235,14 +240,31 @@ export const DEFAULT_STRATEGY_MEMBERS: InternalInterestStakeholder[] = [
     avatarColorText: '#1e40af',
     status: 'Completed',
     deadline: '2-3 days',
-    decision: 'Proceed',
+    decision: 'Proceed with a condition',
     source: 'ai',
     strategyResponse: {
-      strategicAlignment:
-        'High strategic alignment with M42 regional healthcare innovation roadmap.',
-      marketPotential: 'Substantial market potential across inpatient tertiary hospitals in GCC.',
-      recommendation: 'Proceed with structured pilot evaluation.',
-      notes: 'Ensure SLA benchmarks are established prior to formal contracting.',
+      judgements: [
+        { criterionId: 'focus_areas', value: 'In scope' },
+        { criterionId: 'roadmap', value: 'Overlap a roadmap item' },
+        {
+          criterionId: 'build_buy',
+          value: 'Partner',
+          reason:
+            'The vendor already holds the validated model. Partnering is faster than building and the CoE has no capacity this year.',
+        },
+        {
+          criterionId: 'architecture',
+          value: 'Fits with conditions',
+          reason:
+            'Vendor confirmed in the call that a UAE-hosted deployment is possible. Treat it as a condition of contract.',
+        },
+        { criterionId: 'own_rent', value: 'Mixed' },
+        { criterionId: 'scale', value: 'High' },
+        { criterionId: 'sovereignty', value: 'Partially meets' },
+      ],
+      finalDecision: 'Proceed with a condition',
+      finalDecisionNote:
+        'Proceed only if the vendor commits to UAE hosting and registers a local entity. Review again once both are confirmed in writing.',
       submittedAt: 'Yesterday at 4:30 PM',
     },
   },

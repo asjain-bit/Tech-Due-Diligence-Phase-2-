@@ -249,40 +249,42 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
             {/* List of Profile Views: only role and user email, accessible profiles can enter */}
             <div className="flex flex-col gap-2.5">
-              {AVAILABLE_PROFILES.map((profile) => {
-                const isAccessible =
-                  profile.id === 'director' ||
-                  profile.id === 'evaluator' ||
-                  profile.id === 'strategy-fit'
+              {AVAILABLE_PROFILES.filter((profile) => profile.id !== 'legal-director').map(
+                (profile) => {
+                  const isAccessible =
+                    profile.id === 'director' ||
+                    profile.id === 'evaluator' ||
+                    profile.id === 'strategy-fit'
 
-                if (isAccessible) {
+                  if (isAccessible) {
+                    return (
+                      <button
+                        key={profile.id}
+                        type="button"
+                        onClick={() => handleSelectProfile(profile)}
+                        className="w-full text-left p-3.5 rounded-xl border border-gray-200 hover:border-[#36c0c9] hover:bg-[#36c0c9]/5 transition-all flex flex-col gap-0.5 group cursor-pointer shadow-2xs hover:shadow-xs"
+                      >
+                        <span className="font-semibold text-sm text-[#0d212c] group-hover:text-[#36c0c9] transition-colors truncate">
+                          {profile.roleTitle}
+                        </span>
+                        <span className="text-xs text-slate-500 truncate">{profile.email}</span>
+                      </button>
+                    )
+                  }
+
                   return (
-                    <button
+                    <div
                       key={profile.id}
-                      type="button"
-                      onClick={() => handleSelectProfile(profile)}
-                      className="w-full text-left p-3.5 rounded-xl border border-gray-200 hover:border-[#36c0c9] hover:bg-[#36c0c9]/5 transition-all flex flex-col gap-0.5 group cursor-pointer shadow-2xs hover:shadow-xs"
+                      className="w-full text-left p-3.5 rounded-xl border border-gray-200 bg-white flex flex-col gap-0.5 shadow-2xs cursor-default select-none"
                     >
-                      <span className="font-semibold text-sm text-[#0d212c] group-hover:text-[#36c0c9] transition-colors truncate">
+                      <span className="font-semibold text-sm text-[#0d212c] truncate">
                         {profile.roleTitle}
                       </span>
                       <span className="text-xs text-slate-500 truncate">{profile.email}</span>
-                    </button>
+                    </div>
                   )
                 }
-
-                return (
-                  <div
-                    key={profile.id}
-                    className="w-full text-left p-3.5 rounded-xl border border-gray-200 bg-white flex flex-col gap-0.5 shadow-2xs cursor-default select-none"
-                  >
-                    <span className="font-semibold text-sm text-[#0d212c] truncate">
-                      {profile.roleTitle}
-                    </span>
-                    <span className="text-xs text-slate-500 truncate">{profile.email}</span>
-                  </div>
-                )
-              })}
+              )}
             </div>
 
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-400 text-center">

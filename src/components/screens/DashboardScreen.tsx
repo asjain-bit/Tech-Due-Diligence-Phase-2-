@@ -194,7 +194,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
   // Detailed view rendering
   if (selectedRequest) {
     return (
-      <div className="flex flex-col gap-6 w-full px-3 py-3 text-[#0d212c]">
+      <div className="flex flex-col gap-6 w-full text-[#0d212c]">
         {toastMessage && (
           <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl bg-white border border-[#e2e8f0] text-xs sm:text-sm font-medium text-[#0d212c] flex items-center gap-2.5 animate-in slide-in-from-top-4 duration-200">
             <div className="w-6 h-6 rounded-lg bg-[#e6fffa] text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shrink-0">
@@ -215,7 +215,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full px-6 lg:px-10 py-3 text-[#0d212c]">
+    <div className="flex flex-col gap-6 w-full text-[#0d212c]">
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl bg-white border border-[#e2e8f0] text-xs sm:text-sm font-medium text-[#0d212c] flex items-center gap-2.5 animate-in slide-in-from-top-4 duration-200">
           <div className="w-6 h-6 rounded-lg bg-[#e6fffa] text-[#0f766e] flex items-center justify-center border border-[#ccfbf1] shrink-0">
@@ -246,11 +246,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
               </div>
             </div>
 
-            {/* KPI Card 2: Pending My Review */}
+            {/* KPI Card 2: Pending Review */}
             <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Pending My Review
+                  Pending Review
                 </span>
                 <div className="flex items-center justify-center shrink-0">
                   <ClipboardList className="w-5 h-5 text-[#d97706] stroke-[2]" />
@@ -392,7 +392,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
               </div>
               <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">8</div>
               <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">Require PMO action</div>
+              <div className="text-xs font-medium text-[#64748b]">Require Director Action</div>
             </div>
 
             {/* KPI Card 3: NDA in Progress */}
@@ -482,11 +482,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
               <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
                 <th className="py-4 px-4">Company name</th>
                 {!isNonDirector && <th className="py-4 px-4">Vendor Name</th>}
-                <th className="py-4 px-4">Solution</th>
                 <th className="py-4 px-4">Focus Area</th>
                 <th className="py-4 px-4">Solution Maturity</th>
                 <th className="py-4 px-4">Status</th>
                 <th className="py-4 px-4">Deadline</th>
+                <th className="py-4 px-4">Submitted Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e2e8f0]/60">
@@ -525,10 +525,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
                       </td>
                     )}
 
-                    <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] max-w-xs truncate">
-                      {req.solution}
-                    </td>
-
                     <td className="py-4.5 px-4 text-xs font-normal text-[#64748b]">
                       <div className="flex flex-wrap gap-1.5 max-w-xs">
                         {(req.assessmentAreas?.focusAreas &&
@@ -563,6 +559,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
 
                     <td className="py-4.5 px-4 text-xs font-normal text-[#64748b] whitespace-nowrap">
                       {req.deadline || req.submittedOn}
+                    </td>
+
+                    <td className="py-4.5 px-4 text-xs font-normal text-[#64748b] whitespace-nowrap">
+                      {req.submittedOn}
                     </td>
                   </tr>
                 ))

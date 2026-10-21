@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { PartnershipDetail } from './PartnershipDetail'
@@ -92,7 +92,7 @@ describe('PartnershipDetail', () => {
     expect(screen.getByText('Regulatory Approvals')).toBeInTheDocument()
   })
 
-  it('switches to Partnership Brief tab, renders Proceed and Reject buttons with modal popups, and navigates sections', async () => {
+  it('shows the agent recommendation, agent actions and vendor submission in the Internal Assessment Brief', async () => {
     const user = userEvent.setup()
     render(
       <PartnershipDetail
@@ -103,24 +103,68 @@ describe('PartnershipDetail', () => {
       />
     )
 
-    const briefTab = screen.getByRole('tab', { name: /Partnership Brief/i })
-    await user.click(briefTab)
+    expect(screen.queryByRole('tab', { name: /^Partnership Brief$/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: /Internal Assessment Brief/i }))
 
-    // Proceed and Reject buttons visible in the Brief tab
-    expect(screen.getByRole('button', { name: /Proceed/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Reject/i })).toBeInTheDocument()
+    // Agent recommendation with reasoning and signals
+    expect(screen.getByText('Proceed to the next stage')).toBeInTheDocument()
+    expect(screen.getByText('What the agent weighed')).toBeInTheDocument()
 
-    // Clicking Proceed opens the modal
-    await user.click(screen.getByRole('button', { name: /Proceed/i }))
+    // Agent actions timeline
+    expect(screen.getByRole('heading', { name: /Agent Actions/i })).toBeInTheDocument()
+    ;[
+      'Duplicate Check',
+      'Classification',
+      'Maturity Research',
+      'KPI Mapping',
+      'Baseline Needed to Test',
+      'Commodity Test',
+      'Assessment Brief',
+    ].forEach((title) => expect(screen.getByText(title)).toBeInTheDocument())
+
+    // Vendor form opens in a dialog with the actual questions
+    await user.click(screen.getByRole('button', { name: /View vendor submission/i }))
+    const dialog = screen.getByRole('dialog', { name: /Vendor Submission/i })
+    expect(dialog).toBeInTheDocument()
+    expect(screen.getByText('Key Assessment Areas')).toBeInTheDocument()
+    expect(
+      screen.getByText("How would you describe your company's stage of maturity and experience?")
+    ).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: /Close/i })[0])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('requires a reason for both Proceed and Reject', async () => {
+    const user = userEvent.setup()
+    const proceed = vi.fn()
+    const reject = vi.fn()
+    render(
+      <PartnershipDetail
+        request={mockRequest}
+        onBack={onBack}
+        onProceed={proceed}
+        onReject={reject}
+      />
+    )
+    await user.click(screen.getByRole('tab', { name: /Internal Assessment Brief/i }))
+
+    // Proceed: blocked without a reason
+    await user.click(screen.getByRole('button', { name: /^Proceed$/i }))
     expect(screen.getByText('Proceed to Next Stage')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /Cancel/i }))
+    await user.click(screen.getByRole('button', { name: /Confirm & Proceed/i }))
+    expect(screen.getByText(/A reason is mandatory when proceeding/i)).toBeInTheDocument()
+    expect(proceed).not.toHaveBeenCalled()
 
-    expect(screen.getByRole('button', { name: /Company Information/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Company Experience/i })).toBeInTheDocument()
-    expect(screen.getByText('1. Company Information')).toBeInTheDocument()
-    expect(screen.getByText(/2. Company's Stage of Maturity and Experience/i)).toBeInTheDocument()
+    await user.type(screen.getByLabelText(/Reason/i), 'Strong evidence')
+    await user.click(screen.getByRole('button', { name: /Confirm & Proceed/i }))
+    expect(proceed).toHaveBeenCalledWith(mockRequest.id, 'Strong evidence')
 
-    await user.click(screen.getByRole('button', { name: /Company Experience/i }))
+    // Reject: blocked without a reason
+    await user.click(screen.getByRole('tab', { name: /Internal Assessment Brief/i }))
+    await user.click(screen.getByRole('button', { name: /^Reject$/i }))
+    await user.click(screen.getByRole('button', { name: /Confirm Rejection/i }))
+    expect(screen.getByText(/A reason is mandatory when rejecting/i)).toBeInTheDocument()
+    expect(reject).not.toHaveBeenCalled()
   })
 
   it('switches to Internal Interest tab matching Image 1 with stakeholders table and modals', async () => {
@@ -143,9 +187,7 @@ describe('PartnershipDetail', () => {
       screen.getByRole('heading', { level: 2, name: 'Review & Alignment' })
     ).toBeInTheDocument()
     expect(
-      screen.getByText(
-        'Send requests to internal stakeholders and strategy team to review this partnership in sequence.'
-      )
+      screen.getByText('Choose the reviewers for each team, then send one request to both.')
     ).toBeInTheDocument()
 
     // Table columns: count column removed, role & department removed from separate headers, Recommended added
@@ -157,9 +199,16 @@ describe('PartnershipDetail', () => {
     expect(screen.getAllByRole('columnheader', { name: 'Expertise' })[0]).toBeInTheDocument()
     expect(screen.getAllByRole('columnheader', { name: 'Actions' })[0]).toBeInTheDocument()
 
-    // Send review buttons for both teams
-    const sendButtons = screen.getAllByRole('button', { name: /Send Request/i })
-    expect(sendButtons.length).toBe(2)
+    // One single send button for both teams
+    expect(screen.getAllByRole('button', { name: /Send Request/i }).length).toBe(1)
+    expect(screen.getByRole('button', { name: /Send Request to Both Teams/i })).toBeInTheDocument()
+
+    // Question / criteria previews sit under each section title, not in the action area
+    expect(screen.getByRole('button', { name: /Preview questions/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Preview criteria/i })).toBeInTheDocument()
+
+    // No response icon until the request has been sent
+    expect(screen.queryByRole('button', { name: /View member response/i })).not.toBeInTheDocument()
 
     // + Add Respondant and + Add Member buttons
     expect(screen.getByRole('button', { name: /Add Respondant/i })).toBeInTheDocument()
@@ -224,7 +273,7 @@ describe('PartnershipDetail', () => {
     expect(onBack).toHaveBeenCalled()
   })
 
-  it('updates table to sent state with status, deadline, decision, and view options when request is sent', async () => {
+  it('sends one request to both teams and then shows status, deadline, decision and view options', async () => {
     const user = userEvent.setup()
     render(
       <PartnershipDetail
@@ -236,29 +285,43 @@ describe('PartnershipDetail', () => {
     )
 
     await user.click(screen.getByRole('tab', { name: /Internal Review/i }))
+    await user.click(screen.getByRole('button', { name: /Send Request to Both Teams/i }))
 
-    // Click Send Request for Internal Interest
-    const sendButtons = screen.getAllByRole('button', { name: /^Send Request$/i })
-    await user.click(sendButtons[0])
+    // One modal covers both teams
+    expect(screen.getByRole('dialog', { name: /Send Review Requests/i })).toBeInTheDocument()
+    expect(screen.getByText(/Both teams are notified at the same time/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Send to Both Teams' }))
 
-    // Inside modal, click Send Request
-    const allSendBtns = screen.getAllByRole('button', { name: 'Send Request' })
-    await user.click(allSendBtns[allSendBtns.length - 1])
-
-    // Table transforms: shows Status, Deadline (5 days), Decision without Questionnaire column
-    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Deadline' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Decision' })).toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: 'Questionnaire' })).not.toBeInTheDocument()
+    // Both tables switch to the sent layout
+    expect(screen.getAllByRole('columnheader', { name: 'Status' }).length).toBe(2)
+    expect(screen.getAllByRole('columnheader', { name: 'Deadline' }).length).toBe(2)
+    expect(screen.getAllByRole('columnheader', { name: 'Decision' }).length).toBe(2)
     expect(screen.getAllByText('5 days').length).toBeGreaterThan(0)
     expect(screen.getByText('Proceed')).toBeInTheDocument()
+    expect(screen.getByText('Conditional')).toBeInTheDocument()
+    expect(screen.getByText(/^Requests sent to both teams$/i)).toBeInTheDocument()
 
-    // Send request button and add respondant button removed for internal interest
+    // Edit actions and previews are gone, response icons appear
     expect(screen.queryByRole('button', { name: /Add Respondant/i })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /^Send Request$/i }).length).toBe(1)
+    expect(screen.queryByRole('button', { name: /Preview questions/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Preview criteria/i })).not.toBeInTheDocument()
+    const viewButtons = screen.getAllByRole('button', { name: /View member response/i })
+    expect(viewButtons.length).toBe(6)
+
+    // Internal response: actual answers only, no value/need statement
+    await user.click(viewButtons[0])
+    expect(screen.getByDisplayValue('21% over 12 months')).toBeInTheDocument()
+    expect(screen.queryByText(/Value and Need Statement/i)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Close modal/i }))
+
+    // Strategy response: actual judgements, edits flagged with the reviewer's reason
+    await user.click(viewButtons[5])
+    expect(screen.getAllByText('Manually edited').length).toBe(2)
+    expect(screen.getByDisplayValue(/Partnering is faster than building/i)).toBeInTheDocument()
+    expect(screen.getByDisplayValue(/Proceed only if the vendor commits/i)).toBeInTheDocument()
   })
 
-  it('handles Questionnaire flow with Save, AI synthesis, separate statements, and confirmation modal', async () => {
+  it('handles the Questionnaire flow with Submit, a simple confirmation and a view-only form', async () => {
     const user = userEvent.setup()
     const internalProfile = {
       id: 'evaluator',
@@ -277,51 +340,75 @@ describe('PartnershipDetail', () => {
       />
     )
 
-    // Switch to Questionnaire tab
-    const qTab = screen.getByRole('tab', { name: /Questionnaire/i })
-    await user.click(qTab)
+    await user.click(screen.getByRole('tab', { name: /Questionnaire/i }))
 
     expect(screen.getByText('Internal Evaluation Questionnaire')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Save/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Save/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument()
 
-    // Click Save to trigger AI synthesis
-    const saveBtn = screen.getByRole('button', { name: /Save/i })
-    await user.click(saveBtn)
+    await user.click(screen.getByRole('button', { name: /^Submit$/i }))
 
-    // Verify AI synthesizing animation or wait for statements to generate
-    expect(await screen.findByText('Value Statement', {}, { timeout: 3500 })).toBeInTheDocument()
-    expect(await screen.findByText('Need Statement', {}, { timeout: 3500 })).toBeInTheDocument()
-
-    // 2 CTA buttons
-    const yesBtn = screen.getByRole('button', { name: /^Yes$/i })
-    const noBtn = screen.getByRole('button', { name: /No, something else/i })
-    expect(yesBtn).toBeInTheDocument()
-    expect(noBtn).toBeInTheDocument()
-
-    // Test No flow: shows mandatory feedback input
-    await user.click(noBtn)
-    expect(screen.getByLabelText(/Specify your required adjustments/i)).toBeInTheDocument()
-
-    const feedbackInput = screen.getByLabelText(/Specify your required adjustments/i)
-    await user.type(feedbackInput, 'Include emergency department cohort metrics')
-
-    const submitBtn = screen.getByRole('button', { name: /^Submit$/i })
-    await user.click(submitBtn)
-
-    // Verify confirmation popup
+    // Only a confirmation popup, no approval section and no value/need statements
     expect(screen.getByText('Submit Questionnaire')).toBeInTheDocument()
-    expect(
-      screen.getByText('Are you sure you want to send this questionnaire for Director Review?')
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/Approval/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Value Statement/i)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Confirm & Send' }))
 
-    // Confirm submit
-    const confirmBtn = screen.getByRole('button', { name: 'Confirm & Send' })
-    await user.click(confirmBtn)
-
-    // Modal closes and questionnaire is submitted in read-only card
+    // Same form, now view-only
     expect(screen.queryByText('Submit Questionnaire')).not.toBeInTheDocument()
-    expect(screen.getByText('Value Statement')).toBeInTheDocument()
-    expect(screen.getByText('Need Statement')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Submit$/i })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Baseline today')).toBeDisabled()
+    expect(screen.getByRole('radio', { name: /Yes, we would sponsor/i })).toBeDisabled()
+    expect(screen.queryByText(/Value Statement/i)).not.toBeInTheDocument()
+  })
+
+  it('requires a reason when a strategy reviewer changes the agent judgement', async () => {
+    const user = userEvent.setup()
+    const strategyProfile = {
+      id: 'strategy-fit',
+      name: 'Omar Al-Hashemi',
+      designation: 'Strategy Team',
+      email: 'omar.alhashemi@m42.ae',
+      roleTitle: 'Strategy Team',
+    }
+    render(
+      <PartnershipDetail
+        request={mockRequest}
+        onBack={onBack}
+        onProceed={onProceed}
+        onReject={onReject}
+        userProfile={strategyProfile}
+      />
+    )
+
+    await user.click(screen.getByRole('tab', { name: /Judgement/i }))
+    expect(screen.getAllByText('Agent pre-filled').length).toBe(7)
+
+    // Change one judgement: chip flips and a full-width reason field appears
+    await user.selectOptions(
+      within(screen.getByTestId('criterion-architecture')).getByRole('combobox'),
+      'Fits'
+    )
+    expect(screen.getByText('Manually edited')).toBeInTheDocument()
+    expect(screen.getAllByText('Agent pre-filled').length).toBe(6)
+
+    // Pick a decision: the agent drafts the summary, but the reason is still missing
+    await user.click(screen.getByRole('radio', { name: /Proceed with a condition/i }))
+    expect(
+      (screen.getByLabelText(/Condition and summary/i) as HTMLTextAreaElement).value
+    ).toContain('Proceed only if the vendor resolves')
+    const submit = screen.getByRole('button', { name: /Submit decision/i })
+    expect(submit).toBeDisabled()
+    expect(screen.getByText(/a reason for 1 changed judgement/i)).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/Why are you changing this/i), 'Hosted in UAE')
+    expect(submit).toBeEnabled()
+
+    // Reverting to the agent value clears the requirement
+    await user.selectOptions(
+      within(screen.getByTestId('criterion-architecture')).getByRole('combobox'),
+      'Does not fit'
+    )
+    expect(screen.queryByLabelText(/Why are you changing this/i)).not.toBeInTheDocument()
   })
 })
