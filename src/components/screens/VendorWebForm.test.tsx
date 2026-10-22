@@ -3,14 +3,16 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { VendorWebForm } from './VendorWebForm'
+import { SAMPLE_VENDOR_FORM } from '@/types/vendorForm'
 
 const fill = (label: RegExp | string, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } })
 
-const fillRequired = async (user: ReturnType<typeof userEvent.setup>) => {
+/** Fills the form with deliberately thin answers, without clicking (which would prefill) */
+const fillThin = async (user: ReturnType<typeof userEvent.setup>) => {
   fill(/^Name/, 'Dr. Omar Rahman')
   fill(/^Job Title/, 'CEO')
-  fill(/^Company/, 'PulseAI Health')
+  fill(/^Company \*/, 'PulseAI Health')
   fill(/^Email Address/, 'omar@pulseai.health')
   fill(/^Year Company/, '2021')
   fill(
@@ -26,12 +28,21 @@ const fillRequired = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('button', { name: 'AI & Diagnostics' }))
 }
 
+const runChecking = (steps = 5) => {
+  for (let i = 0; i < steps; i++) {
+    act(() => {
+      vi.advanceTimersByTime(700)
+    })
+  }
+}
+
 describe('VendorWebForm', () => {
   afterEach(() => vi.useRealTimers())
 
-  it('shows every field of the vendor submission form', () => {
+  it('shows every field of the vendor submission form in a wide layout', () => {
     render(<VendorWebForm onSubmitCase={vi.fn()} onSignOut={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'Partnership request form' })).toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveClass('max-w-5xl')
     ;[
       /^Name/,
       /^Job Title/,
@@ -52,8 +63,38 @@ describe('VendorWebForm', () => {
       /patient populations, clinical areas/i,
     ].forEach((q) => expect(screen.getAllByText(q).length).toBeGreaterThan(0))
     expect(screen.getByRole('group', { name: 'Patient populations' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Run AI check/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Submit request/i })).toBeInTheDocument()
+  })
+
+  it('uses standard corners and a subtle grey focus state on inputs', () => {
+    render(<VendorWebForm onSubmitCase={vi.fn()} />)
+    const input = screen.getByLabelText(/^Name/)
+    expect(input.className).toContain('rounded-lg')
+    expect(input.className).not.toContain('rounded-xl')
+    expect(input.className).toContain('focus:border-[#a3b1c2]')
+    expect(input.className).toContain('hover:border-[#bcc7d3]')
+    expect(input.className).not.toContain('#36c0c9')
+    expect(screen.getByLabelText(/stage of maturity and experience/i).className).toContain(
+      'rounded-lg'
+    )
+  })
+
+  it('fills the whole form with typical vendor data when any field is first clicked', async () => {
+    const user = userEvent.setup()
+    render(<VendorWebForm onSubmitCase={vi.fn()} />)
+    expect(screen.getByLabelText(/^Company \*/)).toHaveValue('')
+    await user.click(screen.getByLabelText(/^Phone Number/))
+    expect(screen.getByLabelText(/^Name/)).toHaveValue(SAMPLE_VENDOR_FORM.name)
+    expect(screen.getByLabelText(/^Company \*/)).toHaveValue(SAMPLE_VENDOR_FORM.company)
+    expect(screen.getByLabelText(/stage of maturity and experience/i)).toHaveValue(
+      SAMPLE_VENDOR_FORM.stageAndExperience
+    )
+    expect(screen.getByLabelText(/Which Focus Area/)).toHaveTextContent('AI & Diagnostics')
+    expect(screen.getByRole('checkbox', { name: 'Adult patients' })).toBeChecked()
+
+    // Edits stick: clicking again does not refill
+    await user.clear(screen.getByLabelText(/^Company \*/))
+    await user.click(screen.getByLabelText(/^Job Title/))
+    expect(screen.getByLabelText(/^Company \*/)).toHaveValue('')
   })
 
   it('does not submit while required fields are empty', async () => {
@@ -72,34 +113,37 @@ describe('VendorWebForm', () => {
     render(<VendorWebForm onSubmitCase={vi.fn()} />)
     const trigger = screen.getByLabelText(/Which Focus Area/)
     expect(trigger).toHaveTextContent('Select focus areas')
-    await user.click(trigger)
+    await user.click(trigger) // the first click also prefills the sample
     const list = screen.getByRole('listbox', { name: 'Focus areas' })
-    await user.click(within(list).getByRole('button', { name: 'AI & Diagnostics' }))
     await user.click(within(list).getByRole('button', { name: 'Medical Imaging' }))
-    expect(trigger).toHaveTextContent('AI & Diagnostics')
     expect(trigger).toHaveTextContent('Medical Imaging')
-    await user.click(within(list).getByRole('button', { name: 'AI & Diagnostics' }))
-    expect(trigger).not.toHaveTextContent('AI & Diagnostics')
+    await user.click(within(list).getByRole('button', { name: 'Medical Imaging' }))
+    expect(trigger).not.toHaveTextContent('Medical Imaging')
   })
 
-  it('runs an AI check that suggests more detail, which can be ignored or left', async () => {
+  it('shows a loader while the AI check runs, then the suggestions', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<VendorWebForm onSubmitCase={vi.fn()} />)
-    await fillRequired(user)
+    await fillThin(user)
 
     await user.click(screen.getByRole('button', { name: /Run AI check/i }))
-    expect(screen.getByRole('button', { name: /Checking your answers/i })).toBeDisabled()
-    act(() => {
-      vi.advanceTimersByTime(1700)
-    })
+    const loader = screen.getByRole('status')
+    expect(within(loader).getByText('Running AI check')).toBeInTheDocument()
+    expect(within(loader).getByText('Reading your answers')).toBeInTheDocument()
+    expect(screen.queryAllByRole('note')).toHaveLength(0)
 
+    runChecking(2)
+    const rows = within(loader).getAllByRole('listitem')
+    expect(rows[0]).toHaveAttribute('data-state', 'done')
+    expect(rows[1]).toHaveAttribute('data-state', 'done')
+    expect(rows[2]).toHaveAttribute('data-state', 'active')
+
+    runChecking(4)
+    expect(screen.queryByText('Running AI check')).not.toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('AI check found 7 suggestions')
     const notes = screen.getAllByRole('note')
     expect(notes.length).toBe(7)
-    expect(
-      screen.getByText(/Add milestones|Add milestones with years|This feels brief/)
-    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Run AI check again/i })).toBeInTheDocument()
 
     await user.click(within(notes[0]).getByRole('button', { name: 'Ignore' }))
@@ -107,11 +151,11 @@ describe('VendorWebForm', () => {
     expect(screen.getByRole('status')).toHaveTextContent('AI check found 6 suggestions')
   })
 
-  it('reports when the AI check finds nothing', async () => {
+  it('reports when the AI check finds nothing to improve', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<VendorWebForm onSubmitCase={vi.fn()} />)
-    await fillRequired(user)
+    await fillThin(user)
     fill(
       /stage of maturity and experience/i,
       'Founded in 2018, we launched our platform in 2022 and expanded to the UAE in 2023 through a partnership with two hospital groups serving over 30 clinicians.'
@@ -136,36 +180,36 @@ describe('VendorWebForm', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Adult patients' }))
 
     await user.click(screen.getByRole('button', { name: /Run AI check/i }))
-    act(() => {
-      vi.advanceTimersByTime(1700)
-    })
+    runChecking(6)
     expect(screen.getByRole('status')).toHaveTextContent('AI check found nothing to improve')
     expect(screen.queryByRole('note')).not.toBeInTheDocument()
   })
 
-  it('asks for confirmation, captures the response and gives a case ID', async () => {
+  it('asks for confirmation in the shared popup, captures the response and gives a case ID', async () => {
     const user = userEvent.setup()
     const onSubmitCase = vi.fn().mockReturnValue('PR-126')
     render(<VendorWebForm onSubmitCase={onSubmitCase} />)
-    await fillRequired(user)
+    await user.click(screen.getByLabelText(/^Name/)) // prefill
 
     await user.click(screen.getByRole('button', { name: /Submit request/i }))
-    const dialog = screen.getByRole('dialog', { name: /Submit your request/i })
+    const dialog = screen.getByRole('dialog', { name: 'Submit your request?' })
     expect(dialog).toHaveTextContent('You will not be able to edit them after submitting')
     expect(onSubmitCase).not.toHaveBeenCalled()
 
-    // going back keeps the answers
-    await user.click(screen.getByRole('button', { name: 'Review again' }))
+    // Going back keeps the answers
+    await user.click(within(dialog).getByRole('button', { name: 'Review again' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByLabelText(/^Company \*/)).toHaveValue('PulseAI Health')
+    expect(screen.getByLabelText(/^Company \*/)).toHaveValue(SAMPLE_VENDOR_FORM.company)
 
     await user.click(screen.getByRole('button', { name: /Submit request/i }))
-    await user.click(screen.getByRole('button', { name: /Confirm & submit/i }))
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Submit request' })
+    )
     expect(onSubmitCase).toHaveBeenCalledWith(
       expect.objectContaining({
-        company: 'PulseAI Health',
-        email: 'omar@pulseai.health',
-        focusAreas: ['AI & Diagnostics'],
+        company: SAMPLE_VENDOR_FORM.company,
+        email: SAMPLE_VENDOR_FORM.email,
+        focusAreas: SAMPLE_VENDOR_FORM.focusAreas,
       })
     )
     expect(screen.getByRole('heading', { name: 'Request submitted' })).toBeInTheDocument()
@@ -177,18 +221,17 @@ describe('VendorWebForm', () => {
     expect(screen.getByLabelText(/^Company \*/)).toHaveValue('')
   })
 
-  it('mentions open AI suggestions in the confirmation and can be closed with the X', async () => {
+  it('mentions open AI suggestions in the confirmation and closes it with the X', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<VendorWebForm onSubmitCase={vi.fn()} />)
-    await fillRequired(user)
+    await user.click(screen.getByLabelText(/^Name/)) // prefill with two thin answers
     await user.click(screen.getByRole('button', { name: /Run AI check/i }))
-    act(() => {
-      vi.advanceTimersByTime(1700)
-    })
+    runChecking(6)
+    expect(screen.getByRole('status')).toHaveTextContent('AI check found 2 suggestions')
     await user.click(screen.getByRole('button', { name: /Submit request/i }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('7 AI suggestions are still open')
-    await user.click(screen.getByRole('button', { name: 'Close confirmation' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('2 AI suggestions are still open')
+    await user.click(screen.getByRole('button', { name: 'Close dialog' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 

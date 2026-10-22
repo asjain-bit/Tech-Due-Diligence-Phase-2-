@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect } from 'react'
-import { AlertTriangle, Check, FileText, X } from 'lucide-react'
+import { AlertTriangle, Check, X } from 'lucide-react'
 import { AgentActions } from '@/components/organisms/AgentActions'
 import type { AnalysisDrawerProps } from './AnalysisDrawer.types'
 
@@ -39,7 +39,7 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({ request, actions
         <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-[#f1f5f9] shrink-0">
           <div className="flex flex-col gap-1">
             <h2 id="analysis-drawer-title" className="text-lg font-semibold text-[#0d212c]">
-              AI analysis details
+              Agent Actions
             </h2>
             <p className="text-xs text-[#64748b] leading-relaxed">
               These are the checks performed by the agent to generate the initial assessment brief.
@@ -77,25 +77,17 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({ request, actions
             )}
           </div>
 
-          <AgentActions
-            request={request}
-            actions={actions}
-            showHeader={false}
-            showSources={false}
-          />
+          <AgentActions request={request} actions={actions} />
 
-          <div className="rounded-xl bg-[#f0f9ff] border border-[#e0f2fe] p-4 flex items-start gap-3">
-            <FileText className="w-5 h-5 text-[#0369a1] shrink-0 mt-0.5" aria-hidden="true" />
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-semibold text-[#0d212c]">Summary of findings</h3>
-              <p className="text-xs text-[#475569] leading-relaxed">
-                {attention.length === 0
-                  ? 'All checks passed. Nothing needs attention before you decide.'
-                  : `All core checks ran. ${attention.length} ${
-                      attention.length === 1 ? 'item needs' : 'items need'
-                    } attention: ${attention.map((a) => a.title.toLowerCase()).join(', ')}.`}
-              </p>
-            </div>
+          <div className="flex flex-col gap-1.5 pt-5 border-t border-[#e2e8f0]">
+            <h3 className="text-sm font-semibold text-[#0d212c]">Summary of findings</h3>
+            <p className="text-xs text-[#64748b] leading-relaxed">
+              {attention.length === 0
+                ? 'All checks passed. Nothing needs attention before you decide.'
+                : `All core checks ran. ${attention.length} ${
+                    attention.length === 1 ? 'item needs' : 'items need'
+                  } attention: ${attention.map((a) => a.title.toLowerCase()).join(', ')}.`}
+            </p>
           </div>
         </div>
       </aside>

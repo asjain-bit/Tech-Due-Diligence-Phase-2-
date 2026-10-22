@@ -21,13 +21,17 @@ import {
   INITIAL_PARTNERSHIP_REQUESTS,
 } from '@/types/partnership.types'
 import {
+  appendAudit,
   getStageLabel,
   holdRequest,
   proceedRequest,
   rejectRequest,
   resumeRequest,
   routeRequest,
+  sendReview,
+  submitReview,
   type AdminRouting,
+  type AuditInput,
 } from '@/lib/caseActions'
 import { type UserProfile } from './LoginScreen'
 
@@ -151,6 +155,31 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     notify('Vendor information received. The case is back with the Director.')
   }
 
+  // Something worth recording happened in the case view
+  const handleLog = (requestId: string, event: AuditInput) =>
+    updateRequest(requestId, (r) => appendAudit(r, event))
+
+  // Director sends a review request to a team
+  const handleSendReview: React.ComponentProps<typeof PartnershipDetail>['onSendReview'] = (
+    requestId,
+    team,
+    payload
+  ) => {
+    updateRequest(requestId, (r) => sendReview(r, team, payload))
+    notify(
+      team === 'internal'
+        ? 'Request sent to the Internal Interest team. Waiting for their approval.'
+        : 'Request sent to the Strategy Team. Waiting for their approval.'
+    )
+  }
+
+  // A reviewing team submits, which counts as that stage's approval
+  const handleSubmitReview: React.ComponentProps<typeof PartnershipDetail>['onSubmitReview'] = (
+    requestId,
+    team,
+    payload
+  ) => updateRequest(requestId, (r) => submitReview(r, team, payload))
+
   // Partnership Admin routes the case
   const handleRoute = (requestId: string, routing: AdminRouting) => {
     updateRequest(requestId, (r) => routeRequest(r, routing))
@@ -165,7 +194,15 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   // Filter requests
   // Directors and reviewers only see cases the Partnership Admin has sent on; the admin sees all
-  const scopedRequests = isAdmin ? requests : requests.filter((r) => r.queue === 'director')
+  // Reviewers only see cases the Director has sent to their team.
+  const scopedRequests = isAdmin
+    ? requests
+    : requests.filter(
+        (r) =>
+          r.queue === 'director' &&
+          (!isInternalTeam || r.sent?.internal) &&
+          (!isStrategyTeam || r.sent?.strategy)
+      )
 
   const filteredRequests = scopedRequests.filter((req) => {
     // Exited status hidden from internal and strategy teams
@@ -250,6 +287,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           onRequestInfo={handleRequestInfo}
           onResume={handleResume}
           onRoute={handleRoute}
+          onLog={handleLog}
+          onSendReview={handleSendReview}
+          onSubmitReview={handleSubmitReview}
           userProfile={userProfile}
         />
       </div>

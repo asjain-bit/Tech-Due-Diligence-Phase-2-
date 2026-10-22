@@ -97,7 +97,7 @@ export const RequestInfoModal: React.FC<RequestInfoModalProps> = ({
               id="info-subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full h-11 px-3.5 rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] shadow-2xs transition focus:outline-none focus:border-[#36c0c9] focus:ring-4 focus:ring-[#36c0c9]/15"
+              className="w-full h-11 px-3.5 rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] shadow-2xs transition focus:outline-none hover:border-[#bcc7d3] focus:border-[#a3b1c2] focus:ring-0"
             />
           </div>
 
@@ -110,7 +110,7 @@ export const RequestInfoModal: React.FC<RequestInfoModalProps> = ({
               rows={12}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              className="w-full p-3.5 rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] leading-relaxed resize-none shadow-2xs transition focus:outline-none focus:border-[#36c0c9] focus:ring-4 focus:ring-[#36c0c9]/15"
+              className="w-full p-3.5 rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] leading-relaxed resize-none shadow-2xs transition focus:outline-none hover:border-[#bcc7d3] focus:border-[#a3b1c2] focus:ring-0"
             />
           </div>
         </div>

@@ -34,8 +34,6 @@ export interface AgentAction {
   title: string
   /** What the agent was asked to check */
   check: string
-  /** Shown while the check is running */
-  runningText: string
   status: AgentActionStatus
   /** One-line result shown once the check is done */
   headline: string
@@ -49,13 +47,5 @@ export interface AgentActionsProps {
   request: PartnershipRequest
   /** Checks to show. Defaults to the Director's checks for the request. */
   actions?: AgentAction[]
-  /** Hide the heading block, for use inside the analysis drawer */
-  showHeader?: boolean
-  /** Hide the "Reading" context row */
-  showSources?: boolean
-  /** Play the step-by-step run. When false the finished checklist is shown. */
-  animate?: boolean
-  /** Fired once when the animated run has finished */
-  onComplete?: () => void
   className?: string
 }

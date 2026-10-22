@@ -17,7 +17,7 @@ const renderDrawer = (index = 0, onClose = vi.fn()) => {
 describe('AnalysisDrawer', () => {
   it('lists the checks with a summary and no Completed or Passed chips', () => {
     renderDrawer(1)
-    expect(screen.getByRole('dialog', { name: 'AI analysis details' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Agent Actions' })).toBeInTheDocument()
     expect(
       screen.getByText(
         'These are the checks performed by the agent to generate the initial assessment brief.'

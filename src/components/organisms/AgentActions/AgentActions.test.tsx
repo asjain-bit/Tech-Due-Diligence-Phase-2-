@@ -1,10 +1,9 @@
 import React from 'react'
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { AgentActions } from './AgentActions'
 import {
-  AGENT_CONTEXT_SOURCES,
   buildAdminAgentActions,
   buildAgentActions,
   getChangeFactors,
@@ -14,9 +13,11 @@ import { INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
 
 const request = INITIAL_PARTNERSHIP_REQUESTS[0]
 
-describe('AgentActions (finished checklist)', () => {
-  it('lists the six checks and the context the agent read', () => {
+describe('AgentActions', () => {
+  it('lists the six checks as a divided list, not as cards', () => {
     render(<AgentActions request={request} />)
+    const list = screen.getByRole('list', { name: 'Agent checks' })
+    expect(list).toHaveClass('divide-y')
     ;[
       'Duplicate check',
       'Classification',
@@ -25,8 +26,9 @@ describe('AgentActions (finished checklist)', () => {
       'Commodity test',
       'Initial assessment brief',
     ].forEach((title) => expect(screen.getByText(title)).toBeInTheDocument())
-    AGENT_CONTEXT_SOURCES.forEach((source) => expect(screen.getByText(source)).toBeInTheDocument())
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    screen
+      .getAllByRole('listitem')
+      .forEach((li) => expect(li.className).not.toMatch(/border|shadow/))
   })
 
   it('does not show Completed or Passed chips, only Needs attention', () => {
@@ -37,94 +39,39 @@ describe('AgentActions (finished checklist)', () => {
     expect(screen.getAllByText('Needs attention').length).toBe(2)
   })
 
-  it('can hide the heading and the context row for the drawer', () => {
-    render(<AgentActions request={request} showHeader={false} showSources={false} />)
-    expect(screen.queryByRole('heading', { name: 'Agent Actions' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Reading')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Agent checks')).toBeInTheDocument()
+  it('shows no confidence score on any step', () => {
+    const { container } = render(<AgentActions request={request} />)
+    expect(screen.queryByText(/confidence/i)).not.toBeInTheDocument()
+    expect(container.textContent).not.toMatch(/\d+%/)
   })
 
   it('shows the checks it is given instead of the default list', () => {
-    const actions = buildAdminAgentActions(request)
-    render(<AgentActions request={request} actions={actions} showSources={false} />)
+    render(<AgentActions request={request} actions={buildAdminAgentActions(request)} />)
     expect(screen.getByText('Applicant history')).toBeInTheDocument()
     expect(screen.queryByText('Commodity test')).not.toBeInTheDocument()
   })
 
-  it('expands a check to show its findings and output', async () => {
+  it('opens a check to plain findings and output, then closes it', async () => {
     const user = userEvent.setup()
     render(<AgentActions request={request} />)
     await user.click(screen.getByRole('button', { name: /Duplicate check/i }))
     expect(screen.getByText('Live cases compared')).toBeInTheDocument()
-    expect(screen.getByText('Output')).toBeInTheDocument()
+    const output = screen.getByText('Output')
+    // Output is plain text like the other findings: same label style, no fill or stroke
+    expect(output.className).toBe(screen.getByText('Live cases compared').className)
+    expect(output.closest('div')?.className).not.toMatch(/bg-|border/)
     await user.click(screen.getByRole('button', { name: /Duplicate check/i }))
     expect(screen.queryByText('Live cases compared')).not.toBeInTheDocument()
   })
 
-  it('shows confidence as a level, never a percentage', async () => {
+  it('shows reviewers for KPI mapping with their match level', async () => {
     const user = userEvent.setup()
-    const { container } = render(<AgentActions request={request} />)
+    render(<AgentActions request={request} />)
     await user.click(screen.getByRole('button', { name: /KPI mapping/i }))
     expect(screen.getByText('Baseline needed to test it')).toBeInTheDocument()
     expect(screen.getByText('Suggested reviewers')).toBeInTheDocument()
     expect(screen.getByText('Riza Sayeed')).toBeInTheDocument()
-    expect(screen.getAllByLabelText(/Confidence (High|Medium|Low)/).length).toBeGreaterThan(0)
-    expect(container.textContent).not.toMatch(/\d+%/)
-  })
-})
-
-describe('AgentActions (animated run)', () => {
-  afterEach(() => vi.useRealTimers())
-
-  const runTimers = (seconds: number) => {
-    for (let i = 0; i < seconds; i++) {
-      act(() => {
-        vi.advanceTimersByTime(1000)
-      })
-    }
-  }
-
-  it('reads the context, runs each check in turn and then completes once', () => {
-    vi.useFakeTimers()
-    const onComplete = vi.fn()
-    render(<AgentActions request={request} animate onComplete={onComplete} />)
-
-    expect(
-      screen.getByText(/Reviewing the submission from MedTech Innovations/)
-    ).toBeInTheDocument()
-    const rows = screen.getAllByRole('listitem').filter((li) => li.dataset.state)
-    expect(rows[0]).toHaveAttribute('data-state', 'running')
-    expect(screen.getByRole('button', { name: /Duplicate check/i })).toBeDisabled()
-    expect(onComplete).not.toHaveBeenCalled()
-
-    runTimers(12)
-    expect(screen.getByText(/Analysis complete/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Duplicate check/i })).toBeEnabled()
-    expect(onComplete).toHaveBeenCalledTimes(1)
-    runTimers(3)
-    expect(onComplete).toHaveBeenCalledTimes(1)
-  })
-
-  it('can be skipped to the finished state', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    const onComplete = vi.fn()
-    render(<AgentActions request={request} animate onComplete={onComplete} />)
-    await user.click(screen.getByRole('button', { name: 'Skip' }))
-    expect(screen.getByText(/Analysis complete/)).toBeInTheDocument()
-    expect(onComplete).toHaveBeenCalledTimes(1)
-  })
-
-  it('skips the animation when the user prefers reduced motion', () => {
-    const original = window.matchMedia
-    window.matchMedia = vi
-      .fn()
-      .mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia
-    const onComplete = vi.fn()
-    render(<AgentActions request={request} animate onComplete={onComplete} />)
-    expect(screen.getByText(/Analysis complete/)).toBeInTheDocument()
-    expect(onComplete).toHaveBeenCalledTimes(1)
-    window.matchMedia = original
+    expect(screen.getAllByLabelText(/Match for .* (High|Medium|Low)/).length).toBeGreaterThan(0)
   })
 })
 
@@ -142,7 +89,6 @@ describe('buildAgentActions', () => {
       ])
       actions.forEach((a) => {
         expect(a.output.length).toBeGreaterThan(10)
-        expect(a.runningText.length).toBeGreaterThan(5)
         a.findings
           .filter((f) => f.label === 'Confidence')
           .forEach((f) => expect(f.value).toMatch(/^(High|Medium|Low)$/))

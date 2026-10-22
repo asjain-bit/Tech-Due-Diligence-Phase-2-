@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   AlertCircle,
   Check,
@@ -10,14 +10,16 @@ import {
   LogOut,
   Send,
   Sparkles,
-  X,
 } from 'lucide-react'
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog'
 import { runVendorFormCheck, type VendorFormSuggestion } from '@/lib/vendorFormCheck'
 import {
   DEVELOPMENT_APPROACH_OPTIONS,
   EMPTY_VENDOR_FORM,
   FOCUS_AREA_OPTIONS,
   POPULATION_OPTIONS,
+  SAMPLE_VENDOR_FORM,
+  isFormEmpty,
   missingVendorFields,
   type VendorFormValues,
 } from '@/types/vendorForm'
@@ -29,7 +31,7 @@ export interface VendorWebFormProps {
 }
 
 const FIELD =
-  'w-full rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] placeholder:text-[#9aa8b5] shadow-2xs transition focus:outline-none focus:border-[#36c0c9] focus:ring-4 focus:ring-[#36c0c9]/15'
+  'w-full rounded-lg border border-[#d6dee6] bg-white text-sm text-[#0d212c] placeholder:text-[#9aa8b5] shadow-2xs transition focus:outline-none hover:border-[#bcc7d3] focus:border-[#a3b1c2] focus:ring-0'
 const FIELD_ERROR = 'border-red-300'
 
 interface QuestionConfig {
@@ -40,6 +42,12 @@ interface QuestionConfig {
   rows: number
   required: boolean
 }
+
+const CHECK_STEPS = [
+  'Reading your answers',
+  'Looking for vague or missing detail',
+  'Preparing suggestions',
+]
 
 const QUESTIONS: Record<string, QuestionConfig> = {
   stageAndExperience: {
@@ -124,7 +132,7 @@ const Field: React.FC<{
     {suggestion && (
       <div
         role="note"
-        className="rounded-xl border border-[#bae6fd] bg-[#f0f9ff] px-3.5 py-3 flex items-start justify-between gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
+        className="rounded-lg border border-[#bae6fd] bg-[#f0f9ff] px-3.5 py-3 flex items-start justify-between gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
       >
         <div className="flex items-start gap-2.5">
           <Sparkles className="w-4 h-4 text-[#0369a1] shrink-0 mt-0.5" aria-hidden="true" />
@@ -151,7 +159,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   const [confirming, setConfirming] = useState(false)
   const [caseId, setCaseId] = useState<string | null>(null)
   const [focusOpen, setFocusOpen] = useState(false)
-  const checkTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [checkStep, setCheckStep] = useState(0)
 
   const set = <K extends keyof VendorFormValues>(field: K, value: VendorFormValues[K]) =>
     setValues((prev) => ({ ...prev, [field]: value }))
@@ -165,13 +173,31 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   const ignore = (field: string) => setIgnored((prev) => [...prev, field])
 
   const handleRunCheck = () => {
-    setIsChecking(true)
     setIgnored([])
-    clearTimeout(checkTimer.current)
-    checkTimer.current = setTimeout(() => {
-      setSuggestions(runVendorFormCheck(values))
-      setIsChecking(false)
-    }, 1600)
+    setCheckStep(0)
+    setIsChecking(true)
+  }
+
+  // The check takes a moment: three steps tick off, then the suggestions appear
+  useEffect(() => {
+    if (!isChecking) return
+    if (checkStep >= CHECK_STEPS.length) {
+      const done = setTimeout(() => {
+        setSuggestions(runVendorFormCheck(values))
+        setIsChecking(false)
+      }, 500)
+      return () => clearTimeout(done)
+    }
+    const next = setTimeout(() => setCheckStep((n) => n + 1), 650)
+    return () => clearTimeout(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isChecking, checkStep])
+
+  // First click into an empty form fills it with what a vendor would typically enter
+  const handleFocusCapture = (e: React.FocusEvent<HTMLElement>) => {
+    const target = e.target as HTMLElement
+    if (!target.matches('input, textarea, select, button#focusAreas')) return
+    if (isFormEmpty(values)) setValues(SAMPLE_VENDOR_FORM)
   }
 
   const handleSubmit = () => {
@@ -211,7 +237,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
         value={values[field]}
         onChange={(e) => set(field, e.target.value)}
         placeholder={opts.placeholder}
-        className={`${FIELD} h-11 px-3.5 ${isMissing(field) ? FIELD_ERROR : ''}`}
+        className={`${FIELD} h-10 px-3 ${isMissing(field) ? FIELD_ERROR : ''}`}
       />
     </Field>
   )
@@ -235,7 +261,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
           value={values[field]}
           onChange={(e) => set(field, e.target.value)}
           placeholder={q.placeholder}
-          className={`${FIELD} p-3.5 leading-relaxed resize-none ${
+          className={`${FIELD} p-3 leading-relaxed resize-none ${
             isMissing(q.field) ? FIELD_ERROR : ''
           }`}
         />
@@ -301,7 +327,10 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
     <div className="min-h-screen bg-[#f8fafc] text-[#0d212c] font-sans antialiased">
       {header}
 
-      <main className="w-full max-w-3xl mx-auto px-6 py-10 flex flex-col gap-8">
+      <main
+        onFocusCapture={handleFocusCapture}
+        className="w-full max-w-5xl mx-auto px-6 py-10 flex flex-col gap-8"
+      >
         <div className="flex flex-col gap-1.5">
           <h1 className="text-2xl font-semibold tracking-tight">Partnership request form</h1>
           <p className="text-sm text-[#64748b] leading-relaxed">
@@ -313,7 +342,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
         {suggestions && (
           <div
             role="status"
-            className={`rounded-xl border px-4 py-3.5 flex items-start gap-3 animate-in fade-in duration-300 ${
+            className={`rounded-lg border px-4 py-3.5 flex items-start gap-3 animate-in fade-in duration-300 ${
               openSuggestions.length > 0
                 ? 'bg-[#f0f9ff] border-[#bae6fd]'
                 : 'bg-emerald-50 border-emerald-200'
@@ -344,7 +373,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
         {/* Company information */}
         <section className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-6 sm:p-8 flex flex-col gap-6">
           <h2 className="text-base font-semibold">Company Information</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
             {textField('name', 'Name', { required: true })}
             {textField('jobTitle', 'Job Title', { required: true })}
             {textField('company', 'Company', { required: true })}
@@ -380,7 +409,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
                 aria-haspopup="listbox"
                 aria-expanded={focusOpen}
                 onClick={() => setFocusOpen((o) => !o)}
-                className={`${FIELD} min-h-11 pl-3.5 pr-10 py-2 text-left flex flex-wrap items-center gap-1.5 cursor-pointer ${
+                className={`${FIELD} min-h-10 pl-3 pr-10 py-1.5 text-left flex flex-wrap items-center gap-1.5 cursor-pointer ${
                   isMissing('focusAreas') ? FIELD_ERROR : ''
                 }`}
               >
@@ -408,7 +437,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
                   role="listbox"
                   aria-label="Focus areas"
                   aria-multiselectable="true"
-                  className="absolute z-20 mt-1.5 w-full max-h-64 overflow-y-auto rounded-xl border border-[#e2e8f0] bg-white shadow-lg py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+                  className="absolute z-20 mt-1.5 w-full max-h-64 overflow-y-auto rounded-lg border border-[#e2e8f0] bg-white shadow-lg py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
                 >
                   {FOCUS_AREA_OPTIONS.map((opt) => {
                     const selected = values.focusAreas.includes(opt)
@@ -461,7 +490,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
                 id="developmentApproach"
                 value={values.developmentApproach}
                 onChange={(e) => set('developmentApproach', e.target.value)}
-                className={`${FIELD} h-11 appearance-none pl-3.5 pr-10 cursor-pointer`}
+                className={`${FIELD} h-10 appearance-none pl-3 pr-10 cursor-pointer`}
               >
                 <option value="">Select an option</option>
                 {DEVELOPMENT_APPROACH_OPTIONS.map((o) => (
@@ -497,7 +526,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
                 return (
                   <label
                     key={pop}
-                    className="px-3.5 py-2.5 rounded-xl border border-[#d6dee6] bg-white flex items-center gap-2.5 text-sm cursor-pointer hover:bg-slate-50"
+                    className="px-3.5 py-2.5 rounded-lg border border-[#d6dee6] bg-white flex items-center gap-2.5 text-sm cursor-pointer hover:border-[#bcc7d3]"
                   >
                     <input
                       type="checkbox"
@@ -535,7 +564,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
             type="button"
             onClick={handleRunCheck}
             disabled={isChecking}
-            className="px-5 py-2.5 rounded-xl border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 disabled:opacity-70 disabled:cursor-wait cursor-pointer transition flex items-center gap-2"
+            className="px-5 py-2.5 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 disabled:opacity-70 disabled:cursor-wait cursor-pointer transition flex items-center gap-2"
           >
             {isChecking ? (
               <Loader2 className="w-4 h-4 animate-spin text-[#36c0c9]" aria-hidden="true" />
@@ -551,7 +580,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
+            className="px-6 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
           >
             Submit request
             <Send className="w-4 h-4" aria-hidden="true" />
@@ -559,58 +588,81 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
         </div>
       </main>
 
-      {confirming && (
+      {isChecking && (
         <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirm-submit-title"
-            className="relative bg-white rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95"
+            role="status"
+            aria-live="polite"
+            className="bg-white rounded-3xl max-w-sm w-full px-8 pt-9 pb-8 shadow-2xl flex flex-col items-center text-center gap-5 animate-in fade-in zoom-in-95 duration-200"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#e6fffa] text-[#36c0c9] flex items-center justify-center shrink-0">
-                  <Send className="w-5 h-5" aria-hidden="true" />
-                </div>
-                <h3 id="confirm-submit-title" className="text-lg font-semibold">
-                  Submit your request?
-                </h3>
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 rounded-2xl bg-[#36c0c9]/20 animate-ping" />
+              <div className="relative w-14 h-14 rounded-2xl bg-[#ecf8f9] text-[#36c0c9] flex items-center justify-center">
+                <Sparkles className="w-7 h-7" aria-hidden="true" />
               </div>
-              <button
-                type="button"
-                onClick={() => setConfirming(false)}
-                aria-label="Close confirmation"
-                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
-            <p className="text-sm text-[#475569] leading-relaxed">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-semibold tracking-tight text-[#0d212c]">
+                Running AI check
+              </h3>
+              <p className="text-sm text-[#64748b]">
+                Looking at your answers the way a reviewer would.
+              </p>
+            </div>
+            <ul className="w-full flex flex-col gap-2.5 text-left">
+              {CHECK_STEPS.map((label, i) => {
+                const state = checkStep > i ? 'done' : checkStep === i ? 'active' : 'pending'
+                return (
+                  <li
+                    key={label}
+                    data-state={state}
+                    className={`flex items-center gap-3 text-sm transition-opacity duration-300 ${
+                      state === 'pending' ? 'opacity-40' : ''
+                    }`}
+                  >
+                    <span className="w-5 h-5 flex items-center justify-center shrink-0">
+                      {state === 'done' ? (
+                        <Check
+                          className="w-4 h-4 text-[#10b981] stroke-[3] animate-in zoom-in-50 duration-300"
+                          aria-hidden="true"
+                        />
+                      ) : state === 'active' ? (
+                        <Loader2
+                          className="w-4 h-4 animate-spin text-[#36c0c9]"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <span className="w-2 h-2 rounded-full bg-[#cbd5e1]" aria-hidden="true" />
+                      )}
+                    </span>
+                    <span className="text-[#0d212c]">{label}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {confirming && (
+        <ConfirmDialog
+          title="Submit your request?"
+          description={
+            <>
               Your answers will be sent to M42 for review. You will not be able to edit them after
               submitting.
               {openSuggestions.length > 0 &&
                 ` ${openSuggestions.length} AI ${
                   openSuggestions.length === 1 ? 'suggestion is' : 'suggestions are'
                 } still open.`}
-            </p>
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#f1f5f9]">
-              <button
-                type="button"
-                onClick={() => setConfirming(false)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 cursor-pointer"
-              >
-                Review again
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                className="px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold shadow-xs cursor-pointer"
-              >
-                Confirm &amp; submit
-              </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+          cancelLabel="Review again"
+          confirmLabel="Submit request"
+          icon={Send}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirming(false)}
+        />
       )}
     </div>
   )

@@ -1,8 +1,8 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { act } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { DashboardScreen } from './DashboardScreen'
 import { INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
 
@@ -21,7 +21,38 @@ const adminProfile = {
   roleTitle: 'Partnership Admin',
 }
 
+const internalProfile = {
+  id: 'evaluator',
+  name: 'Mariam Al-Zaabi',
+  designation: 'Internal Interest Team',
+  email: 'mariam.alzaabi@m42.ae',
+  roleTitle: 'Internal Interest Team',
+}
+const strategyProfile = {
+  id: 'strategy-fit',
+  name: 'Omar Al-Hashemi',
+  designation: 'Strategy Team',
+  email: 'omar.alhashemi@m42.ae',
+  roleTitle: 'Strategy Team',
+}
+
+/** The agent thinks for a few seconds when a case is opened: step through it */
+const finishThinking = () => {
+  for (let i = 0; i < 8; i++) {
+    act(() => {
+      vi.advanceTimersByTime(1500)
+    })
+  }
+}
+
+const setup = () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  return userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+}
+
 describe('DashboardScreen', () => {
+  afterEach(() => vi.useRealTimers())
+
   it('renders all 4 KPI cards matching Image 2 design without breadcrumb', () => {
     render(<DashboardScreen />)
 
@@ -118,7 +149,7 @@ describe('DashboardScreen', () => {
   })
 
   it('uses shared cases when given and reports changes', async () => {
-    const user = userEvent.setup()
+    const user = setup()
     const onRequestsChange = vi.fn()
     render(
       <DashboardScreen
@@ -131,20 +162,21 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
 
     await user.click(screen.getByText('NeuroLink Diagnostics'))
-    await user.click(screen.getByRole('button', { name: 'Skip' }))
-    await user.click(
-      await screen.findByRole('radio', { name: /^Reject request/i }, { timeout: 3000 })
-    )
+    finishThinking()
+    await user.click(screen.getByRole('button', { name: 'Reject' }))
     await user.type(screen.getByLabelText(/^Reason/), 'Out of scope')
-    await user.click(screen.getByRole('button', { name: /Submit decision/i }))
-    expect(onRequestsChange).toHaveBeenCalledTimes(1)
-    const update = onRequestsChange.mock.calls[0][0] as (
-      prev: typeof INITIAL_PARTNERSHIP_REQUESTS
-    ) => typeof INITIAL_PARTNERSHIP_REQUESTS
-    expect(update([INITIAL_PARTNERSHIP_REQUESTS[4]])[0]).toMatchObject({
-      queue: 'closed',
-      status: 'Exited',
-    })
+    await user.click(screen.getByRole('button', { name: 'Reject request' }))
+
+    // the agent's own work is logged, then the rejection
+    expect(onRequestsChange).toHaveBeenCalledTimes(2)
+    const apply = (call: number) =>
+      (
+        onRequestsChange.mock.calls[call][0] as (
+          prev: typeof INITIAL_PARTNERSHIP_REQUESTS
+        ) => typeof INITIAL_PARTNERSHIP_REQUESTS
+      )([INITIAL_PARTNERSHIP_REQUESTS[4]])[0]
+    expect(apply(0).auditLog.at(-1)?.title).toBe('Initial assessment brief generated')
+    expect(apply(1)).toMatchObject({ queue: 'closed', status: 'Exited' })
   })
 
   it('filters records via search bar and filter chips', async () => {
@@ -171,16 +203,18 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
   })
 
-  it('opens the detailed view on the agent run and navigates back to the list', async () => {
-    const user = userEvent.setup()
+  it('opens the case on the thinking animation, then the brief, and navigates back', async () => {
+    const user = setup()
     render(<DashboardScreen />)
 
     await user.click(screen.getByText('MedTech Innovations'))
+    expect(screen.getByText('ANALYZING')).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Review' })).not.toBeInTheDocument()
 
-    // Opens on the review workflow, with the agent run in progress
-    expect(screen.getByRole('heading', { name: 'Agent Actions' })).toBeInTheDocument()
+    finishThinking()
+    expect(screen.getByRole('heading', { name: 'Initial Assessment Brief' })).toBeInTheDocument()
 
-    // Overview tab keeps workflow progress and the agent recommendation chip
+    // Overview tab keeps workflow progress and the agent recommendation chip for the Director
     await user.click(screen.getByRole('tab', { name: 'Overview' }))
     expect(screen.getByText('Workflow Progress')).toBeInTheDocument()
     expect(screen.getByText(/High Confidence/i)).toBeInTheDocument()
@@ -188,6 +222,97 @@ describe('DashboardScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Back to Partnership Requests' }))
     expect(screen.getByText('Partnership Requests')).toBeInTheDocument()
     expect(screen.getByText('MedTech Innovations')).toBeInTheDocument()
+  })
+
+  it('logs the agent analysis in the case audit log', async () => {
+    const user = setup()
+    render(<DashboardScreen />)
+    await user.click(screen.getByText('MedTech Innovations'))
+    finishThinking()
+    await user.click(screen.getByRole('tab', { name: 'Audit Log' }))
+    const titles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    // The seeded case already has its analysis logged, so it is not logged twice
+    expect(titles.filter((t) => t === 'Initial assessment brief generated')).toHaveLength(1)
+    expect(titles).toContain('Routed as Partnership')
+  })
+
+  it('takes a Director through approval, an on-hold request and the Internal Canvas send', async () => {
+    const user = setup()
+    render(<DashboardScreen userProfile={directorProfile} />)
+    await user.click(screen.getByText('MedTech Innovations'))
+    finishThinking()
+
+    // Request more info puts the case on hold until it is marked as received
+    await user.click(screen.getByRole('radio', { name: /Request more info/i }))
+    await user.type(screen.getByLabelText(/^Reason/), 'Please share regulatory documents.')
+    await user.click(screen.getByRole('button', { name: /Submit decision/i }))
+    await user.click(screen.getByRole('button', { name: /Send & put on hold/i }))
+    expect(screen.getByText('On hold: waiting for the vendor')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mark info received' }))
+    expect(screen.queryByText('On hold: waiting for the vendor')).not.toBeInTheDocument()
+
+    // Approve, then send the Internal Canvas request with its questions
+    await user.click(screen.getByRole('radio', { name: /Approve for internal review/i }))
+    await user.type(screen.getByLabelText(/^Reason/), 'Strong fit.')
+    await user.click(screen.getByRole('button', { name: /Submit decision/i }))
+    finishThinking()
+    expect(screen.getByRole('heading', { level: 2, name: 'Internal Canvas' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Send Request' }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Send to Internal Interest' })).getByRole(
+        'button',
+        {
+          name: 'Send Request',
+        }
+      )
+    )
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Send to Internal Interest?' })).getByRole(
+        'button',
+        {
+          name: 'Send Request',
+        }
+      )
+    )
+
+    // The stage now waits for the Internal Interest team, and the next stage stays locked
+    expect(
+      screen.getByText('Awaiting approval', { selector: 'span.inline-flex' })
+    ).toBeInTheDocument()
+    const stepper = within(screen.getByRole('navigation', { name: 'Review progress' }))
+    expect(stepper.getByRole('button', { name: /Strategic Alignment/ })).toBeDisabled()
+    await user.click(screen.getByRole('tab', { name: 'Audit Log' }))
+    const titles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(titles).toEqual(
+      expect.arrayContaining([
+        'Request sent to Internal Interest team',
+        'Approved to proceed',
+        'More information requested',
+        'Vendor information received',
+      ])
+    )
+  })
+
+  it('opens the next stage once the Internal Interest team has approved', async () => {
+    const user = setup()
+    const approved = {
+      ...INITIAL_PARTNERSHIP_REQUESTS[0],
+      status: 'In Progress' as const,
+      decision: { status: 'proceeded' as const, reason: 'ok' },
+      sent: { internal: true },
+      stageApprovals: {
+        internal: { status: 'approved' as const, by: 'Mariam', date: 'Just now' },
+      },
+    }
+    render(<DashboardScreen userProfile={directorProfile} requests={[approved]} />)
+    await user.click(screen.getByText('MedTech Innovations'))
+
+    // A case that is already past the brief skips the thinking animation and goes straight to
+    // finding the Strategy team for the next stage
+    expect(screen.queryByText('ANALYZING')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Finding the Strategy team' })).toBeInTheDocument()
+    const stepper = within(screen.getByRole('navigation', { name: 'Review progress' }))
+    expect(stepper.getByRole('button', { name: /Internal Canvas/ })).toHaveTextContent('Approved')
   })
 
   it('renders Internal Interest Team KPI cards and excludes Vendor Name column', () => {
@@ -255,54 +380,61 @@ describe('DashboardScreen', () => {
     expect(screen.queryByRole('columnheader', { name: 'Vendor Name' })).not.toBeInTheDocument()
   })
 
-  it('hides vendor details and the Director steps for the internal team', async () => {
-    const user = userEvent.setup()
-    const internalProfile = {
-      id: 'evaluator',
-      name: 'Mariam Al-Zaabi',
-      designation: 'Internal Interest Team',
-      email: 'mariam.alzaabi@m42.ae',
-      roleTitle: 'Internal Interest Team',
+  it('only shows reviewers the cases the Director has sent to their team', () => {
+    const { unmount } = render(<DashboardScreen userProfile={internalProfile} />)
+    expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
+    expect(screen.getByText('AlphaHealth BioTech')).toBeInTheDocument()
+    expect(screen.getByText('GenomicX MENA FZ-LLC')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /All requests/ })).toHaveTextContent('2')
+    unmount()
+
+    const strategyOnly = {
+      ...INITIAL_PARTNERSHIP_REQUESTS[0],
+      sent: { strategy: true },
     }
+    render(
+      <DashboardScreen
+        userProfile={strategyProfile}
+        requests={[INITIAL_PARTNERSHIP_REQUESTS[0], strategyOnly, INITIAL_PARTNERSHIP_REQUESTS[1]]}
+      />
+    )
+    expect(screen.getAllByText('MedTech Innovations')).toHaveLength(1)
+    expect(screen.getByText('AlphaHealth BioTech')).toBeInTheDocument()
+  })
+
+  it('hides vendor details, the verdict and the Director steps for the internal team', async () => {
+    const user = setup()
     render(<DashboardScreen userProfile={internalProfile} />)
 
-    await user.click(screen.getByText('MedTech Innovations'))
+    await user.click(screen.getByText('AlphaHealth BioTech'))
+    finishThinking()
 
     expect(screen.queryByText(/Referred by:/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Internal Review/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Approval/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Agent Verdict' })).not.toBeInTheDocument()
 
     // Steps for this profile: Brief, Questionnaire
     const stepper = screen.getByRole('navigation', { name: 'Review progress' })
-    expect(stepper).not.toHaveTextContent('Agent Actions')
     expect(stepper).toHaveTextContent('Initial Assessment Brief')
     expect(stepper).toHaveTextContent('Questionnaire')
+    expect(stepper).not.toHaveTextContent('Strategic Alignment')
 
-    // The brief has no Proceed, Reject or decision form
-    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    // The brief has no decision form
+    expect(screen.getByRole('button', { name: /Continue to Questionnaire/i })).toBeInTheDocument()
     expect(
-      await screen.findByRole('button', { name: /Continue to Questionnaire/i }, { timeout: 3000 })
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Proceed/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Reject/i })).not.toBeInTheDocument()
+      screen.queryByRole('radio', { name: /Approve for internal review/i })
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Overview' }))
+    expect(screen.queryByText(/Agent Recommendation:/)).not.toBeInTheDocument()
   })
 
-  it('walks the strategy team through the agent run, brief and judgement', async () => {
-    const user = userEvent.setup()
-    const strategyProfile = {
-      id: 'strategy-fit',
-      name: 'Omar Al-Hashemi',
-      designation: 'Strategy Team',
-      email: 'omar.alhashemi@m42.ae',
-      roleTitle: 'Strategy Team',
-    }
+  it('walks the strategy team through the brief and judgement', async () => {
+    const user = setup()
     render(<DashboardScreen userProfile={strategyProfile} />)
 
-    await user.click(screen.getByText('MedTech Innovations'))
-    await user.click(screen.getByRole('button', { name: 'Skip' }))
-    await user.click(
-      await screen.findByRole('button', { name: /Continue to Judgement/i }, { timeout: 3000 })
-    )
+    await user.click(screen.getByText('AlphaHealth BioTech'))
+    finishThinking()
+    await user.click(screen.getByRole('button', { name: /Continue to Judgement/i }))
 
     expect(screen.getByRole('heading', { name: 'Your judgement' })).toBeInTheDocument()
     expect(screen.getByText('Fit to current focus areas')).toBeInTheDocument()
@@ -317,10 +449,11 @@ describe('DashboardScreen', () => {
     expect(submitBtn).toBeEnabled()
     await user.click(submitBtn)
 
-    expect(screen.getByText('Submit Strategy Decision')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Confirm & Submit' }))
+    const confirm = screen.getByRole('dialog', { name: 'Submit your decision?' })
+    expect(confirm).toHaveTextContent('Yes, proceed')
+    await user.click(within(confirm).getByRole('button', { name: 'Submit' }))
 
-    expect(screen.queryByText('Submit Strategy Decision')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Submit decision/i })).not.toBeInTheDocument()
     screen.getAllByRole('combobox').forEach((c) => expect(c).toBeDisabled())
   })

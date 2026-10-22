@@ -1,8 +1,23 @@
-import type { CaseType, PartnershipRequest, WorkflowStage } from '@/types/partnership.types'
+import {
+  DEFAULT_INTERNAL_INTERESTS,
+  DEFAULT_STRATEGY_MEMBERS,
+  type AuditEvent,
+  type CaseType,
+  type InternalInterestStakeholder,
+  type PartnershipRequest,
+  type QuestionAnswer,
+  type QuestionnaireQuestion,
+  type StrategyMemberResponse,
+  type WorkflowStage,
+} from '@/types/partnership.types'
 import type { VendorFormValues } from '@/types/vendorForm'
 
 const DIRECTOR_NAME = 'Zaid Al Ali'
 const ADMIN_NAME = 'Nadia Al-Farsi'
+const DIRECTOR_ACTOR = `${DIRECTOR_NAME} (Director)`
+const ADMIN_ACTOR = `${ADMIN_NAME} (Partnership Admin)`
+const INTERNAL_ACTOR = 'Mariam Al-Zaabi (Internal Interest)'
+const STRATEGY_ACTOR = 'Omar Al-Hashemi (Strategy Team)'
 
 export const CASE_TYPE_OWNER: Record<CaseType, string> = {
   Partnership: DIRECTOR_NAME,
@@ -12,6 +27,24 @@ export const CASE_TYPE_OWNER: Record<CaseType, string> = {
 
 const todayLabel = (date = new Date()) =>
   date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+
+/** 22 Oct 2026, 06:50 PM */
+export const formatTimestamp = (date = new Date()) =>
+  `${todayLabel(date)}, ${date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`
+
+export type AuditInput = Omit<AuditEvent, 'id' | 'timestamp'> & { key?: string }
+
+/** Adds an event to the case's audit log. An event with an existing key is only logged once. */
+export const appendAudit = (r: PartnershipRequest, event: AuditInput): PartnershipRequest => {
+  const log = r.auditLog ?? []
+  const { key, ...rest } = event
+  const id = key ?? `${r.id}-${log.length + 1}-${Date.now()}`
+  if (key && log.some((e) => e.id === key)) return r
+  return { ...r, auditLog: [...log, { ...rest, id, timestamp: formatTimestamp() }] }
+}
 
 /** Where the case is right now, in one short label */
 export const getStageLabel = (r: PartnershipRequest): string => {
@@ -43,46 +76,76 @@ const setStages = (
     return { ...s, status: 'not_started', subheading: 'Not Started' }
   })
 
-/** Director approves the brief: the case moves on to the review steps */
-export const proceedRequest = (r: PartnershipRequest, reason: string): PartnershipRequest => ({
-  ...r,
-  status: 'In Progress',
-  workflowStages: r.workflowStages.map((stage) => {
-    if (stage.id === 3) return { ...stage, status: 'completed', subheading: 'Completed' }
-    if (stage.id === 4) return { ...stage, status: 'in_progress', subheading: 'In Progress' }
-    return stage
-  }),
-  daysInStage: 0,
-  decision: {
-    status: 'proceeded',
-    reason: reason || 'Approved to proceed to next stage.',
-    date: 'Just now',
-  },
-})
+/** Director approves the brief: the case moves on to the review stages */
+export const proceedRequest = (r: PartnershipRequest, reason: string): PartnershipRequest =>
+  appendAudit(
+    {
+      ...r,
+      status: 'In Progress',
+      workflowStages: r.workflowStages.map((stage) => {
+        if (stage.id === 3) return { ...stage, status: 'completed', subheading: 'Completed' }
+        if (stage.id === 4) return { ...stage, status: 'in_progress', subheading: 'In Progress' }
+        return stage
+      }),
+      daysInStage: 0,
+      decision: {
+        status: 'proceeded',
+        reason: reason || 'Approved to proceed to next stage.',
+        date: 'Just now',
+      },
+    },
+    {
+      title: 'Approved to proceed',
+      description: reason || 'Approved to proceed to the next stage.',
+      actor: DIRECTOR_ACTOR,
+      kind: 'approval',
+    }
+  )
 
-export const rejectRequest = (r: PartnershipRequest, reason: string): PartnershipRequest => ({
-  ...r,
-  status: 'Exited',
-  daysInStage: 0,
-  decision: { status: 'rejected', reason, date: 'Just now' },
-})
+export const rejectRequest = (r: PartnershipRequest, reason: string): PartnershipRequest =>
+  appendAudit(
+    {
+      ...r,
+      status: 'Exited',
+      daysInStage: 0,
+      decision: { status: 'rejected', reason, date: 'Just now' },
+    },
+    { title: 'Request rejected', description: reason, actor: DIRECTOR_ACTOR, kind: 'critical' }
+  )
 
 /** Director asks the vendor for more information: the case waits until it arrives */
 export const holdRequest = (
   r: PartnershipRequest,
   email: { to: string; subject: string; body: string }
-): PartnershipRequest => ({
-  ...r,
-  status: 'On Hold',
-  daysInStage: 0,
-  holdInfo: { requestedOn: todayLabel(), ...email },
-})
+): PartnershipRequest =>
+  appendAudit(
+    {
+      ...r,
+      status: 'On Hold',
+      daysInStage: 0,
+      holdInfo: { requestedOn: todayLabel(), ...email },
+    },
+    {
+      title: 'More information requested',
+      description: `Email sent to ${email.to}: ${email.subject}`,
+      actor: DIRECTOR_ACTOR,
+      kind: 'user',
+    }
+  )
 
 /** Vendor information has arrived: the case goes back to the Director's brief */
 export const resumeRequest = (r: PartnershipRequest): PartnershipRequest => {
   const { holdInfo: _holdInfo, ...rest } = r
   void _holdInfo
-  return { ...rest, status: 'Pending', daysInStage: 0 }
+  return appendAudit(
+    { ...rest, status: 'Pending', daysInStage: 0 },
+    {
+      title: 'Vendor information received',
+      description: 'The case is back with the Director.',
+      actor: DIRECTOR_ACTOR,
+      kind: 'user',
+    }
+  )
 }
 
 export interface AdminRouting {
@@ -101,41 +164,175 @@ export const routeRequest = (r: PartnershipRequest, routing: AdminRouting): Part
   }
 
   if (routing.action === 'reject') {
-    return {
-      ...r,
-      adminDecision,
-      caseType: undefined,
-      queue: 'closed',
-      status: 'Exited',
-      owner: ADMIN_NAME,
-      daysInStage: 0,
-    }
+    return appendAudit(
+      {
+        ...r,
+        adminDecision,
+        caseType: undefined,
+        queue: 'closed',
+        status: 'Exited',
+        owner: ADMIN_NAME,
+        daysInStage: 0,
+      },
+      {
+        title: 'Rejected by Partnership Admin',
+        description: routing.reason,
+        actor: ADMIN_ACTOR,
+        kind: 'critical',
+      }
+    )
   }
 
   const type = routing.type ?? 'Partnership'
+  const reason = routing.reason || 'No reason added.'
   if (type === 'Partnership') {
-    return {
+    return appendAudit(
+      {
+        ...r,
+        adminDecision,
+        caseType: type,
+        queue: 'director',
+        status: 'Pending',
+        owner: DIRECTOR_NAME,
+        daysInStage: 0,
+        workflowStages: setStages(r.workflowStages, 2, 3),
+      },
+      {
+        title: 'Routed as Partnership',
+        description: `Sent to the Director. ${reason}`,
+        actor: ADMIN_ACTOR,
+        kind: 'approval',
+      }
+    )
+  }
+
+  return appendAudit(
+    {
       ...r,
       adminDecision,
       caseType: type,
-      queue: 'director',
-      status: 'Pending',
-      owner: DIRECTOR_NAME,
+      queue: 'routed',
+      status: 'In Progress',
+      owner: CASE_TYPE_OWNER[type],
       daysInStage: 0,
       workflowStages: setStages(r.workflowStages, 2, 3),
+    },
+    {
+      title: `Routed as ${type}`,
+      description: `Not in the Director's list. ${reason}`,
+      actor: ADMIN_ACTOR,
+      kind: 'approval',
     }
+  )
+}
+
+type ReviewTeam = 'internal' | 'strategy'
+
+/** Director sends a review request: reviewers are notified and the stage waits for approval */
+export const sendReview = (
+  r: PartnershipRequest,
+  team: ReviewTeam,
+  payload: {
+    members: InternalInterestStakeholder[]
+    questionnaire?: { name: string; questions: QuestionnaireQuestion[] }
+  }
+): PartnershipRequest => {
+  const members = payload.members.map((m, i) => ({
+    ...m,
+    status: i === 0 ? 'In Progress' : 'Pending',
+    deadline: team === 'internal' ? '5 days' : '2-3 days',
+    decision: '-',
+    answers: undefined,
+    strategyResponse: undefined,
+  }))
+  const next: PartnershipRequest = {
+    ...r,
+    sent: { ...r.sent, [team]: true },
+    daysInStage: 0,
+    ...(team === 'internal'
+      ? { internalInterests: members, sentQuestionnaire: payload.questionnaire }
+      : { strategyTeamMembers: members }),
+  }
+  return appendAudit(next, {
+    key: `${r.id}-sent-${team}`,
+    title:
+      team === 'internal'
+        ? 'Request sent to Internal Interest team'
+        : 'Request sent to Strategy Team',
+    description:
+      team === 'internal'
+        ? `${members.length} ${members.length === 1 ? 'reviewer' : 'reviewers'} asked to answer ${
+            payload.questionnaire?.questions.length ?? 0
+          } questions.`
+        : `${members.length} ${members.length === 1 ? 'reviewer' : 'reviewers'} asked for a judgement.`,
+    actor: DIRECTOR_ACTOR,
+    kind: 'user',
+  })
+}
+
+/** A reviewing team answers: the answer is recorded and counts as that stage's approval */
+export const submitReview = (
+  r: PartnershipRequest,
+  team: ReviewTeam,
+  payload: { answers?: QuestionAnswer[]; response?: StrategyMemberResponse }
+): PartnershipRequest => {
+  if (team === 'internal') {
+    const people = r.internalInterests?.length ? r.internalInterests : DEFAULT_INTERNAL_INTERESTS
+    const answers = payload.answers ?? []
+    return appendAudit(
+      {
+        ...r,
+        internalInterests: people.map((m, i) =>
+          i === 0 ? { ...m, status: 'Completed', decision: 'Proceed', answers } : m
+        ),
+        stageApprovals: {
+          ...r.stageApprovals,
+          internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Just now' },
+        },
+      },
+      {
+        title: 'Internal Interest approved',
+        description: `${answers.length} ${answers.length === 1 ? 'question' : 'questions'} answered.`,
+        actor: INTERNAL_ACTOR,
+        kind: 'approval',
+      }
+    )
   }
 
-  return {
-    ...r,
-    adminDecision,
-    caseType: type,
-    queue: 'routed',
-    status: 'In Progress',
-    owner: CASE_TYPE_OWNER[type],
-    daysInStage: 0,
-    workflowStages: setStages(r.workflowStages, 2, 3),
-  }
+  const response = payload.response ?? {}
+  const declined = response.finalDecision === 'No'
+  const people = r.strategyTeamMembers?.length
+    ? r.strategyTeamMembers
+    : DEFAULT_STRATEGY_MEMBERS.slice(0, 1)
+  return appendAudit(
+    {
+      ...r,
+      strategyTeamMembers: people.map((m, i) =>
+        i === 0
+          ? {
+              ...m,
+              status: 'Completed',
+              decision: response.finalDecision,
+              strategyResponse: response,
+            }
+          : m
+      ),
+      stageApprovals: {
+        ...r.stageApprovals,
+        strategy: {
+          status: declined ? 'declined' : 'approved',
+          by: 'Omar Al-Hashemi',
+          date: 'Just now',
+        },
+      },
+    },
+    {
+      title: declined ? 'Strategy Team declined' : 'Strategy Team approved',
+      description: response.finalDecision ?? 'Judgement submitted.',
+      actor: STRATEGY_ACTOR,
+      kind: declined ? 'critical' : 'approval',
+    }
+  )
 }
 
 export const nextCaseCode = (requests: PartnershipRequest[]) => {
@@ -224,6 +421,16 @@ export const buildCaseFromForm = (
       tokenConsumption: '0',
     },
     uploadedDocuments: [],
+    auditLog: [
+      {
+        id: `${code}-submitted`,
+        title: 'Partnership request submitted',
+        description: `Vendor form received from ${values.company.trim()}.`,
+        actor: `${values.name.trim()} (Vendor)`,
+        kind: 'user',
+        timestamp: formatTimestamp(now),
+      },
+    ],
     companyInfo: {
       name: values.name.trim(),
       jobTitle: values.jobTitle.trim(),

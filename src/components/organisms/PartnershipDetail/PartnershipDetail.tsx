@@ -27,17 +27,21 @@ import {
   Send,
   FileText,
   UserPlus,
+  ArrowLeftRight,
   Clock,
   Eye,
 } from 'lucide-react'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import {
-  AgentActions,
   buildAdminAgentActions,
   buildAgentActions,
   getTypeConfidence,
 } from '@/components/organisms/AgentActions'
-import { AdminDecision } from '@/components/organisms/AdminDecision'
+import { AdminActionModal } from '@/components/organisms/AdminActionModal'
+import { AuditLog } from '@/components/organisms/AuditLog'
+import { ConfirmDialog } from '@/components/molecules/ConfirmDialog'
+import { SendInternalModal } from '@/components/organisms/SendInternalModal'
+import { ThinkingMode } from '@/components/organisms/ThinkingMode'
 import { AnalysisDrawer } from '@/components/organisms/AnalysisDrawer'
 import { RequestInfoModal } from '@/components/organisms/RequestInfoModal'
 import { hasDirectorDecided, type AdminRouting } from '@/lib/caseActions'
@@ -47,9 +51,9 @@ import { ReviewersLoading } from '@/components/molecules/ReviewersLoading'
 import { WorkflowStepper, type WorkflowStep } from '@/components/molecules/WorkflowStepper'
 import { JudgementForm } from '@/components/organisms/JudgementForm'
 import {
-  QuestionnaireForm,
-  type QuestionnaireValues,
-} from '@/components/organisms/QuestionnaireForm'
+  ReviewQuestionnaire,
+  type QuestionAnswerValue,
+} from '@/components/organisms/ReviewQuestionnaire'
 import { VendorFormResponse } from '@/components/organisms/VendorFormResponse'
 import {
   buildInitialJudgementEntries,
@@ -60,12 +64,13 @@ import {
   type JudgementEntry,
   type StrategyDecision,
 } from '@/types/judgementCriteria'
+import { DEFAULT_QUESTIONNAIRE_ID, getQuestionnaire } from '@/types/questionnaires'
 import type { PartnershipDetailProps, DetailTab } from './PartnershipDetail.types'
 import {
   DEFAULT_INTERNAL_INTERESTS,
   DEFAULT_STRATEGY_MEMBERS,
   type InternalInterestStakeholder,
-  type QuestionnaireResponse,
+  type QuestionAnswer,
   type StrategyMemberResponse,
 } from '@/types/partnership.types'
 
@@ -165,29 +170,7 @@ const STRATEGY_CANDIDATE_DIRECTORY = [
   },
 ]
 
-type StepId = 'brief' | 'alignment' | 'canvas' | 'approval' | 'questionnaire' | 'judgement'
-
-const DEFAULT_QUESTIONNAIRE: QuestionnaireValues = {
-  problem:
-    'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics.',
-  kpi: 'ICU sepsis mortality',
-  baseline: '21% over 12 months',
-  change: '3 points lower in 12 months',
-  sponsor: 'Yes, we would sponsor',
-  budget: 'Existing budget line',
-  sayNo:
-    'High latency in EHR synchronization or high false positive alarm fatigue among nursing staff.',
-}
-
-const questionnaireFromResponse = (r: QuestionnaireResponse): QuestionnaireValues => ({
-  problem: r.problemAndCurrentApproach ?? '',
-  kpi: r.targetKpi ?? '',
-  baseline: r.baselineToday ?? '',
-  change: r.changeThatMatters ?? '',
-  sponsor: r.sponsorPilot ?? '',
-  budget: r.budgetLine ?? '',
-  sayNo: r.whatWouldMakeYouSayNo ?? '',
-})
+type StepId = 'brief' | 'canvas' | 'alignment' | 'questionnaire' | 'judgement'
 
 const judgementEntriesFromResponse = (r: StrategyMemberResponse): JudgementEntries => {
   const entries = buildInitialJudgementEntries()
@@ -207,6 +190,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   onRequestInfo,
   onResume,
   onRoute,
+  onLog,
+  onSendReview,
+  onSubmitReview,
   animateAgentRun = true,
   className = '',
 }) => {
@@ -225,40 +211,25 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [viewingResponseMember, setViewingResponseMember] =
     useState<InternalInterestStakeholder | null>(null)
 
-  // Questionnaire state for Internal Interest Team profile
-  const [questionnaire, setQuestionnaire] = useState<QuestionnaireValues>(DEFAULT_QUESTIONNAIRE)
+  // Questions the Director sent (or the default set) and this reviewer's answers
+  const reviewQuestions =
+    request.sentQuestionnaire?.questions ?? getQuestionnaire(DEFAULT_QUESTIONNAIRE_ID).questions
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, QuestionAnswerValue>>({})
   const [showQuestionnaireConfirmModal, setShowQuestionnaireConfirmModal] = useState(false)
   const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false)
 
-  const patchQuestionnaire = (patch: Partial<QuestionnaireValues>) =>
-    setQuestionnaire((prev) => ({ ...prev, ...patch }))
-
-  const handleCancelQuestionnaire = () => setQuestionnaire(DEFAULT_QUESTIONNAIRE)
+  const patchAnswer = (id: string, patch: Partial<QuestionAnswerValue>) =>
+    setQuestionAnswers((prev) => ({ ...prev, [id]: { ...(prev[id] ?? { answer: '' }), ...patch } }))
 
   const handleConfirmSubmitQuestionnaire = () => {
-    const responsePayload: QuestionnaireResponse = {
-      problemAndCurrentApproach: questionnaire.problem,
-      targetKpi: questionnaire.kpi,
-      baselineToday: questionnaire.baseline,
-      changeThatMatters: questionnaire.change,
-      sponsorPilot: questionnaire.sponsor,
-      budgetLine: questionnaire.budget,
-      whatWouldMakeYouSayNo: questionnaire.sayNo,
-      submittedAt: 'Just now',
-    }
-
-    setStakeholders((prev) =>
-      prev.map((s, idx) =>
-        idx === 0
-          ? {
-              ...s,
-              status: 'Completed',
-              decision: 'Proceed',
-              response: responsePayload,
-            }
-          : s
-      )
-    )
+    const answers: QuestionAnswer[] = reviewQuestions.map((q) => ({
+      questionId: q.id,
+      question: q.text,
+      cue: q.cue,
+      answer: questionAnswers[q.id]?.answer ?? '',
+      attachment: questionAnswers[q.id]?.attachment,
+    }))
+    onSubmitReview?.(request.id, 'internal', { answers })
     setShowQuestionnaireConfirmModal(false)
     setQuestionnaireSubmitted(true)
     completeStep('questionnaire')
@@ -294,6 +265,20 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   ).length
 
   const handleConfirmSubmitStrategyJudgement = () => {
+    const response: StrategyMemberResponse = {
+      judgements: JUDGEMENT_CRITERIA.map((c) => {
+        const entry = judgementEntries[c.id]
+        return {
+          criterionId: c.id,
+          value: entry.value,
+          reason: isJudgementEdited(c, entry) ? entry.reason : undefined,
+        }
+      }),
+      finalDecision: strategyDecision ?? undefined,
+      finalDecisionNote: strategyDecisionNote,
+      submittedAt: 'Just now',
+    }
+    onSubmitReview?.(request.id, 'strategy', { response })
     setShowStrategyConfirmModal(false)
     setStrategyJudgementSubmitted(true)
     completeStep('judgement')
@@ -302,7 +287,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
   const [activeTab, setActiveTab] = useState<DetailTab>('review')
 
-  // Review workflow: each step unlocks only after the one before it is completed
+  // Review workflow: each step unlocks only after the one before it is done
   const stepDefs: { id: StepId; label: string }[] = isInternalTeam
     ? [
         { id: 'brief', label: 'Initial Assessment Brief' },
@@ -317,65 +302,70 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         ? [{ id: 'brief', label: 'Initial Assessment Brief' }]
         : [
             { id: 'brief', label: 'Initial Assessment Brief' },
-            { id: 'alignment', label: 'Strategic Alignment' },
             { id: 'canvas', label: 'Internal Canvas' },
-            { id: 'approval', label: 'Approval' },
+            { id: 'alignment', label: 'Strategic Alignment' },
           ]
-
-  const alreadyReviewed =
-    isDirector && (request.status === 'In Progress' || request.status === 'At Risk')
-  const alreadyExited = isDirector && request.status === 'Exited'
-  const wasSeen =
-    alreadyReviewed ||
-    alreadyExited ||
-    request.status === 'On Hold' ||
-    (isAdmin && Boolean(request.adminDecision))
-
-  const [completedSteps, setCompletedSteps] = useState<StepId[]>(() => {
-    if (alreadyExited) return ['brief']
-    if (alreadyReviewed) return ['brief', 'alignment', 'canvas']
-    return []
-  })
-  const [activeStep, setActiveStep] = useState<StepId>(alreadyReviewed ? 'approval' : 'brief')
-  // The agent run plays the first time the brief opens, then the brief takes over
-  const [runDone, setRunDone] = useState(!animateAgentRun || wasSeen)
-  const [readyTeams, setReadyTeams] = useState({
-    strategy: alreadyReviewed || !animateAgentRun,
-    internal: alreadyReviewed || !animateAgentRun,
-  })
-
-  const completeStep = (id: StepId) =>
-    setCompletedSteps((prev) => (prev.includes(id) ? prev : [...prev, id]))
 
   const [localDecision, setLocalDecision] = useState<{
     decision: BriefDecisionChoice
     reason: string
   } | null>(null)
+  const [localSent, setLocalSent] = useState<{ internal?: boolean; strategy?: boolean }>({})
+
+  // For the Director, progress comes from the case itself, so it survives switching profiles
   const isRejected =
     isDirector &&
     (request.status === 'Exited' ||
       request.decision?.status === 'rejected' ||
       localDecision?.decision === 'reject')
-  const firstOpenIndex = stepDefs.findIndex((d) => !completedSteps.includes(d.id))
+  const briefApproved =
+    isDirector &&
+    (request.decision?.status === 'proceeded' ||
+      request.status === 'In Progress' ||
+      request.status === 'At Risk' ||
+      localDecision?.decision === 'approve')
+  const internalSent = Boolean(request.sent?.internal) || Boolean(localSent.internal)
+  const strategySent = Boolean(request.sent?.strategy) || Boolean(localSent.strategy)
+  const internalApproved = request.stageApprovals?.internal?.status === 'approved'
+  const strategyApproved = request.stageApprovals?.strategy?.status === 'approved'
+  const strategyDeclined = request.stageApprovals?.strategy?.status === 'declined'
+
+  const [completedSteps, setCompletedSteps] = useState<StepId[]>([])
+  const completeStep = (id: StepId) =>
+    setCompletedSteps((prev) => (prev.includes(id) ? prev : [...prev, id]))
+
+  const isStepCompleted = (id: StepId) => {
+    if (!isDirector) return completedSteps.includes(id)
+    if (id === 'brief') return briefApproved || isRejected
+    if (id === 'canvas') return internalApproved
+    if (id === 'alignment') return strategyApproved
+    return false
+  }
+
+  const firstOpenIndex = stepDefs.findIndex((d) => !isStepCompleted(d.id))
   const stepperSteps: WorkflowStep[] = stepDefs.map((d, i) => {
-    const state: WorkflowStep['state'] = completedSteps.includes(d.id)
+    const completed = isStepCompleted(d.id)
+    const state: WorkflowStep['state'] = completed
       ? 'completed'
       : isRejected
         ? 'closed'
         : i === firstOpenIndex
           ? 'current'
           : 'upcoming'
-    return {
-      id: d.id,
-      label: d.label,
-      state,
-      caption:
-        state === 'current' && d.id === 'brief'
-          ? 'To review'
-          : state === 'current' && d.id === 'approval'
-            ? 'Tracking'
-            : undefined,
+    let caption: string | undefined
+    if (state === 'current' && d.id === 'brief') caption = 'To review'
+    if (d.id === 'canvas' || d.id === 'alignment') {
+      const sent = d.id === 'canvas' ? internalSent : strategySent
+      if (completed) caption = 'Approved'
+      else if (state === 'current' && d.id === 'alignment' && strategyDeclined) caption = 'Declined'
+      else if (state === 'current' && sent) caption = 'Awaiting approval'
     }
+    return { id: d.id, label: d.label, state, caption }
+  })
+
+  const [activeStep, setActiveStep] = useState<StepId>(() => {
+    const open = stepDefs.find((d) => !isStepCompleted(d.id))
+    return (open ?? stepDefs[stepDefs.length - 1]).id
   })
 
   const goToStep = (id: string) => {
@@ -384,7 +374,18 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     setActiveStep(id as StepId)
   }
 
-  const advanceTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const wasSeen =
+    isRejected ||
+    briefApproved ||
+    request.status === 'On Hold' ||
+    (isAdmin && Boolean(request.adminDecision))
+  // The agent thinks first, every time a case is opened for the first time in this view
+  const [runDone, setRunDone] = useState(!animateAgentRun || wasSeen)
+  const [readyTeams, setReadyTeams] = useState({
+    strategy: !animateAgentRun || strategySent,
+    internal: !animateAgentRun || internalSent,
+  })
+
   const stepperRef = React.useRef<HTMLDivElement>(null)
   const isFirstStepRender = React.useRef(true)
 
@@ -394,11 +395,29 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   )
 
   const handleRunComplete = () => {
-    // Let the finished checklist settle for a moment, then show the brief
-    advanceTimer.current = setTimeout(() => setRunDone(true), 1100)
+    setRunDone(true)
+    const risks = analysisActions.filter((a) => a.status === 'attention')
+    onLog?.(request.id, {
+      key: `${request.id}-brief-generated`,
+      title: 'Initial assessment brief generated',
+      description: `${analysisActions.length} checks run. ${
+        risks.length === 0
+          ? 'No risks identified.'
+          : `${risks.length} ${risks.length === 1 ? 'risk' : 'risks'} identified.`
+      }`,
+      actor: 'Triage Agent',
+      kind: 'agent',
+    })
+    if (risks.length > 0) {
+      onLog?.(request.id, {
+        key: `${request.id}-risks-identified`,
+        title: 'Risks identified',
+        description: risks.map((r) => r.title).join(', '),
+        actor: 'Triage Agent',
+        kind: 'critical',
+      })
+    }
   }
-
-  React.useEffect(() => () => clearTimeout(advanceTimer.current), [])
 
   React.useEffect(() => {
     if (isFirstStepRender.current) {
@@ -423,10 +442,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       return
     }
     setLocalDecision({ decision, reason })
-    completeStep('brief')
     if (decision === 'approve') {
       onProceed?.(request.id, reason)
-      setActiveStep('alignment')
+      setActiveStep('canvas')
     } else {
       onReject?.(request.id, reason)
     }
@@ -444,18 +462,21 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           decision: 'request_info',
           reason: infoReason || 'More information requested from the vendor.',
         }
-      : completedSteps.includes('brief')
+      : briefApproved || isRejected
         ? {
             decision: isRejected ? 'reject' : 'approve',
             reason: localDecision?.reason ?? request.decision?.reason,
           }
         : undefined
 
-  // Partnership Admin routing, with a confirmation when it changes an earlier routing
+  // Partnership Admin: decision popups, with a confirmation when it changes an earlier routing
+  const [adminModal, setAdminModal] = useState<'proceed' | 'reject' | null>(null)
   const [pendingRouting, setPendingRouting] = useState<AdminRouting | null>(null)
   const previousRouting = request.adminDecision
+  const adminCanChange = isAdmin && !hasDirectorDecided(request)
 
-  const handleAdminSubmit = (routing: AdminRouting) => {
+  const handleAdminConfirm = (routing: AdminRouting) => {
+    setAdminModal(null)
     const changed =
       Boolean(previousRouting) &&
       (previousRouting?.action !== routing.action || previousRouting?.type !== routing.type)
@@ -501,6 +522,13 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       ? request.internalInterests
       : DEFAULT_INTERNAL_INTERESTS
   )
+
+  // Once a request is sent the case holds the reviewers' status and answers
+  React.useEffect(() => {
+    if (request.sent?.internal && request.internalInterests?.length) {
+      setStakeholders(request.internalInterests)
+    }
+  }, [request.sent?.internal, request.internalInterests])
 
   // Add Respondant modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -580,6 +608,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       ? request.strategyTeamMembers.slice(0, 1)
       : DEFAULT_STRATEGY_MEMBERS.slice(0, 1)
   )
+  React.useEffect(() => {
+    if (request.sent?.strategy && request.strategyTeamMembers?.length) {
+      setStrategyMembers(request.strategyTeamMembers.slice(0, 1))
+    }
+  }, [request.sent?.strategy, request.strategyTeamMembers])
+
   const [isAddStrategyModalOpen, setIsAddStrategyModalOpen] = useState(false)
   const [selectedStrategyCandId, setSelectedStrategyCandId] = useState('')
   const [newStrategyRole, setNewStrategyRole] = useState('')
@@ -607,14 +641,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     `Hi,\n\nWe have received a partnership request from ${request.companyName}. Please review the strategic alignment and market expansion potential for this partnership.\n\nPlease review the details in the Tech Due Diligence workspace and share your response.`
   )
   const [reviewToast, setReviewToast] = useState<string | null>(null)
-  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   const [showJudgementCriteriaModal, setShowJudgementCriteriaModal] = useState(false)
-  // Reviewer tables: edit layout until the request is sent, tracking layout on Approval
-  const canEditStrategy = !completedSteps.includes('alignment')
-  const canEditInternal = !completedSteps.includes('canvas')
-  const showSent = activeStep === 'approval'
-  const internalRequestSent = showSent
-  const strategyRequestSent = showSent
+  // Reviewer tables: edit layout until that request is sent, tracking layout afterwards
+  const canEditStrategy = !strategySent
+  const canEditInternal = !internalSent
+  const internalRequestSent = internalSent
+  const strategyRequestSent = strategySent
 
   const renderRequestStatusBadge = (status?: string) => {
     const s = status || 'Pending'
@@ -764,7 +796,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     isAddStrategyModalOpen ||
     deletingStrategyMember ||
     maxStrategyLimitWarning ||
-    showQuestionnaireModal ||
+    adminModal ||
     showJudgementCriteriaModal ||
     showQuestionnaireConfirmModal ||
     showStrategyConfirmModal
@@ -780,10 +812,27 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     }
   }, [isAnyModalOpen])
 
-  const sentChip = (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
-      <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-      Request sent
+  // The agent thinks first when a case is opened
+  if (!runDone) return <ThinkingMode onComplete={handleRunComplete} />
+
+  const stageChip = (state: 'awaiting' | 'approved' | 'declined') => (
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium ${
+        state === 'approved'
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : state === 'declined'
+            ? 'bg-red-50 text-red-700 border-red-200'
+            : 'bg-amber-50 text-amber-700 border-amber-200'
+      }`}
+    >
+      {state === 'approved' ? (
+        <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+      ) : state === 'declined' ? (
+        <AlertCircle className="w-4 h-4" aria-hidden="true" />
+      ) : (
+        <Clock className="w-4 h-4" aria-hidden="true" />
+      )}
+      {state === 'approved' ? 'Approved' : state === 'declined' ? 'Declined' : 'Awaiting approval'}
     </span>
   )
 
@@ -825,20 +874,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           </div>
         </div>
       </div>
-
-      {canEditInternal && (
-        <p className="text-xs text-[#64748b] -mt-2 pl-[30px] flex items-center gap-2 flex-wrap">
-          <span>Reviewers answer 5 short questions.</span>
-          <button
-            type="button"
-            onClick={() => setShowQuestionnaireModal(true)}
-            className="inline-flex items-center gap-1 font-medium text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer"
-          >
-            <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-            Preview questions
-          </button>
-        </p>
-      )}
 
       {/* Table 1: Internal Interest Stakeholders */}
       <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
@@ -1286,6 +1321,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           [
             { id: 'overview', label: 'Overview' },
             { id: 'review', label: 'Review' },
+            { id: 'audit', label: 'Audit Log' },
           ] as const
         ).map((tab) => (
           <button
@@ -1319,11 +1355,24 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <h1 className="text-xl sm:text-2xl font-semibold text-[#0d212c] tracking-tight">
                   {request.companyName}
                 </h1>
-                <StatusChip
-                  label={request.status}
-                  status={getStatusCategory(request.status)}
-                  dot={false}
-                />
+                {isAdmin && request.adminDecision && request.status !== 'On Hold' ? (
+                  <>
+                    <StatusChip
+                      label={request.adminDecision.action === 'proceed' ? 'Approved' : 'Rejected'}
+                      status={request.adminDecision.action === 'proceed' ? 'success' : 'error'}
+                      dot={false}
+                    />
+                    {request.adminDecision.type && (
+                      <StatusChip label={request.adminDecision.type} status="neutral" dot={false} />
+                    )}
+                  </>
+                ) : (
+                  <StatusChip
+                    label={request.status}
+                    status={getStatusCategory(request.status)}
+                    dot={false}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -1407,7 +1456,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       )}
 
       {/* Decision Status Banner (if decision has already been recorded) */}
-      {request.decision && (
+      {request.decision && !isAdmin && (
         <div
           className={`p-4 rounded-xl border flex items-start gap-3 text-xs sm:text-sm animate-in fade-in ${
             request.decision.status === 'proceeded'
@@ -1441,103 +1490,108 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         {activeTab === 'overview' && (
           <div className="flex flex-col gap-8 w-full animate-in fade-in duration-150">
             {/* Section 1: Workflow Progress & Agent Recommendation Chip */}
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <h2 className="text-base font-semibold text-[#0d212c]">Workflow Progress</h2>
+            {!isAdmin && (
+              <>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <h2 className="text-base font-semibold text-[#0d212c]">Workflow Progress</h2>
 
-                {/* Agent Recommendation: one word proceed/reject and confidence level high/medium/low */}
-                {(() => {
-                  const recWord =
-                    request.agentRecommendation?.status === 'reject' ? 'Reject' : 'Proceed'
-                  const rawConf = request.agentRecommendation?.confidence ?? 94
-                  const confLevel = rawConf >= 80 ? 'High' : rawConf >= 50 ? 'Medium' : 'Low'
-                  const isReject = recWord === 'Reject'
-                  return (
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-2xs border ${
-                        isReject
-                          ? 'bg-red-50 text-red-700 border-red-200'
-                          : 'bg-[#e6fffa] text-[#0f766e] border-[#a7f3d0]'
-                      }`}
-                    >
-                      <Sparkles
-                        className={`w-3.5 h-3.5 ${isReject ? 'text-red-500' : 'text-[#36c0c9]'}`}
-                      />
-                      <span>
-                        Agent Recommendation: <strong>{recWord}</strong> •{' '}
-                        <span className="font-medium">{confLevel} Confidence</span>
-                      </span>
-                    </span>
-                  )
-                })()}
-              </div>
-
-              {/* Stepper visual starting directly from the left edge */}
-              <div className="w-full overflow-x-auto pb-3 pt-2">
-                <div className="min-w-[760px] flex items-start justify-start relative">
-                  {request.workflowStages.map((stage, idx) => {
-                    const isCompleted = stage.status === 'completed'
-                    const isInProgress = stage.status === 'in_progress'
-                    const isLast = idx === request.workflowStages.length - 1
-
-                    return (
-                      <div
-                        key={stage.id || idx}
-                        className="flex-1 flex flex-col items-start relative pr-2"
-                      >
-                        {/* Connecting Line from left node to next */}
-                        {!isLast && (
-                          <div
-                            className={`absolute top-4 left-4 w-full h-[2px] -z-0 ${
-                              isCompleted
-                                ? 'bg-[#10b981]'
-                                : isInProgress
-                                  ? 'border-t-2 border-dashed border-[#36c0c9]'
-                                  : 'border-t-2 border-dotted border-[#cbd5e1]'
-                            }`}
-                          />
-                        )}
-
-                        {/* Circle Indicator aligned on the left */}
-                        <div className="relative z-10 mb-2">
-                          {isCompleted && (
-                            <div className="w-8 h-8 rounded-full bg-[#10b981] flex items-center justify-center text-white shadow-xs">
-                              <Check className="w-4 h-4 stroke-[3]" />
-                            </div>
-                          )}
-                          {isInProgress && (
-                            <div className="w-8 h-8 rounded-full bg-white border-2 border-[#36c0c9] flex items-center justify-center shadow-xs">
-                              <span className="w-2.5 h-2.5 rounded-full bg-[#36c0c9]" />
-                            </div>
-                          )}
-                          {!isCompleted && !isInProgress && (
-                            <div className="w-8 h-8 rounded-full bg-white border border-[#cbd5e1] flex items-center justify-center">
-                              <span className="w-2 h-2 rounded-full bg-[#cbd5e1]" />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Title & Subheading left-aligned */}
-                        <div className="text-left">
-                          <div className="text-xs font-semibold text-[#0d212c]">
-                            {stage.title.replace(/^\d+[\.\s]+/, '')}
-                          </div>
-                          <div
-                            className={`text-[11px] font-medium mt-0.5 ${
-                              isInProgress ? 'text-[#36c0c9] font-medium' : 'text-[#64748b]'
+                    {/* Agent Recommendation: one word proceed/reject and confidence level high/medium/low */}
+                    {isDirector &&
+                      (() => {
+                        const recWord =
+                          request.agentRecommendation?.status === 'reject' ? 'Reject' : 'Proceed'
+                        const rawConf = request.agentRecommendation?.confidence ?? 94
+                        const confLevel = rawConf >= 80 ? 'High' : rawConf >= 50 ? 'Medium' : 'Low'
+                        const isReject = recWord === 'Reject'
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-2xs border ${
+                              isReject
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-[#e6fffa] text-[#0f766e] border-[#a7f3d0]'
                             }`}
                           >
-                            {stage.subheading}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
+                            <Sparkles
+                              className={`w-3.5 h-3.5 ${isReject ? 'text-red-500' : 'text-[#36c0c9]'}`}
+                            />
+                            <span>
+                              Agent Recommendation: <strong>{recWord}</strong> •{' '}
+                              <span className="font-medium">{confLevel} Confidence</span>
+                            </span>
+                          </span>
+                        )
+                      })()}
+                  </div>
 
-            <div className="h-[1px] bg-[#f1f5f9] w-full" />
+                  {/* Stepper visual starting directly from the left edge */}
+                  <div className="w-full overflow-x-auto pb-3 pt-2">
+                    <div className="min-w-[760px] flex items-start justify-start relative">
+                      {request.workflowStages.map((stage, idx) => {
+                        const isCompleted = stage.status === 'completed'
+                        const isInProgress = stage.status === 'in_progress'
+                        const isLast = idx === request.workflowStages.length - 1
+
+                        return (
+                          <div
+                            key={stage.id || idx}
+                            className="flex-1 flex flex-col items-start relative pr-2"
+                          >
+                            {/* Connecting Line from left node to next */}
+                            {!isLast && (
+                              <div
+                                className={`absolute top-4 left-4 w-full h-[2px] -z-0 ${
+                                  isCompleted
+                                    ? 'bg-[#10b981]'
+                                    : isInProgress
+                                      ? 'border-t-2 border-dashed border-[#36c0c9]'
+                                      : 'border-t-2 border-dotted border-[#cbd5e1]'
+                                }`}
+                              />
+                            )}
+
+                            {/* Circle Indicator aligned on the left */}
+                            <div className="relative z-10 mb-2">
+                              {isCompleted && (
+                                <div className="w-8 h-8 rounded-full bg-[#10b981] flex items-center justify-center text-white shadow-xs">
+                                  <Check className="w-4 h-4 stroke-[3]" />
+                                </div>
+                              )}
+                              {isInProgress && (
+                                <div className="w-8 h-8 rounded-full bg-white border-2 border-[#36c0c9] flex items-center justify-center shadow-xs">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-[#36c0c9]" />
+                                </div>
+                              )}
+                              {!isCompleted && !isInProgress && (
+                                <div className="w-8 h-8 rounded-full bg-white border border-[#cbd5e1] flex items-center justify-center">
+                                  <span className="w-2 h-2 rounded-full bg-[#cbd5e1]" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Title & Subheading left-aligned */}
+                            <div className="text-left">
+                              <div className="text-xs font-semibold text-[#0d212c]">
+                                {stage.title.replace(/^\d+[\.\s]+/, '')}
+                              </div>
+                              <div
+                                className={`text-[11px] font-medium mt-0.5 ${
+                                  isInProgress ? 'text-[#36c0c9] font-medium' : 'text-[#64748b]'
+                                }`}
+                              >
+                                {stage.subheading}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-[1px] bg-[#f1f5f9] w-full" />
+              </>
+            )}
 
             {/* Section 2: Solution Overview */}
             <div className="flex flex-col gap-3">
@@ -1704,58 +1758,77 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               key={activeStep}
               className="animate-in fade-in slide-in-from-bottom-2 duration-300"
             >
-              {/* STEP: Initial Assessment Brief (agent run first, then the brief) */}
-              {activeStep === 'brief' &&
-                (!runDone ? (
-                  <AgentActions
-                    request={request}
-                    actions={analysisActions}
-                    animate
-                    onComplete={handleRunComplete}
+              {/* STEP: Initial Assessment Brief */}
+              {activeStep === 'brief' && (
+                <AssessmentBrief
+                  request={request}
+                  actions={analysisActions}
+                  hideContact={isNonDirector}
+                  showVerdict={isDirector || isAdmin}
+                  onViewVendorResponse={() => setShowVendorForm(true)}
+                  onOpenAnalysis={() => setShowAnalysis(true)}
+                  decision={
+                    isDirector ? (
+                      <BriefDecision
+                        key={request.status === 'On Hold' ? 'hold' : 'open'}
+                        agentRecommendation={request.agentRecommendation?.status}
+                        onSubmit={handleBriefDecision}
+                        submitted={briefSubmitted}
+                      />
+                    ) : undefined
+                  }
+                  footer={
+                    isNonDirector ? (
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            completeStep('brief')
+                            setActiveStep(isInternalTeam ? 'questionnaire' : 'judgement')
+                          }}
+                          className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
+                        >
+                          {isInternalTeam ? 'Continue to Questionnaire' : 'Continue to Judgement'}
+                          <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                    ) : undefined
+                  }
+                />
+              )}
+
+              {/* STEP: Internal Canvas (Director) */}
+              {isDirector &&
+                activeStep === 'canvas' &&
+                (!readyTeams.internal ? (
+                  <ReviewersLoading
+                    team="internal"
+                    count={stakeholders.length}
+                    onComplete={() => setReadyTeams((r) => ({ ...r, internal: true }))}
                   />
                 ) : (
-                  <AssessmentBrief
-                    request={request}
-                    actions={analysisActions}
-                    hideContact={isNonDirector}
-                    onViewVendorResponse={() => setShowVendorForm(true)}
-                    onOpenAnalysis={() => setShowAnalysis(true)}
-                    decision={
-                      isDirector ? (
-                        <BriefDecision
-                          key={request.status === 'On Hold' ? 'hold' : 'open'}
-                          agentRecommendation={request.agentRecommendation?.status}
-                          onSubmit={handleBriefDecision}
-                          submitted={briefSubmitted}
-                        />
-                      ) : isAdmin ? (
-                        <AdminDecision
-                          key={request.adminDecision ? 'decided' : 'open'}
-                          typeConfidence={getTypeConfidence(request)}
-                          submitted={request.adminDecision}
-                          canEdit={!hasDirectorDecided(request)}
-                          onSubmit={handleAdminSubmit}
-                        />
-                      ) : undefined
-                    }
-                    footer={
-                      isNonDirector ? (
-                        <div className="flex items-center justify-end">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              completeStep('brief')
-                              setActiveStep(isInternalTeam ? 'questionnaire' : 'judgement')
-                            }}
-                            className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
-                          >
-                            {isInternalTeam ? 'Continue to Questionnaire' : 'Continue to Judgement'}
-                            <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                          </button>
-                        </div>
-                      ) : undefined
-                    }
-                  />
+                  <div className="flex flex-col gap-6 w-full">
+                    {stepHeader(
+                      'Internal Canvas',
+                      internalSent
+                        ? 'Waiting for approval from the Internal Interest team. Follow each reviewer below.'
+                        : 'Choose the Internal Interest reviewers and the questions they will answer, then send the request.',
+                      canEditInternal ? (
+                        <button
+                          type="button"
+                          disabled={stakeholders.length === 0}
+                          onClick={() => setSendTeam('internal')}
+                          className={sendButtonClass(stakeholders.length === 0)}
+                        >
+                          <Send className="w-4 h-4" aria-hidden="true" />
+                          <span>Send Request</span>
+                        </button>
+                      ) : (
+                        stageChip(internalApproved ? 'approved' : 'awaiting')
+                      )
+                    )}
+                    {internalSection}
+                  </div>
                 ))}
 
               {/* STEP: Strategic Alignment (Director) */}
@@ -1771,7 +1844,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <div className="flex flex-col gap-6 w-full">
                     {stepHeader(
                       'Strategic Alignment',
-                      'Choose the Strategy Team reviewer, then send the request.',
+                      strategySent
+                        ? 'Waiting for approval from the Strategy Team. Follow the reviewer below.'
+                        : 'Choose the Strategy Team reviewer, then send the request.',
                       canEditStrategy ? (
                         <button
                           type="button"
@@ -1783,77 +1858,34 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           <span>Send Request</span>
                         </button>
                       ) : (
-                        sentChip
+                        stageChip(
+                          strategyApproved ? 'approved' : strategyDeclined ? 'declined' : 'awaiting'
+                        )
                       )
                     )}
                     {strategySection}
                   </div>
                 ))}
 
-              {/* STEP: Internal Canvas (Director) */}
-              {isDirector &&
-                activeStep === 'canvas' &&
-                (!readyTeams.internal ? (
-                  <ReviewersLoading
-                    team="internal"
-                    count={stakeholders.length}
-                    onComplete={() => setReadyTeams((r) => ({ ...r, internal: true }))}
-                  />
-                ) : (
-                  <div className="flex flex-col gap-6 w-full">
-                    {stepHeader(
-                      'Internal Canvas',
-                      'Choose the Internal Interest reviewers, then send the request.',
-                      canEditInternal ? (
-                        <button
-                          type="button"
-                          disabled={stakeholders.length === 0}
-                          onClick={() => setSendTeam('internal')}
-                          className={sendButtonClass(stakeholders.length === 0)}
-                        >
-                          <Send className="w-4 h-4" aria-hidden="true" />
-                          <span>Send Request</span>
-                        </button>
-                      ) : (
-                        sentChip
-                      )
-                    )}
-                    {internalSection}
-                  </div>
-                ))}
-
-              {/* STEP: Approval (Director) */}
-              {isDirector && activeStep === 'approval' && (
-                <div className="flex flex-col gap-6 w-full">
-                  {stepHeader(
-                    'Approval',
-                    'Track each reviewer’s response. This updates as reviewers respond.'
-                  )}
-                  {strategySection}
-                  <div className="h-[1px] bg-[#e2e8f0] w-full my-2" />
-                  {internalSection}
-                </div>
-              )}
-
               {/* STEP: Questionnaire (Internal Interest Team) */}
               {isInternalTeam && activeStep === 'questionnaire' && (
                 <div className="flex flex-col gap-6 w-full max-w-4xl animate-in fade-in duration-150">
                   <div className="flex flex-col gap-1">
                     <h2 className="text-base font-semibold text-[#0d212c]">
-                      Internal Evaluation Questionnaire
+                      {request.sentQuestionnaire?.name ?? 'Internal Evaluation Questionnaire'}
                     </h2>
                     <p className="text-xs text-[#64748b]">
-                      Complete the questions below to evaluate clinical need, pilot sponsorship, and
+                      Answer the questions below to evaluate clinical need, pilot sponsorship, and
                       strategic feasibility.
                     </p>
                   </div>
 
-                  <QuestionnaireForm
-                    values={questionnaire}
-                    onChange={patchQuestionnaire}
+                  <ReviewQuestionnaire
+                    questions={reviewQuestions}
+                    answers={questionAnswers}
+                    onChange={patchAnswer}
                     readOnly={questionnaireSubmitted}
                     onSubmit={() => setShowQuestionnaireConfirmModal(true)}
-                    onCancel={handleCancelQuestionnaire}
                   />
                 </div>
               )}
@@ -1884,6 +1916,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             </div>
           </div>
         )}
+        {/* TAB: AUDIT LOG */}
+        {activeTab === 'audit' && (
+          <div className="animate-in fade-in duration-150">
+            <AuditLog events={request.auditLog ?? []} />
+          </div>
+        )}
       </div>
 
       {/* POPUP MODALS — Designed strictly matching SOW Generator App */}
@@ -1908,59 +1946,48 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         />
       )}
 
+      {/* ADMIN DECISION: proceed (type and optional reason) or reject (reason) */}
+      {adminModal && (
+        <AdminActionModal
+          mode={adminModal}
+          typeConfidence={getTypeConfidence(request)}
+          initialType={
+            adminModal === 'proceed' && previousRouting?.action === 'proceed'
+              ? previousRouting.type
+              : undefined
+          }
+          initialReason={previousRouting?.action === adminModal ? previousRouting.reason : ''}
+          onConfirm={handleAdminConfirm}
+          onClose={() => setAdminModal(null)}
+        />
+      )}
+
       {/* CONFIRM CHANGING AN EARLIER ROUTING (Partnership Admin) */}
       {pendingRouting && (
-        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirm-routing-title"
-            className="relative bg-white rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-6 h-6" aria-hidden="true" />
-              </div>
-              <h3 id="confirm-routing-title" className="text-lg font-semibold text-[#0d212c]">
-                Change how this case is routed?
-              </h3>
+        <ConfirmDialog
+          title="Change how this case is routed?"
+          description={routingConsequence(pendingRouting)}
+          confirmLabel="Confirm change"
+          icon={ArrowLeftRight}
+          onCancel={() => setPendingRouting(null)}
+          onConfirm={() => {
+            onRoute?.(request.id, pendingRouting)
+            setPendingRouting(null)
+          }}
+        >
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[#64748b]">From</span>
+              <span className="font-semibold text-[#0d212c]">
+                {previousRouting ? routingLabel(previousRouting) : '—'}
+              </span>
             </div>
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[#64748b]">From</span>
-                <span className="font-semibold text-[#0d212c]">
-                  {previousRouting ? routingLabel(previousRouting) : '—'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#64748b]">To</span>
-                <span className="font-semibold text-[#0d212c]">{routingLabel(pendingRouting)}</span>
-              </div>
-            </div>
-            <p className="text-sm text-[#475569] leading-relaxed">
-              {routingConsequence(pendingRouting)}
-            </p>
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#f1f5f9]">
-              <button
-                type="button"
-                onClick={() => setPendingRouting(null)}
-                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 cursor-pointer transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onRoute?.(request.id, pendingRouting)
-                  setPendingRouting(null)
-                }}
-                className="px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold shadow-xs cursor-pointer transition"
-              >
-                Confirm change
-              </button>
+            <div className="flex items-center justify-between">
+              <span className="text-[#64748b]">To</span>
+              <span className="font-semibold text-[#0d212c]">{routingLabel(pendingRouting)}</span>
             </div>
           </div>
-        </div>
+        </ConfirmDialog>
       )}
 
       {/* ADD RESPONDANT MODAL */}
@@ -2217,8 +2244,24 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       )}
 
-      {/* SEND REVIEW REQUESTS TO BOTH TEAMS */}
-      {sendTeam && (
+      {/* SEND TO INTERNAL INTEREST: reviewers and questions */}
+      {sendTeam === 'internal' && (
+        <SendInternalModal
+          members={stakeholders}
+          defaultNote={internalSendNote}
+          onClose={() => setSendTeam(null)}
+          onSend={({ memberIds, questionnaire }) => {
+            const members = stakeholders.filter((m) => memberIds.includes(m.id))
+            setStakeholders(members)
+            onSendReview?.(request.id, 'internal', { members, questionnaire })
+            setLocalSent((prev) => ({ ...prev, internal: true }))
+            setSendTeam(null)
+          }}
+        />
+      )}
+
+      {/* SEND TO THE STRATEGY TEAM */}
+      {sendTeam === 'strategy' && (
         <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div
             role="dialog"
@@ -2375,15 +2418,11 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       .length === 0
                   }
                   onClick={() => {
-                    if (sendTeam === 'strategy') {
-                      completeStep('alignment')
-                      setActiveStep('canvas')
-                      setReviewToast('Request sent to the Strategy Team.')
-                    } else {
-                      completeStep('canvas')
-                      setActiveStep('approval')
-                      setReviewToast('Request sent to the Internal Interest team.')
-                    }
+                    const members = strategyMembers.filter((m) =>
+                      selectedStrategySendIds.includes(m.id)
+                    )
+                    onSendReview?.(request.id, 'strategy', { members })
+                    setLocalSent((prev) => ({ ...prev, strategy: true }))
                     setSendTeam(null)
                   }}
                   className={`px-5 py-2.5 rounded-lg font-semibold text-xs shadow-xs transition ${
@@ -2636,59 +2675,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       )}
 
-      {/* VIEW QUESTIONNAIRE POPUP MODAL (Internal Interest) */}
-      {showQuestionnaireModal && (
-        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#e2e8f0] flex flex-col gap-4 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
-              <h3 className="text-base sm:text-lg font-semibold text-[#0d212c]">
-                View Questionnaire
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowQuestionnaireModal(false)}
-                className="text-[#94a3b8] hover:text-[#0d212c] p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-                aria-label="Close questionnaire modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Questions list (view-only list of questions, no option to answer) */}
-            <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 sm:p-5 flex flex-col divide-y divide-[#f1f5f9]">
-              {[
-                'Is this a real problem for you today, and what do you do about it now?',
-                'Which KPI would move, what is the baseline today, and what change would matter?',
-                'Would you sponsor a pilot, who would the named sponsor be, and what capacity can you commit?',
-                'Is there a budget line, or would it need central funding?',
-                'What would make you say no?',
-              ].map((question, idx) => (
-                <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center text-[11px] font-semibold shrink-0 mt-0.5">
-                    {idx + 1}
-                  </div>
-                  <p className="text-xs sm:text-[13px] font-normal text-[#0d212c] leading-relaxed">
-                    {question}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end pt-2 border-t border-[#f1f5f9]">
-              <button
-                type="button"
-                onClick={() => setShowQuestionnaireModal(false)}
-                className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-medium text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* VIEW EVALUATION CRITERIA POPUP MODAL (Strategy Team) */}
       {showJudgementCriteriaModal && (
         <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
@@ -2820,10 +2806,22 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             </div>
 
             {/* Modal Body: Response Content or Empty State */}
-            {viewingResponseMember.response ? (
-              <QuestionnaireForm
+            {viewingResponseMember.answers ? (
+              <ReviewQuestionnaire
                 readOnly
-                values={questionnaireFromResponse(viewingResponseMember.response)}
+                questions={viewingResponseMember.answers.map((a) => ({
+                  id: a.questionId,
+                  text: a.question,
+                  cue: a.cue,
+                  researchNeeded: false,
+                  attachmentRequired: Boolean(a.attachment),
+                }))}
+                answers={Object.fromEntries(
+                  viewingResponseMember.answers.map((a) => [
+                    a.questionId,
+                    { answer: a.answer, attachment: a.attachment },
+                  ])
+                )}
               />
             ) : viewingResponseMember.strategyResponse ? (
               <JudgementForm
@@ -2862,127 +2860,43 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       )}
 
-      {/* SUBMIT QUESTIONNAIRE CONFIRMATION MODAL (SOW Creator Style) */}
+      {/* SUBMIT QUESTIONNAIRE CONFIRMATION */}
       {showQuestionnaireConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#e6fffa] text-[#0f766e] flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-6 h-6 text-[#36c0c9]" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-[#0d212c]">Submit Questionnaire</h3>
-                  <p className="text-xs text-[#64748b] mt-0.5">
-                    Are you sure you want to send this questionnaire for Director Review?
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowQuestionnaireConfirmModal(false)}
-                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-[#64748b] leading-relaxed">
-              Once submitted, your answers go to the Director and can no longer be edited.
-            </p>
-
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#f1f5f9]">
-              <button
-                type="button"
-                onClick={() => setShowQuestionnaireConfirmModal(false)}
-                className="px-5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer bg-transparent transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmSubmitQuestionnaire}
-                className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold cursor-pointer border-0 transition shadow-xs"
-              >
-                Confirm &amp; Send
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Submit questionnaire?"
+          description="Your answers go to the Director. After this you will not be able to edit them."
+          confirmLabel="Submit"
+          onCancel={() => setShowQuestionnaireConfirmModal(false)}
+          onConfirm={handleConfirmSubmitQuestionnaire}
+        />
       )}
 
-      {/* SUBMIT STRATEGY JUDGEMENT CONFIRMATION MODAL (SOW Creator Style) */}
+      {/* SUBMIT STRATEGY DECISION CONFIRMATION */}
       {showStrategyConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#e6fffa] text-[#0f766e] flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-6 h-6 text-[#36c0c9]" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-[#0d212c]">Submit Strategy Decision</h3>
-                  <p className="text-xs text-[#64748b] mt-0.5">
-                    Are you sure you want to send this decision for Director Review?
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowStrategyConfirmModal(false)}
-                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <ConfirmDialog
+          title="Submit your decision?"
+          description="Your judgements and decision go to the Director. After this you will not be able to edit them."
+          confirmLabel="Submit"
+          onCancel={() => setShowStrategyConfirmModal(false)}
+          onConfirm={handleConfirmSubmitStrategyJudgement}
+        >
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[#64748b]">Your decision</span>
+              <span className="font-semibold text-[#0d212c]">{strategyDecision}</span>
             </div>
-
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[#64748b]">Your decision:</span>
-                <span
-                  className={`font-semibold px-2 py-0.5 rounded-md ${
-                    strategyDecision === 'Yes, proceed'
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : strategyDecision === 'Proceed with a condition'
-                        ? 'bg-amber-50 text-amber-700'
-                        : 'bg-red-50 text-red-700'
-                  }`}
-                >
-                  {strategyDecision}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#64748b]">Judgements changed from the agent:</span>
-                <span className="font-semibold text-[#0d212c]">{editedJudgementCount}</span>
-              </div>
-              {strategyDecisionNote.trim() && (
-                <div className="flex flex-col gap-1 pt-2 border-t border-slate-200">
-                  <span className="text-[#64748b]">Summary:</span>
-                  <p className="text-[#0d212c] italic">
-                    &ldquo;{strategyDecisionNote.trim()}&rdquo;
-                  </p>
-                </div>
-              )}
+            <div className="flex items-center justify-between">
+              <span className="text-[#64748b]">Judgements changed from the agent</span>
+              <span className="font-semibold text-[#0d212c]">{editedJudgementCount}</span>
             </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#f1f5f9]">
-              <button
-                type="button"
-                onClick={() => setShowStrategyConfirmModal(false)}
-                className="px-5 py-2.5 rounded-xl border border-[#e2e8f0] text-xs font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer bg-transparent transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmSubmitStrategyJudgement}
-                className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold cursor-pointer border-0 transition shadow-xs"
-              >
-                Confirm &amp; Submit
-              </button>
-            </div>
+            {strategyDecisionNote.trim() && (
+              <div className="flex flex-col gap-1 pt-2 border-t border-slate-200">
+                <span className="text-[#64748b]">Summary</span>
+                <p className="text-[#0d212c]">{strategyDecisionNote.trim()}</p>
+              </div>
+            )}
           </div>
-        </div>
+        </ConfirmDialog>
       )}
 
       {showVendorForm && (
@@ -3000,6 +2914,39 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <CheckCircle2 className="w-4 h-4 text-[#36c0c9]" />
           </div>
           <span>{reviewToast}</span>
+        </div>
+      )}
+
+      {/* PARTNERSHIP ADMIN: decision bar, always in view so the action is obvious */}
+      {isAdmin && (
+        <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
+          <span className="text-sm text-[#475569]">
+            {!previousRouting
+              ? 'Action required: decide where this case goes.'
+              : adminCanChange
+                ? `Decision recorded: ${routingLabel(previousRouting)}. You can change it until the Director decides.`
+                : 'The Director has decided, so this can no longer be changed.'}
+          </span>
+          {(!previousRouting || adminCanChange) && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setAdminModal('reject')}
+                className="h-10 px-5 rounded-lg border border-red-500 bg-white text-sm font-semibold text-red-600 hover:bg-red-50 cursor-pointer transition flex items-center gap-1.5"
+              >
+                <X className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+                Reject
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminModal('proceed')}
+                className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+                Proceed
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

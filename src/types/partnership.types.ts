@@ -10,6 +10,43 @@ export type CaseQueue = 'admin' | 'director' | 'routed' | 'closed'
 
 export type SlaStatus = 'On track' | 'At risk' | 'Breached'
 
+/** Colour coding for the audit log */
+export type AuditKind = 'critical' | 'agent' | 'approval' | 'user'
+
+export interface AuditEvent {
+  id: string
+  title: string
+  description: string
+  actor: string
+  kind: AuditKind
+  /** Display time, e.g. 22 Oct 2026, 06:50 PM */
+  timestamp: string
+}
+
+/** One question the Director sends to the Internal Interest team */
+export interface QuestionnaireQuestion {
+  id: string
+  text: string
+  /** Guidance shown to the person answering */
+  cue: string
+  researchNeeded: boolean
+  attachmentRequired: boolean
+}
+
+export interface QuestionAnswer {
+  questionId: string
+  question: string
+  cue: string
+  answer: string
+  attachment?: string
+}
+
+export interface StageApproval {
+  status: 'approved' | 'declined'
+  by: string
+  date: string
+}
+
 export type StageStatus = 'completed' | 'in_progress' | 'not_started'
 
 export interface WorkflowStage {
@@ -60,17 +97,6 @@ export interface UploadedDoc {
   type: string
 }
 
-export interface QuestionnaireResponse {
-  problemAndCurrentApproach?: string
-  targetKpi?: string
-  baselineToday?: string
-  changeThatMatters?: string
-  sponsorPilot?: string
-  budgetLine?: string
-  whatWouldMakeYouSayNo?: string
-  submittedAt?: string
-}
-
 export interface StrategyJudgementResponse {
   criterionId: string
   value: string
@@ -99,7 +125,7 @@ export interface InternalInterestStakeholder {
   deadline?: string
   decision?: string
   source?: 'ai' | 'manual'
-  response?: QuestionnaireResponse
+  answers?: QuestionAnswer[]
   strategyResponse?: StrategyMemberResponse
 }
 
@@ -164,6 +190,13 @@ export interface PartnershipRequest {
     reason: string
     date: string
   }
+  auditLog: AuditEvent[]
+  /** Which review requests the Director has sent */
+  sent?: { internal?: boolean; strategy?: boolean }
+  /** Approval from each reviewing team; the next stage opens once a team has approved */
+  stageApprovals?: { internal?: StageApproval; strategy?: StageApproval }
+  /** The questionnaire the Director sent to the Internal Interest team */
+  sentQuestionnaire?: { name: string; questions: QuestionnaireQuestion[] }
 }
 
 export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
@@ -181,18 +214,42 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     deadline: '5 days',
     decision: 'Proceed',
     source: 'ai',
-    response: {
-      problemAndCurrentApproach:
-        'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics.',
-      targetKpi: 'ICU sepsis mortality',
-      baselineToday: '21% over 12 months',
-      changeThatMatters: '3 points lower in 12 months',
-      sponsorPilot: 'Yes, we would sponsor',
-      budgetLine: 'Existing budget line',
-      whatWouldMakeYouSayNo:
-        'High latency in EHR synchronization or high false positive alarm fatigue among nursing staff.',
-      submittedAt: 'Today at 2:15 PM',
-    },
+    answers: [
+      {
+        questionId: 'q1',
+        question: 'Is this a real problem for you today, and what do you do about it now?',
+        cue: 'Describe the current clinical or operational problem and existing workarounds.',
+        answer:
+          'Sepsis is still recognised late on our wards, and patients often reach ICU after the best window for antibiotics.',
+      },
+      {
+        questionId: 'q2',
+        question: 'Which KPI would move, what is the baseline today, and what change would matter?',
+        cue: 'Name the KPI, today’s baseline and the change that would matter.',
+        answer:
+          'ICU sepsis mortality. Baseline is 21% over 12 months. A 3 point drop in 12 months would matter.',
+      },
+      {
+        questionId: 'q3',
+        question:
+          'Would you sponsor a pilot, who would the named sponsor be, and what capacity can you commit?',
+        cue: 'Say yes or no, name the sponsor and the capacity you can commit.',
+        answer: 'Yes, we would sponsor.',
+      },
+      {
+        questionId: 'q4',
+        question: 'Is there a budget line, or would it need central funding?',
+        cue: 'State whether an existing budget line covers it.',
+        answer: 'Existing budget line.',
+      },
+      {
+        questionId: 'q5',
+        question: 'What would make you say no?',
+        cue: 'Identify dealbreakers, clinical blockers, integration risks or IT hurdles.',
+        answer:
+          'High latency in EHR synchronization or high false positive alarm fatigue among nursing staff.',
+      },
+    ],
   },
   {
     id: 'int-2',
@@ -308,6 +365,32 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     daysInStage: 3,
     owner: 'Zaid Al Ali',
     slaStatus: 'On track',
+    auditLog: [
+      {
+        id: 'seed-1',
+        title: 'Partnership request submitted',
+        description: 'Vendor form received from MedTech Innovations.',
+        actor: 'Sarah Ahmed (Vendor)',
+        kind: 'user',
+        timestamp: '12 Oct 2026, 09:12 AM',
+      },
+      {
+        id: 'req-001-brief-generated',
+        title: 'Initial assessment brief generated',
+        description: '7 checks run. No risks identified.',
+        actor: 'Triage Agent',
+        kind: 'agent',
+        timestamp: '12 Oct 2026, 09:14 AM',
+      },
+      {
+        id: 'seed-3',
+        title: 'Routed as Partnership',
+        description: 'Sent to the Director for review.',
+        actor: 'Nadia Al-Farsi (Partnership Admin)',
+        kind: 'approval',
+        timestamp: '12 Oct 2026, 11:30 AM',
+      },
+    ],
     companyName: 'MedTech Innovations',
     vendorName: 'Sarah Ahmed',
     referredBy: 'Dr. Noura Al Ghaithi',
@@ -415,6 +498,85 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     daysInStage: 5,
     owner: 'Zaid Al Ali',
     slaStatus: 'At risk',
+    auditLog: [
+      {
+        id: 'seed-1',
+        title: 'Partnership request submitted',
+        description: 'Vendor form received from AlphaHealth BioTech.',
+        actor: 'Dr. Tariq Mansoor (Vendor)',
+        kind: 'user',
+        timestamp: '10 Oct 2026, 10:05 AM',
+      },
+      {
+        id: 'req-002-brief-generated',
+        title: 'Initial assessment brief generated',
+        description: '7 checks run. 2 risks identified.',
+        actor: 'Triage Agent',
+        kind: 'agent',
+        timestamp: '10 Oct 2026, 10:08 AM',
+      },
+      {
+        id: 'req-002-risks-identified',
+        title: 'Risks identified',
+        description: 'Possible CoE backlog overlap and weak UAE regulatory readiness.',
+        actor: 'Triage Agent',
+        kind: 'critical',
+        timestamp: '10 Oct 2026, 10:08 AM',
+      },
+      {
+        id: 'seed-4',
+        title: 'Routed as Partnership',
+        description: 'Sent to the Director for review.',
+        actor: 'Nadia Al-Farsi (Partnership Admin)',
+        kind: 'approval',
+        timestamp: '10 Oct 2026, 01:40 PM',
+      },
+      {
+        id: 'seed-5',
+        title: 'Approved to proceed',
+        description: 'Documents and fit confirmed.',
+        actor: 'Zaid Al Ali (Director)',
+        kind: 'approval',
+        timestamp: '11 Oct 2026, 09:20 AM',
+      },
+      {
+        id: 'seed-6',
+        title: 'Request sent to Internal Interest team',
+        description: '5 reviewers asked to answer the questionnaire.',
+        actor: 'Zaid Al Ali (Director)',
+        kind: 'user',
+        timestamp: '11 Oct 2026, 09:45 AM',
+      },
+      {
+        id: 'seed-7',
+        title: 'Internal Interest approved',
+        description: 'Questionnaire answered with a proceed view.',
+        actor: 'Mariam Al-Zaabi (Internal Interest)',
+        kind: 'approval',
+        timestamp: '12 Oct 2026, 02:15 PM',
+      },
+      {
+        id: 'seed-8',
+        title: 'Request sent to Strategy Team',
+        description: '1 reviewer asked for a judgement.',
+        actor: 'Zaid Al Ali (Director)',
+        kind: 'user',
+        timestamp: '12 Oct 2026, 03:00 PM',
+      },
+      {
+        id: 'seed-9',
+        title: 'Strategy Team approved',
+        description: 'Proceed with a condition.',
+        actor: 'Ahmed Darwish (Strategy Team)',
+        kind: 'approval',
+        timestamp: '13 Oct 2026, 04:30 PM',
+      },
+    ],
+    sent: { internal: true, strategy: true },
+    stageApprovals: {
+      internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Done' },
+      strategy: { status: 'approved', by: 'Ahmed Darwish', date: 'Done' },
+    },
     companyName: 'AlphaHealth BioTech',
     vendorName: 'Dr. Tariq Mansoor',
     referredBy: 'Ahmed Al Hosani',
@@ -520,6 +682,85 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     daysInStage: 9,
     owner: 'Zaid Al Ali',
     slaStatus: 'Breached',
+    auditLog: [
+      {
+        id: 'seed-1',
+        title: 'Partnership request submitted',
+        description: 'Vendor form received from GenomicX MENA FZ-LLC.',
+        actor: 'Karim El-Sayed (Vendor)',
+        kind: 'user',
+        timestamp: '01 Oct 2026, 08:50 AM',
+      },
+      {
+        id: 'req-003-brief-generated',
+        title: 'Initial assessment brief generated',
+        description: '7 checks run. Vendor is re-applying.',
+        actor: 'Triage Agent',
+        kind: 'agent',
+        timestamp: '01 Oct 2026, 08:53 AM',
+      },
+      {
+        id: 'seed-3',
+        title: 'Re-applying vendor',
+        description: 'Applied in March 2025 and was declined for lack of UAE data residency.',
+        actor: 'Triage Agent',
+        kind: 'critical',
+        timestamp: '01 Oct 2026, 08:53 AM',
+      },
+      {
+        id: 'seed-4',
+        title: 'Routed as Partnership',
+        description: 'Sent to the Director for review.',
+        actor: 'Nadia Al-Farsi (Partnership Admin)',
+        kind: 'approval',
+        timestamp: '01 Oct 2026, 12:10 PM',
+      },
+      {
+        id: 'seed-5',
+        title: 'Approved to proceed',
+        description: 'Strong evidence and Emirati Genome Program fit.',
+        actor: 'Zaid Al Ali (Director)',
+        kind: 'approval',
+        timestamp: '02 Oct 2026, 10:00 AM',
+      },
+      {
+        id: 'seed-6',
+        title: 'Request sent to Internal Interest team',
+        description: '5 reviewers asked to answer the questionnaire.',
+        actor: 'Zaid Al Ali (Director)',
+        kind: 'user',
+        timestamp: '02 Oct 2026, 10:30 AM',
+      },
+      {
+        id: 'seed-7',
+        title: 'Internal Interest approved',
+        description: 'Questionnaire answered with a proceed view.',
+        actor: 'Mariam Al-Zaabi (Internal Interest)',
+        kind: 'approval',
+        timestamp: '04 Oct 2026, 11:45 AM',
+      },
+      {
+        id: 'seed-8',
+        title: 'Request sent to Strategy Team',
+        description: '1 reviewer asked for a judgement.',
+        actor: 'Zaid Al Ali (Director)',
+        kind: 'user',
+        timestamp: '04 Oct 2026, 12:20 PM',
+      },
+      {
+        id: 'seed-9',
+        title: 'Strategy Team approved',
+        description: 'Proceed with a condition.',
+        actor: 'Ahmed Darwish (Strategy Team)',
+        kind: 'approval',
+        timestamp: '06 Oct 2026, 03:10 PM',
+      },
+    ],
+    sent: { internal: true, strategy: true },
+    stageApprovals: {
+      internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Done' },
+      strategy: { status: 'approved', by: 'Ahmed Darwish', date: 'Done' },
+    },
     companyName: 'GenomicX MENA FZ-LLC',
     vendorName: 'Karim El-Sayed',
     referredBy: null,
@@ -619,6 +860,48 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     daysInStage: 2,
     owner: 'Zaid Al Ali',
     slaStatus: 'On track',
+    auditLog: [
+      {
+        id: 'seed-1',
+        title: 'Partnership request submitted',
+        description: 'Vendor form received from CarePulse Technologies.',
+        actor: 'Elena Rostova (Vendor)',
+        kind: 'user',
+        timestamp: '28 Sep 2026, 09:30 AM',
+      },
+      {
+        id: 'req-004-brief-generated',
+        title: 'Initial assessment brief generated',
+        description: '7 checks run. 2 risks identified.',
+        actor: 'Triage Agent',
+        kind: 'agent',
+        timestamp: '28 Sep 2026, 09:33 AM',
+      },
+      {
+        id: 'req-004-risks-identified',
+        title: 'Risks identified',
+        description: 'Easy to replace and adverse media found.',
+        actor: 'Triage Agent',
+        kind: 'critical',
+        timestamp: '28 Sep 2026, 09:33 AM',
+      },
+      {
+        id: 'seed-4',
+        title: 'Routed as Partnership',
+        description: 'Sent to the Director for review.',
+        actor: 'Nadia Al-Farsi (Partnership Admin)',
+        kind: 'approval',
+        timestamp: '28 Sep 2026, 02:00 PM',
+      },
+      {
+        id: 'seed-5',
+        title: 'Request rejected',
+        description: 'Existing remote monitoring module can be extended at lower cost.',
+        actor: 'Zaid Al Ali (Director)',
+        kind: 'critical',
+        timestamp: '05 Oct 2026, 11:00 AM',
+      },
+    ],
     companyName: 'CarePulse Technologies',
     vendorName: 'Elena Rostova',
     referredBy: 'Sponsor Office',
@@ -711,6 +994,16 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     daysInStage: 1,
     owner: 'Nadia Al-Farsi',
     slaStatus: 'On track',
+    auditLog: [
+      {
+        id: 'seed-1',
+        title: 'Partnership request submitted',
+        description: 'Vendor form received from NeuroLink Diagnostics.',
+        actor: 'Dr. Layla Haddad (Vendor)',
+        kind: 'user',
+        timestamp: '20 Oct 2026, 04:20 PM',
+      },
+    ],
     companyName: 'NeuroLink Diagnostics',
     vendorName: 'Dr. Layla Haddad',
     referredBy: null,

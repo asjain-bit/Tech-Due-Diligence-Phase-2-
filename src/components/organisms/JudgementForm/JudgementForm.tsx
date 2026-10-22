@@ -17,7 +17,7 @@ import {
 import type { JudgementFormProps } from './JudgementForm.types'
 
 const FIELD =
-  'w-full rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] placeholder:text-[#9aa8b5] shadow-2xs transition focus:outline-none focus:border-[#36c0c9] focus:ring-4 focus:ring-[#36c0c9]/15 disabled:bg-[#f8fafc] disabled:text-[#334155] disabled:opacity-100 disabled:shadow-none disabled:cursor-default'
+  'w-full rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] placeholder:text-[#9aa8b5] shadow-2xs transition focus:outline-none hover:border-[#bcc7d3] focus:border-[#a3b1c2] focus:ring-0 disabled:bg-[#f8fafc] disabled:text-[#334155] disabled:opacity-100 disabled:shadow-none disabled:cursor-default'
 
 const REASON_MAX = 300
 
@@ -175,10 +175,8 @@ export const JudgementForm: React.FC<JudgementFormProps> = ({
                 disabled={readOnly}
                 onClick={() => onDecisionChange?.(opt.value)}
                 className={`p-4 rounded-xl border flex items-start gap-3 text-left transition ${
-                  selected
-                    ? 'border-[#36c0c9] bg-[#f0fdfa] ring-4 ring-[#36c0c9]/10'
-                    : 'border-[#d6dee6] bg-white'
-                } ${readOnly ? 'cursor-default' : 'cursor-pointer hover:border-[#36c0c9]/60 hover:bg-slate-50'}`}
+                  selected ? 'border-[#94a3b8] bg-white' : 'border-[#d6dee6] bg-white'
+                } ${readOnly ? 'cursor-default' : 'cursor-pointer hover:border-[#bcc7d3] hover:bg-slate-50'}`}
               >
                 <span
                   className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${

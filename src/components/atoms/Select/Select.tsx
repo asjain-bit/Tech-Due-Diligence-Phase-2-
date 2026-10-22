@@ -20,7 +20,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     ref
   ) => {
     const baseClasses =
-      'w-full rounded-md border bg-bg-input text-text-primary transition-colors focus:outline-none focus:border-border-focus disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-bg-disabled cursor-pointer'
+      'w-full rounded-md border bg-bg-input text-text-primary transition-colors focus:outline-none hover:border-border-strong focus:border-border-strong disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-bg-disabled cursor-pointer'
 
     const sizeClasses = {
       sm: 'px-2.5 py-1 text-xs',

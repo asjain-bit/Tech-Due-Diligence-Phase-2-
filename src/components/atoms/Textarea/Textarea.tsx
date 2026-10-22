@@ -12,7 +12,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     ref
   ) => {
     const baseClasses =
-      'w-full rounded-md border bg-bg-input text-text-primary px-3 py-2 text-sm placeholder:text-text-placeholder transition-colors focus:outline-none focus:border-border-focus disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-bg-disabled'
+      'w-full rounded-md border bg-bg-input text-text-primary px-3 py-2 text-sm placeholder:text-text-placeholder transition-colors focus:outline-none hover:border-border-strong focus:border-border-strong disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-bg-disabled'
 
     const resizeClasses = {
       none: 'resize-none',

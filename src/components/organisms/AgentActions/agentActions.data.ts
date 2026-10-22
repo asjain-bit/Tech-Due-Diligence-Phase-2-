@@ -2,15 +2,6 @@ import type { PartnershipRequest } from '@/types/partnership.types'
 import type { CaseType } from '@/types/partnership.types'
 import type { AgentAction, ConfidenceLevel } from './AgentActions.types'
 
-/** What the agent reads before it starts checking */
-export const AGENT_CONTEXT_SOURCES = [
-  'Intake case record',
-  'Service line KPI baselines',
-  'Digital strategy focus areas',
-  'Solution and vendor estate',
-  '24 months of pipeline history',
-]
-
 interface RequestProfile {
   route: string
   selfDeclaredRoute: string
@@ -186,7 +177,6 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
       icon: 'duplicate',
       title: 'Duplicate check',
       check: 'Against live cases, the deployed estate and prior declines',
-      runningText: 'Comparing against live cases, the deployed estate and prior declines',
       status: duplicateClear ? 'passed' : 'attention',
       headline: duplicateClear
         ? 'No duplicate found'
@@ -206,7 +196,6 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
       icon: 'classification',
       title: 'Classification',
       check: "Into one of four routes. The vendor's own label is treated as a claim",
-      runningText: "Placing the request on a route and testing the vendor's own label",
       status: 'complete',
       headline: `Route: ${p.route}`,
       findings: [
@@ -223,7 +212,6 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
       icon: 'maturity',
       title: 'Maturity research',
       check: 'Evidence, deployment, regulatory, corporate, defensibility and duplication',
-      runningText: 'Researching evidence, deployment, regulatory and corporate standing',
       status: regulatoryUnclear ? 'attention' : 'complete',
       headline: `${request.solutionMaturity}. ${phase}`,
       findings: [
@@ -247,7 +235,6 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
       icon: 'kpi',
       title: 'KPI mapping',
       check: 'Which service line KPIs the claim would move, and the baseline needed to test it',
-      runningText: 'Matching the claim to service line KPIs and baselines',
       status: 'complete',
       confidence: confidenceLevel(p.kpiConfidence),
       headline: `${p.kpi}`,
@@ -270,7 +257,6 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
       icon: 'commodity',
       title: 'Commodity test',
       check: 'Could the Agentic CoE or the existing estate deliver this inside the same window',
-      runningText: 'Testing whether the CoE or the estate could deliver this in the same window',
       status: p.commodityIsRisk ? 'attention' : 'passed',
       headline: p.commodityVerdict,
       findings: [
@@ -288,7 +274,6 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
       icon: 'brief',
       title: 'Initial assessment brief',
       check: 'Two pages, including the three things that would change its recommendation',
-      runningText: 'Drafting the brief and the three things that would change the recommendation',
       status: recWord === 'Proceed' ? 'passed' : 'attention',
       confidence: confidenceLevel(recConfidence),
       headline: `Recommends ${recWord}`,
@@ -435,7 +420,6 @@ export const buildAdminAgentActions = (
       icon: 'history',
       title: 'Applicant history',
       check: 'Fresh application or re-applying',
-      runningText: 'Checking whether this vendor has applied before',
       status: reapplying ? 'attention' : 'passed',
       headline: reapplying ? 'Re-applying' : 'Fresh application',
       findings: [
@@ -466,7 +450,6 @@ export const buildAdminAgentActions = (
       icon: 'duplicate',
       title: 'Duplicate check',
       check: 'Against live cases and prior declines',
-      runningText: 'Comparing against live cases and prior declines',
       status: liveEarlier.length > 0 ? 'attention' : 'passed',
       headline: liveEarlier.length > 0 ? 'Possible duplicate of a live case' : 'No duplicate found',
       findings: [
@@ -487,7 +470,6 @@ export const buildAdminAgentActions = (
       icon: 'backlog',
       title: 'CoE backlog check',
       check: 'Whether the Agentic CoE backlog already covers it',
-      runningText: 'Comparing against the Agentic CoE build backlog',
       status: p.backlogCovered ? 'attention' : 'passed',
       headline: p.backlogCovered ? 'Partly covered in the backlog' : 'Not in the backlog',
       findings: [
@@ -503,7 +485,6 @@ export const buildAdminAgentActions = (
       icon: 'kpi',
       title: 'Service line and KPI mapping',
       check: 'Comparison against service lines and their KPIs',
-      runningText: 'Mapping the claim to service lines and KPIs',
       status: 'complete',
       confidence: kpi.confidence,
       headline: `${p.serviceLine}. ${kpi.findings[0].value}`,
@@ -519,7 +500,6 @@ export const buildAdminAgentActions = (
       icon: 'uae',
       title: 'Solution maturity scoring',
       check: 'Across UAE rules and regulations',
-      runningText: 'Scoring maturity against UAE rules and regulations',
       status: maturityWeak ? 'attention' : 'complete',
       headline: `${scoreOutOf10} out of 10`,
       findings: [
@@ -535,7 +515,6 @@ export const buildAdminAgentActions = (
       icon: 'screening',
       title: 'Vendor screening',
       check: 'Blacklist and adverse media coverage',
-      runningText: 'Screening the vendor against blacklists and media coverage',
       status: p.screening.mediaIsRisk ? 'attention' : 'passed',
       headline: p.screening.mediaIsRisk ? 'Adverse media found' : 'No blacklist or media concerns',
       findings: [
@@ -550,7 +529,6 @@ export const buildAdminAgentActions = (
       ...brief,
       title: 'Initial assessment brief',
       check: 'Two pages, ready for your routing decision',
-      runningText: 'Drafting the initial assessment brief',
     },
   ]
 }

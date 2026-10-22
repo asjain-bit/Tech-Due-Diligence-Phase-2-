@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
+  appendAudit,
   buildCaseFromForm,
+  formatTimestamp,
   getStageLabel,
   hasDirectorDecided,
   holdRequest,
@@ -9,6 +11,8 @@ import {
   rejectRequest,
   resumeRequest,
   routeRequest,
+  sendReview,
+  submitReview,
 } from './caseActions'
 import { INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
 import type { VendorFormValues } from '@/types/vendorForm'
@@ -187,5 +191,178 @@ describe('buildCaseFromForm', () => {
     expect(long.focusArea).toBe('General')
     expect(long.companyInfo.phoneNumber).toBe('+971 50')
     expect(long.assessmentAreas.developmentApproach).toBeUndefined()
+  })
+})
+
+describe('audit log', () => {
+  it('formats timestamps like 22 Oct 2026, 06:50 PM', () => {
+    expect(formatTimestamp(new Date(2026, 9, 22, 18, 50))).toBe('22 Oct 2026, 06:50 PM')
+  })
+
+  it('appends an event with an id and timestamp', () => {
+    const next = appendAudit(pending, {
+      title: 'Something happened',
+      description: 'Details',
+      actor: 'Someone',
+      kind: 'user',
+    })
+    expect(next.auditLog).toHaveLength(pending.auditLog.length + 1)
+    expect(next.auditLog.at(-1)).toMatchObject({ title: 'Something happened', kind: 'user' })
+    expect(next.auditLog.at(-1)?.timestamp).toMatch(/^\d{2} \w{3} \d{4}, \d{2}:\d{2} (AM|PM)$/)
+  })
+
+  it('logs an event with a key only once', () => {
+    const event = {
+      key: 'once',
+      title: 'Once',
+      description: '',
+      actor: 'A',
+      kind: 'agent' as const,
+    }
+    const first = appendAudit(pending, event)
+    const second = appendAudit(first, event)
+    expect(second).toBe(first)
+    expect(second.auditLog.filter((e) => e.id === 'once')).toHaveLength(1)
+  })
+
+  it('records every Director and admin action with the right colour', () => {
+    const kinds = (r: typeof pending) => r.auditLog.at(-1)?.kind
+    const titles = (r: typeof pending) => r.auditLog.at(-1)?.title
+    expect(kinds(proceedRequest(pending, 'ok'))).toBe('approval')
+    expect(kinds(rejectRequest(pending, 'no'))).toBe('critical')
+    const held = holdRequest(pending, { to: 'a@b.com', subject: 'More info', body: 'B' })
+    expect(titles(held)).toBe('More information requested')
+    expect(kinds(held)).toBe('user')
+    expect(titles(resumeRequest(held))).toBe('Vendor information received')
+    expect(
+      titles(routeRequest(adminCase, { action: 'proceed', type: 'Partnership', reason: '' }))
+    ).toBe('Routed as Partnership')
+    expect(titles(routeRequest(adminCase, { action: 'proceed', type: 'M&A', reason: 'x' }))).toBe(
+      'Routed as M&A'
+    )
+    const rejected = routeRequest(adminCase, { action: 'reject', reason: 'No' })
+    expect(titles(rejected)).toBe('Rejected by Partnership Admin')
+    expect(kinds(rejected)).toBe('critical')
+  })
+
+  it('starts a new case with its submission logged', () => {
+    const c = buildCaseFromForm(form, 'PR-126', new Date(2026, 9, 22, 9, 5))
+    expect(c.auditLog).toHaveLength(1)
+    expect(c.auditLog[0]).toMatchObject({
+      title: 'Partnership request submitted',
+      actor: 'Dr. Omar (Vendor)',
+      kind: 'user',
+      timestamp: '22 Oct 2026, 09:05 AM',
+    })
+  })
+})
+
+describe('review stages', () => {
+  const questions = [
+    { id: 'q1', text: 'Q1?', cue: 'Cue', researchNeeded: false, attachmentRequired: false },
+    { id: 'q2', text: 'Q2?', cue: 'Cue', researchNeeded: true, attachmentRequired: true },
+  ]
+  const people = INITIAL_PARTNERSHIP_REQUESTS[0].internalInterests!
+
+  it('sends the Internal Interest request with the questions and resets reviewer status', () => {
+    const next = sendReview(pending, 'internal', {
+      members: people.slice(0, 3),
+      questionnaire: { name: 'Technical Questionnaire', questions },
+    })
+    expect(next.sent).toEqual({ internal: true })
+    expect(next.sentQuestionnaire?.questions).toHaveLength(2)
+    expect(next.internalInterests?.map((m) => m.status)).toEqual([
+      'In Progress',
+      'Pending',
+      'Pending',
+    ])
+    expect(
+      next.internalInterests?.every((m) => m.answers === undefined && m.decision === '-')
+    ).toBe(true)
+    expect(next.auditLog.at(-1)).toMatchObject({
+      title: 'Request sent to Internal Interest team',
+      description: '3 reviewers asked to answer 2 questions.',
+    })
+  })
+
+  it('sends the Strategy request and keeps the earlier send flag', () => {
+    const first = sendReview(pending, 'internal', {
+      members: people,
+      questionnaire: { name: 'N', questions },
+    })
+    const next = sendReview(first, 'strategy', { members: [people[0]] })
+    expect(next.sent).toEqual({ internal: true, strategy: true })
+    expect(next.strategyTeamMembers).toHaveLength(1)
+    expect(next.auditLog.at(-1)?.description).toBe('1 reviewer asked for a judgement.')
+  })
+
+  it('sends only once per team in the log', () => {
+    const once = sendReview(pending, 'internal', {
+      members: people,
+      questionnaire: { name: 'N', questions },
+    })
+    const twice = sendReview(once, 'internal', {
+      members: people,
+      questionnaire: { name: 'N', questions },
+    })
+    expect(
+      twice.auditLog.filter((e) => e.title.startsWith('Request sent to Internal'))
+    ).toHaveLength(1)
+  })
+
+  it('records the Internal Interest answers and approves that stage', () => {
+    const sent = sendReview(pending, 'internal', {
+      members: people,
+      questionnaire: { name: 'N', questions },
+    })
+    const answers = [
+      { questionId: 'q1', question: 'Q1?', cue: 'Cue', answer: 'Yes' },
+      { questionId: 'q2', question: 'Q2?', cue: 'Cue', answer: 'No', attachment: 'a.pdf' },
+    ]
+    const next = submitReview(sent, 'internal', { answers })
+    expect(next.stageApprovals?.internal?.status).toBe('approved')
+    expect(next.internalInterests?.[0]).toMatchObject({
+      status: 'Completed',
+      decision: 'Proceed',
+      answers,
+    })
+    expect(next.internalInterests?.[1].status).toBe('Pending')
+    expect(next.auditLog.at(-1)).toMatchObject({
+      title: 'Internal Interest approved',
+      kind: 'approval',
+    })
+    expect(next.auditLog.at(-1)?.description).toBe('2 questions answered.')
+  })
+
+  it('falls back to the default reviewers when none were stored', () => {
+    const bare = { ...pending, internalInterests: undefined, strategyTeamMembers: undefined }
+    const internal = submitReview(bare, 'internal', {})
+    expect(internal.internalInterests).toHaveLength(5)
+    expect(internal.auditLog.at(-1)?.description).toBe('0 questions answered.')
+    const strategy = submitReview(bare, 'strategy', {})
+    expect(strategy.strategyTeamMembers).toHaveLength(1)
+    expect(strategy.auditLog.at(-1)?.description).toBe('Judgement submitted.')
+  })
+
+  it('approves the Strategy stage unless the answer is No', () => {
+    const approved = submitReview(pending, 'strategy', {
+      response: { finalDecision: 'Proceed with a condition', finalDecisionNote: 'If UAE hosting' },
+    })
+    expect(approved.stageApprovals?.strategy?.status).toBe('approved')
+    expect(approved.strategyTeamMembers?.[0]).toMatchObject({
+      status: 'Completed',
+      decision: 'Proceed with a condition',
+    })
+    expect(approved.auditLog.at(-1)).toMatchObject({
+      title: 'Strategy Team approved',
+      kind: 'approval',
+    })
+
+    const declined = submitReview(pending, 'strategy', { response: { finalDecision: 'No' } })
+    expect(declined.stageApprovals?.strategy?.status).toBe('declined')
+    expect(declined.auditLog.at(-1)).toMatchObject({
+      title: 'Strategy Team declined',
+      kind: 'critical',
+    })
   })
 })

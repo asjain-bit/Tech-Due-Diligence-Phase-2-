@@ -5,6 +5,5 @@ export {
   getChangeFactors,
   getTypeConfidence,
   confidenceLevel,
-  AGENT_CONTEXT_SOURCES,
 } from './agentActions.data'
 export type { AgentAction, AgentActionsProps, ConfidenceLevel } from './AgentActions.types'
