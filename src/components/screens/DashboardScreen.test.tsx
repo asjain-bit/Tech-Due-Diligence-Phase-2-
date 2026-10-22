@@ -243,37 +243,39 @@ describe('DashboardScreen', () => {
     finishThinking()
 
     // Request more info puts the case on hold until it is marked as received
-    await user.click(screen.getByRole('radio', { name: /Request more info/i }))
-    await user.type(screen.getByLabelText(/^Reason/), 'Please share regulatory documents.')
-    await user.click(screen.getByRole('button', { name: /Submit decision/i }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    let decision = screen.getByRole('dialog', { name: 'Your decision' })
+    await user.click(within(decision).getByRole('radio', { name: /Request more info/i }))
+    await user.type(
+      within(decision).getByLabelText(/Information needed/),
+      'Please share regulatory documents.'
+    )
+    await user.click(within(decision).getByRole('button', { name: 'Continue to email' }))
     await user.click(screen.getByRole('button', { name: /Send & put on hold/i }))
     expect(screen.getByText('On hold: waiting for the vendor')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Mark info received' }))
     expect(screen.queryByText('On hold: waiting for the vendor')).not.toBeInTheDocument()
 
     // Approve, then send the Internal Canvas request with its questions
-    await user.click(screen.getByRole('radio', { name: /Approve for internal review/i }))
-    await user.type(screen.getByLabelText(/^Reason/), 'Strong fit.')
-    await user.click(screen.getByRole('button', { name: /Submit decision/i }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    decision = screen.getByRole('dialog', { name: 'Your decision' })
+    await user.type(within(decision).getByLabelText(/^Reason/), 'Strong fit.')
+    await user.click(within(decision).getByRole('button', { name: 'Approve' }))
     finishThinking()
     expect(screen.getByRole('heading', { level: 2, name: 'Internal Canvas' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Send Request' }))
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Send to Internal Interest' })).getByRole(
-        'button',
-        {
-          name: 'Send Request',
-        }
-      )
-    )
+    const send = screen.getByRole('dialog', { name: 'Send to Internal Interest' })
+    await user.click(within(send).getByRole('button', { name: 'Next' }))
+    await user.click(within(send).getByRole('button', { name: 'Send Request' }))
     await user.click(
       within(screen.getByRole('dialog', { name: 'Send to Internal Interest?' })).getByRole(
         'button',
-        {
-          name: 'Send Request',
-        }
+        { name: 'Send Request' }
       )
     )
+    // The popup closes and the tracking table is shown
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader', { name: 'Status' })).toHaveLength(1)
 
     // The stage now waits for the Internal Interest team, and the next stage stays locked
     expect(

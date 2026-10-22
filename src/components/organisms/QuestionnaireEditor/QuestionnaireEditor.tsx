@@ -38,35 +38,42 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
   }
 
   return (
-    <div className={`flex flex-col gap-5 ${className}`.trim()}>
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div className="flex flex-col gap-1.5 w-full sm:w-80">
-          <label htmlFor="questionnaire-select" className="text-xs font-semibold text-[#475569]">
-            Questionnaire
-          </label>
-          <div className="relative">
-            <select
-              id="questionnaire-select"
-              value={questionnaireId}
-              onChange={(e) => onQuestionnaireChange(e.target.value)}
-              className={`${FIELD} h-10 appearance-none pl-3 pr-10 cursor-pointer`}
-            >
-              {QUESTIONNAIRE_LIBRARY.map((q) => (
-                <option key={q.id} value={q.id}>
-                  {q.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              aria-hidden="true"
-              className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            />
-          </div>
+    <div className={`flex flex-col gap-4 ${className}`.trim()}>
+      <div className="flex flex-col gap-1.5 w-full">
+        <label htmlFor="questionnaire-select" className="text-xs font-semibold text-[#475569]">
+          Questionnaire
+        </label>
+        <div className="relative">
+          <select
+            id="questionnaire-select"
+            value={questionnaireId}
+            onChange={(e) => onQuestionnaireChange(e.target.value)}
+            className={`${FIELD} h-10 appearance-none pl-3 pr-10 cursor-pointer`}
+          >
+            {QUESTIONNAIRE_LIBRARY.map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            aria-hidden="true"
+            className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <h4 className="text-sm font-semibold text-[#0d212c]">
+          Questions{' '}
+          <span className="font-normal text-[#64748b]">
+            ({questions.length} {questions.length === 1 ? 'question' : 'questions'})
+          </span>
+        </h4>
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="h-10 px-4 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-2"
+          className="h-9 px-4 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-2"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           Add question

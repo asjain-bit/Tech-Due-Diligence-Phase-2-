@@ -50,12 +50,12 @@ export const RequestInfoModal: React.FC<RequestInfoModalProps> = ({
   const canSend = subject.trim().length > 0 && body.trim().length > 0
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="request-info-title"
-        className="relative bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95 my-8"
+        className="relative bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">

@@ -270,7 +270,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   }
 
   const header = (
-    <header className="w-full bg-white border-b border-[#e2e8f0] px-6 lg:px-10 py-3.5 flex items-center justify-between sticky top-0 z-30">
+    <header className="w-full bg-white border-b border-[#e2e8f0] px-6 lg:px-10 py-3.5 flex items-center justify-between shrink-0 z-30">
       <div className="flex items-center gap-3">
         <img src="/dark-logo.png" alt="M42 logo" className="h-7 w-auto object-contain" />
         <span className="text-sm font-semibold text-[#0d212c]">Partnership request</span>
@@ -279,7 +279,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
         <button
           type="button"
           onClick={onSignOut}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#0d212c] cursor-pointer transition"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 cursor-pointer transition"
         >
           <LogOut className="w-4 h-4" aria-hidden="true" />
           Sign out
@@ -324,242 +324,263 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#0d212c] font-sans antialiased">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#f8fafc] text-[#0d212c] font-sans antialiased">
       {header}
 
-      <main
-        onFocusCapture={handleFocusCapture}
-        className="w-full max-w-5xl mx-auto px-6 py-10 flex flex-col gap-8"
-      >
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight">Partnership request form</h1>
-          <p className="text-sm text-[#64748b] leading-relaxed">
-            Tell us about your company and solution. You can run an AI check before you submit to
-            see which answers could use more detail.
-          </p>
-        </div>
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <main
+          onFocusCapture={handleFocusCapture}
+          className="w-full max-w-[1400px] mx-auto px-6 lg:px-10 py-8 flex flex-col gap-6"
+        >
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight">Partnership request form</h1>
+            <p className="text-sm text-[#64748b] leading-relaxed">
+              Tell us about your company and solution. You can run an AI check before you submit to
+              see which answers could use more detail.
+            </p>
+          </div>
 
-        {suggestions && (
-          <div
-            role="status"
-            className={`rounded-lg border px-4 py-3.5 flex items-start gap-3 animate-in fade-in duration-300 ${
-              openSuggestions.length > 0
-                ? 'bg-[#f0f9ff] border-[#bae6fd]'
-                : 'bg-emerald-50 border-emerald-200'
-            }`}
-          >
-            {openSuggestions.length > 0 ? (
-              <Sparkles className="w-5 h-5 text-[#0369a1] shrink-0" aria-hidden="true" />
-            ) : (
-              <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" aria-hidden="true" />
-            )}
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-semibold">
-                {openSuggestions.length > 0
-                  ? `AI check found ${openSuggestions.length} ${
-                      openSuggestions.length === 1 ? 'suggestion' : 'suggestions'
-                    }`
-                  : 'AI check found nothing to improve'}
-              </span>
-              <span className="text-xs text-[#475569] leading-relaxed">
-                {openSuggestions.length > 0
-                  ? 'Update an answer or ignore the suggestion. You can still submit as it is.'
-                  : 'Your answers look clear and complete.'}
-              </span>
+          {suggestions && (
+            <div
+              role="status"
+              className={`rounded-lg border px-4 py-3.5 flex items-start gap-3 animate-in fade-in duration-300 ${
+                openSuggestions.length > 0
+                  ? 'bg-[#f0f9ff] border-[#bae6fd]'
+                  : 'bg-emerald-50 border-emerald-200'
+              }`}
+            >
+              {openSuggestions.length > 0 ? (
+                <Sparkles className="w-5 h-5 text-[#0369a1] shrink-0" aria-hidden="true" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" aria-hidden="true" />
+              )}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold">
+                  {openSuggestions.length > 0
+                    ? `AI check found ${openSuggestions.length} ${
+                        openSuggestions.length === 1 ? 'suggestion' : 'suggestions'
+                      }`
+                    : 'AI check found nothing to improve'}
+                </span>
+                <span className="text-xs text-[#475569] leading-relaxed">
+                  {openSuggestions.length > 0
+                    ? 'Update an answer or ignore the suggestion. You can still submit as it is.'
+                    : 'Your answers look clear and complete.'}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Company information */}
-        <section className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-6 sm:p-8 flex flex-col gap-6">
-          <h2 className="text-base font-semibold">Company Information</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
-            {textField('name', 'Name', { required: true })}
-            {textField('jobTitle', 'Job Title', { required: true })}
-            {textField('company', 'Company', { required: true })}
-            {textField('phone', 'Phone Number', { type: 'tel' })}
-            {textField('email', 'Email Address', { required: true, type: 'email' })}
-            {textField('yearFounded', 'Year Company Was Founded', {
-              required: true,
-              placeholder: 'e.g. 2018',
-            })}
-          </div>
-        </section>
+          {/* Company information */}
+          <section className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-6 sm:p-8 flex flex-col gap-6">
+            <h2 className="text-base font-semibold">Company Information</h2>
+            <div className="flex flex-col gap-5">
+              {textField('name', 'Vendor Name', {
+                required: true,
+                placeholder: 'Enter your full name',
+              })}
+              {textField('jobTitle', 'Job Title', {
+                required: true,
+                placeholder: 'e.g. Chief Executive Officer',
+              })}
+              {textField('company', 'Company Name', {
+                required: true,
+                placeholder: 'Enter your company name',
+              })}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-5">
+                {textField('phone', 'Phone Number', {
+                  type: 'tel',
+                  placeholder: '+971 50 123 4567',
+                })}
+                {textField('email', 'Email Address', {
+                  required: true,
+                  type: 'email',
+                  placeholder: 'name@company.com',
+                })}
+                {textField('yearFounded', 'Year Company Was Founded', {
+                  required: true,
+                  placeholder: 'e.g. 2018',
+                })}
+              </div>
+            </div>
+          </section>
 
-        {/* Key assessment areas */}
-        <section className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-6 sm:p-8 flex flex-col gap-7">
-          <h2 className="text-base font-semibold">Key Assessment Areas</h2>
+          {/* Key assessment areas */}
+          <section className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-6 sm:p-8 flex flex-col gap-7">
+            <h2 className="text-base font-semibold">Key Assessment Areas</h2>
 
-          {question('stageAndExperience')}
-          {question('proposal')}
+            {question('stageAndExperience')}
+            {question('proposal')}
 
-          <Field
-            id="focusAreas"
-            label="Which Focus Area does your solution address?"
-            helper="Select the primary area your solution addresses. These focus areas align with M42 transformation and innovation priorities. Select all that apply."
-            required
-            error={isMissing('focusAreas')}
-            suggestion={suggestionFor('focusAreas')}
-            onIgnore={() => ignore('focusAreas')}
-          >
-            <div className="relative">
-              <button
-                id="focusAreas"
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded={focusOpen}
-                onClick={() => setFocusOpen((o) => !o)}
-                className={`${FIELD} min-h-10 pl-3 pr-10 py-1.5 text-left flex flex-wrap items-center gap-1.5 cursor-pointer ${
-                  isMissing('focusAreas') ? FIELD_ERROR : ''
-                }`}
-              >
-                {values.focusAreas.length === 0 ? (
-                  <span className="text-[#9aa8b5]">Select focus areas</span>
-                ) : (
-                  values.focusAreas.map((f) => (
-                    <span
-                      key={f}
-                      className="px-2.5 py-0.5 rounded-lg bg-[#f0fdfa] text-[#0f766e] text-xs font-medium border border-[#ccfbf1]"
-                    >
-                      {f}
-                    </span>
-                  ))
+            <Field
+              id="focusAreas"
+              label="Which Focus Area does your solution address?"
+              helper="Select the primary area your solution addresses. These focus areas align with M42 transformation and innovation priorities. Select all that apply."
+              required
+              error={isMissing('focusAreas')}
+              suggestion={suggestionFor('focusAreas')}
+              onIgnore={() => ignore('focusAreas')}
+            >
+              <div className="relative">
+                <button
+                  id="focusAreas"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={focusOpen}
+                  onClick={() => setFocusOpen((o) => !o)}
+                  className={`${FIELD} min-h-10 pl-3 pr-10 py-1.5 text-left flex flex-wrap items-center gap-1.5 cursor-pointer ${
+                    isMissing('focusAreas') ? FIELD_ERROR : ''
+                  }`}
+                >
+                  {values.focusAreas.length === 0 ? (
+                    <span className="text-[#9aa8b5]">Select focus areas</span>
+                  ) : (
+                    values.focusAreas.map((f) => (
+                      <span
+                        key={f}
+                        className="px-2.5 py-0.5 rounded-lg bg-[#f0fdfa] text-[#0f766e] text-xs font-medium border border-[#ccfbf1]"
+                      >
+                        {f}
+                      </span>
+                    ))
+                  )}
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 transition-transform ${
+                      focusOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                {focusOpen && (
+                  <ul
+                    role="listbox"
+                    aria-label="Focus areas"
+                    aria-multiselectable="true"
+                    className="absolute z-20 mt-1.5 w-full max-h-64 overflow-y-auto rounded-lg border border-[#e2e8f0] bg-white shadow-lg py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+                  >
+                    {FOCUS_AREA_OPTIONS.map((opt) => {
+                      const selected = values.focusAreas.includes(opt)
+                      return (
+                        <li key={opt} role="option" aria-selected={selected}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              set(
+                                'focusAreas',
+                                selected
+                                  ? values.focusAreas.filter((f) => f !== opt)
+                                  : [...values.focusAreas, opt]
+                              )
+                            }
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left hover:bg-slate-50 cursor-pointer"
+                          >
+                            <span
+                              className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                selected
+                                  ? 'bg-[#36c0c9] border-[#36c0c9] text-white'
+                                  : 'border-slate-300'
+                              }`}
+                            >
+                              {selected && (
+                                <Check className="w-3 h-3 stroke-[3]" aria-hidden="true" />
+                              )}
+                            </span>
+                            {opt}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
                 )}
+              </div>
+            </Field>
+
+            {question('maturityAndRegulatory')}
+            {question('relevantApprovals')}
+            {question('novelty')}
+
+            <Field
+              id="developmentApproach"
+              label="If applicable, was the solution developed entirely by your team or in collaboration with external partners?"
+              helper="Understand whether the solution was developed internally, co-developed with partners or built using third-party technologies or platforms. Indicate the primary development approach."
+            >
+              <div className="relative">
+                <select
+                  id="developmentApproach"
+                  value={values.developmentApproach}
+                  onChange={(e) => set('developmentApproach', e.target.value)}
+                  className={`${FIELD} h-10 appearance-none pl-3 pr-10 cursor-pointer`}
+                >
+                  <option value="">Select an option</option>
+                  {DEVELOPMENT_APPROACH_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
                 <ChevronDown
                   aria-hidden="true"
-                  className={`w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 transition-transform ${
-                    focusOpen ? 'rotate-180' : ''
-                  }`}
+                  className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                 />
-              </button>
-              {focusOpen && (
-                <ul
-                  role="listbox"
-                  aria-label="Focus areas"
-                  aria-multiselectable="true"
-                  className="absolute z-20 mt-1.5 w-full max-h-64 overflow-y-auto rounded-lg border border-[#e2e8f0] bg-white shadow-lg py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
-                >
-                  {FOCUS_AREA_OPTIONS.map((opt) => {
-                    const selected = values.focusAreas.includes(opt)
-                    return (
-                      <li key={opt} role="option" aria-selected={selected}>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            set(
-                              'focusAreas',
-                              selected
-                                ? values.focusAreas.filter((f) => f !== opt)
-                                : [...values.focusAreas, opt]
-                            )
-                          }
-                          className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left hover:bg-slate-50 cursor-pointer"
-                        >
-                          <span
-                            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                              selected
-                                ? 'bg-[#36c0c9] border-[#36c0c9] text-white'
-                                : 'border-slate-300'
-                            }`}
-                          >
-                            {selected && (
-                              <Check className="w-3 h-3 stroke-[3]" aria-hidden="true" />
-                            )}
-                          </span>
-                          {opt}
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-          </Field>
+              </div>
+            </Field>
 
-          {question('maturityAndRegulatory')}
-          {question('relevantApprovals')}
-          {question('novelty')}
+            {question('resources')}
 
-          <Field
-            id="developmentApproach"
-            label="If applicable, was the solution developed entirely by your team or in collaboration with external partners?"
-            helper="Understand whether the solution was developed internally, co-developed with partners or built using third-party technologies or platforms. Indicate the primary development approach."
-          >
-            <div className="relative">
-              <select
-                id="developmentApproach"
-                value={values.developmentApproach}
-                onChange={(e) => set('developmentApproach', e.target.value)}
-                className={`${FIELD} h-10 appearance-none pl-3 pr-10 cursor-pointer`}
-              >
-                <option value="">Select an option</option>
-                {DEVELOPMENT_APPROACH_OPTIONS.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                aria-hidden="true"
-                className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-              />
-            </div>
-          </Field>
-
-          {question('resources')}
-
-          <Field
-            id="populations"
-            label="If applicable, which patient populations, clinical areas, or operational workflows will be impacted?"
-            helper="Identify who or what will be directly affected by your solution (patients, clinical teams, care pathways or administrative workflows) to help assess relevance and scope."
-            suggestion={suggestionFor('populations')}
-            onIgnore={() => ignore('populations')}
-          >
-            <div
+            <Field
               id="populations"
-              role="group"
-              aria-label="Patient populations"
-              className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+              label="If applicable, which patient populations, clinical areas, or operational workflows will be impacted?"
+              helper="Identify who or what will be directly affected by your solution (patients, clinical teams, care pathways or administrative workflows) to help assess relevance and scope."
+              suggestion={suggestionFor('populations')}
+              onIgnore={() => ignore('populations')}
             >
-              {POPULATION_OPTIONS.map((pop) => {
-                const checked = values.populations.includes(pop)
-                return (
-                  <label
-                    key={pop}
-                    className="px-3.5 py-2.5 rounded-lg border border-[#d6dee6] bg-white flex items-center gap-2.5 text-sm cursor-pointer hover:border-[#bcc7d3]"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() =>
-                        set(
-                          'populations',
-                          checked
-                            ? values.populations.filter((p) => p !== pop)
-                            : [...values.populations, pop]
-                        )
-                      }
-                      className="w-4 h-4 accent-[#36c0c9]"
-                    />
-                    {pop}
-                  </label>
-                )
-              })}
+              <div
+                id="populations"
+                role="group"
+                aria-label="Patient populations"
+                className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+              >
+                {POPULATION_OPTIONS.map((pop) => {
+                  const checked = values.populations.includes(pop)
+                  return (
+                    <label
+                      key={pop}
+                      className="px-3.5 py-2.5 rounded-lg border border-[#d6dee6] bg-white flex items-center gap-2.5 text-sm cursor-pointer hover:border-[#bcc7d3]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          set(
+                            'populations',
+                            checked
+                              ? values.populations.filter((p) => p !== pop)
+                              : [...values.populations, pop]
+                          )
+                        }
+                        className="w-4 h-4 accent-[#36c0c9]"
+                      />
+                      {pop}
+                    </label>
+                  )
+                })}
+              </div>
+            </Field>
+          </section>
+        </main>
+      </div>
+
+      <footer className="shrink-0 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.04)]">
+        <div className="w-full max-w-[1400px] mx-auto px-6 lg:px-10 py-3.5 flex items-center justify-between gap-3 flex-wrap">
+          {showErrors && missing.length > 0 && (
+            <div
+              role="alert"
+              className="order-last w-full sm:order-none sm:w-auto sm:flex-1 text-xs font-medium text-red-700 flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+              Please fill in the required fields marked with *.
             </div>
-          </Field>
-        </section>
-
-        {showErrors && missing.length > 0 && (
-          <div
-            role="alert"
-            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700 flex items-center gap-2"
-          >
-            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-            Please fill in the required fields marked with *.
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-3 flex-wrap pb-10">
+          )}
           <button
             type="button"
             onClick={handleRunCheck}
@@ -586,7 +607,7 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
             <Send className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
-      </main>
+      </footer>
 
       {isChecking && (
         <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">

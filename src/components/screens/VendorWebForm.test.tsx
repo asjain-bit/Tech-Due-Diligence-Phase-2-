@@ -10,9 +10,9 @@ const fill = (label: RegExp | string, value: string) =>
 
 /** Fills the form with deliberately thin answers, without clicking (which would prefill) */
 const fillThin = async (user: ReturnType<typeof userEvent.setup>) => {
-  fill(/^Name/, 'Dr. Omar Rahman')
+  fill(/^Vendor Name/, 'Dr. Omar Rahman')
   fill(/^Job Title/, 'CEO')
-  fill(/^Company \*/, 'PulseAI Health')
+  fill(/^Company Name \*/, 'PulseAI Health')
   fill(/^Email Address/, 'omar@pulseai.health')
   fill(/^Year Company/, '2021')
   fill(
@@ -42,11 +42,11 @@ describe('VendorWebForm', () => {
   it('shows every field of the vendor submission form in a wide layout', () => {
     render(<VendorWebForm onSubmitCase={vi.fn()} onSignOut={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'Partnership request form' })).toBeInTheDocument()
-    expect(screen.getByRole('main')).toHaveClass('max-w-5xl')
+    expect(screen.getByRole('main')).toHaveClass('max-w-[1400px]')
     ;[
-      /^Name/,
+      /^Vendor Name/,
       /^Job Title/,
-      /^Company \*/,
+      /^Company Name \*/,
       /^Phone Number/,
       /^Email Address/,
       /^Year Company/,
@@ -67,7 +67,7 @@ describe('VendorWebForm', () => {
 
   it('uses standard corners and a subtle grey focus state on inputs', () => {
     render(<VendorWebForm onSubmitCase={vi.fn()} />)
-    const input = screen.getByLabelText(/^Name/)
+    const input = screen.getByLabelText(/^Vendor Name/)
     expect(input.className).toContain('rounded-lg')
     expect(input.className).not.toContain('rounded-xl')
     expect(input.className).toContain('focus:border-[#a3b1c2]')
@@ -81,10 +81,10 @@ describe('VendorWebForm', () => {
   it('fills the whole form with typical vendor data when any field is first clicked', async () => {
     const user = userEvent.setup()
     render(<VendorWebForm onSubmitCase={vi.fn()} />)
-    expect(screen.getByLabelText(/^Company \*/)).toHaveValue('')
+    expect(screen.getByLabelText(/^Company Name \*/)).toHaveValue('')
     await user.click(screen.getByLabelText(/^Phone Number/))
-    expect(screen.getByLabelText(/^Name/)).toHaveValue(SAMPLE_VENDOR_FORM.name)
-    expect(screen.getByLabelText(/^Company \*/)).toHaveValue(SAMPLE_VENDOR_FORM.company)
+    expect(screen.getByLabelText(/^Vendor Name/)).toHaveValue(SAMPLE_VENDOR_FORM.name)
+    expect(screen.getByLabelText(/^Company Name \*/)).toHaveValue(SAMPLE_VENDOR_FORM.company)
     expect(screen.getByLabelText(/stage of maturity and experience/i)).toHaveValue(
       SAMPLE_VENDOR_FORM.stageAndExperience
     )
@@ -92,9 +92,9 @@ describe('VendorWebForm', () => {
     expect(screen.getByRole('checkbox', { name: 'Adult patients' })).toBeChecked()
 
     // Edits stick: clicking again does not refill
-    await user.clear(screen.getByLabelText(/^Company \*/))
+    await user.clear(screen.getByLabelText(/^Company Name \*/))
     await user.click(screen.getByLabelText(/^Job Title/))
-    expect(screen.getByLabelText(/^Company \*/)).toHaveValue('')
+    expect(screen.getByLabelText(/^Company Name \*/)).toHaveValue('')
   })
 
   it('does not submit while required fields are empty', async () => {
@@ -189,7 +189,7 @@ describe('VendorWebForm', () => {
     const user = userEvent.setup()
     const onSubmitCase = vi.fn().mockReturnValue('PR-126')
     render(<VendorWebForm onSubmitCase={onSubmitCase} />)
-    await user.click(screen.getByLabelText(/^Name/)) // prefill
+    await user.click(screen.getByLabelText(/^Vendor Name/)) // prefill
 
     await user.click(screen.getByRole('button', { name: /Submit request/i }))
     const dialog = screen.getByRole('dialog', { name: 'Submit your request?' })
@@ -199,7 +199,7 @@ describe('VendorWebForm', () => {
     // Going back keeps the answers
     await user.click(within(dialog).getByRole('button', { name: 'Review again' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByLabelText(/^Company \*/)).toHaveValue(SAMPLE_VENDOR_FORM.company)
+    expect(screen.getByLabelText(/^Company Name \*/)).toHaveValue(SAMPLE_VENDOR_FORM.company)
 
     await user.click(screen.getByRole('button', { name: /Submit request/i }))
     await user.click(
@@ -218,14 +218,14 @@ describe('VendorWebForm', () => {
 
     await user.click(screen.getByRole('button', { name: /Submit another request/i }))
     expect(screen.getByRole('heading', { name: 'Partnership request form' })).toBeInTheDocument()
-    expect(screen.getByLabelText(/^Company \*/)).toHaveValue('')
+    expect(screen.getByLabelText(/^Company Name \*/)).toHaveValue('')
   })
 
   it('mentions open AI suggestions in the confirmation and closes it with the X', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<VendorWebForm onSubmitCase={vi.fn()} />)
-    await user.click(screen.getByLabelText(/^Name/)) // prefill with two thin answers
+    await user.click(screen.getByLabelText(/^Vendor Name/)) // prefill with two thin answers
     await user.click(screen.getByRole('button', { name: /Run AI check/i }))
     runChecking(6)
     expect(screen.getByRole('status')).toHaveTextContent('AI check found 2 suggestions')
@@ -241,5 +241,33 @@ describe('VendorWebForm', () => {
     render(<VendorWebForm onSubmitCase={vi.fn()} onSignOut={onSignOut} />)
     await user.click(screen.getByRole('button', { name: /Sign out/i }))
     expect(onSignOut).toHaveBeenCalled()
+  })
+
+  it('stacks vendor name, job title and company name in their own rows with placeholders', () => {
+    render(<VendorWebForm onSubmitCase={vi.fn()} />)
+    const fields = ['Vendor Name', 'Job Title', 'Company Name'].map((l) =>
+      screen.getByLabelText(new RegExp(`^${l}`))
+    )
+    expect(fields.map((f) => f.getAttribute('placeholder'))).toEqual([
+      'Enter your full name',
+      'e.g. Chief Executive Officer',
+      'Enter your company name',
+    ])
+    fields.forEach((f) => expect(f.closest('.grid')).toBeNull())
+    expect(screen.queryByLabelText(/^Name \*/)).not.toBeInTheDocument()
+  })
+
+  it('keeps the actions in a footer outside the scrolling form', () => {
+    render(<VendorWebForm onSubmitCase={vi.fn()} />)
+    const footer = screen.getByRole('contentinfo')
+    expect(within(footer).getByRole('button', { name: 'Run AI check' })).toBeInTheDocument()
+    expect(within(footer).getByRole('button', { name: /Submit request/ })).toBeInTheDocument()
+    expect(screen.getByRole('main').parentElement?.className).toContain('overflow-y-auto')
+    expect(footer.contains(screen.getByRole('main'))).toBe(false)
+  })
+
+  it('shows Sign out in red', () => {
+    render(<VendorWebForm onSubmitCase={vi.fn()} onSignOut={vi.fn()} />)
+    expect(screen.getByRole('button', { name: /Sign out/i }).className).toContain('text-red-600')
   })
 })

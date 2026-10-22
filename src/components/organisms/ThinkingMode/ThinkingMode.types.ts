@@ -7,4 +7,12 @@ export interface ThinkingModeProps {
    */
   stepMs?: number
   className?: string
+  /** Checks to run, in order. Defaults to the five Initial Assessment Brief checks */
+  checks?: string[]
+  title?: string
+  /** Small label above the title while running */
+  eyebrow?: string
+  description?: string
+  /** Smaller layout for use inside a page section instead of the full pane */
+  compact?: boolean
 }

@@ -237,28 +237,57 @@ describe('PartnershipDetail', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
-    it('asks for a Reason, then opens Internal Canvas first', async () => {
-      const user = userEvent.setup()
+    it('keeps Reject and Next in a bar that stays in view', () => {
       renderDetail()
-      const submit = screen.getByRole('button', { name: /Submit decision/i })
-      expect(submit).toBeDisabled()
-      await user.click(screen.getByRole('radio', { name: /Approve for internal review/i }))
-      expect(screen.queryByLabelText(/Decision rationale/i)).not.toBeInTheDocument()
-      expect(submit).toBeDisabled()
-      await user.type(screen.getByLabelText(/^Reason/), 'Strong evidence')
-      await user.click(submit)
-
-      expect(onProceed).toHaveBeenCalledWith(mockRequest.id, 'Strong evidence')
-      expect(screen.getByRole('heading', { level: 2, name: 'Internal Canvas' })).toBeInTheDocument()
-      expect(stepper().getByRole('button', { name: /Strategic Alignment/ })).toBeDisabled()
+      const bar = screen.getByText(/Action required: review the brief/).parentElement!
+      expect(bar.className).toContain('sticky')
+      expect(bar.className).toContain('bottom-0')
+      expect(
+        within(bar)
+          .getAllByRole('button')
+          .map((b) => b.textContent)
+      ).toEqual(['Reject', 'Next'])
+      // The decision is taken in a popup, not a form on the page
+      expect(
+        screen.queryByRole('radio', { name: /Approve for internal review/i })
+      ).not.toBeInTheDocument()
     })
 
-    it('records a rejection and closes the later steps', async () => {
+    it('approves in the popup with an optional reason, then opens Internal Canvas first', async () => {
       const user = userEvent.setup()
       renderDetail()
-      await user.click(screen.getByRole('radio', { name: /Reject request/i }))
-      await user.type(screen.getByLabelText(/^Reason/), 'Duplicate of an existing case')
-      await user.click(screen.getByRole('button', { name: /Submit decision/i }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      const dialog = screen.getByRole('dialog', { name: 'Your decision' })
+      expect(
+        within(dialog).getByRole('radio', { name: /Approve for internal review/i, checked: true })
+      ).toBeInTheDocument()
+      await user.type(within(dialog).getByLabelText(/^Reason/), 'Strong evidence')
+      await user.click(within(dialog).getByRole('button', { name: 'Approve' }))
+
+      expect(onProceed).toHaveBeenCalledWith(mockRequest.id, 'Strong evidence')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Internal Canvas' })).toBeInTheDocument()
+      expect(stepper().getByRole('button', { name: /Strategic Alignment/ })).toBeDisabled()
+      expect(screen.queryByText(/Action required: review the brief/)).not.toBeInTheDocument()
+    })
+
+    it('approves without any reason', async () => {
+      const user = userEvent.setup()
+      renderDetail()
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Approve' }))
+      expect(onProceed).toHaveBeenCalledWith(mockRequest.id, '')
+    })
+
+    it('needs a reason to reject', async () => {
+      const user = userEvent.setup()
+      renderDetail()
+      await user.click(screen.getByRole('button', { name: 'Reject' }))
+      const dialog = screen.getByRole('dialog', { name: 'Your decision' })
+      const reject = within(dialog).getByRole('button', { name: 'Reject request' })
+      expect(reject).toBeDisabled()
+      await user.type(within(dialog).getByLabelText(/^Reason/), 'Duplicate of an existing case')
+      await user.click(reject)
       expect(onReject).toHaveBeenCalledWith(mockRequest.id, 'Duplicate of an existing case')
       expect(onProceed).not.toHaveBeenCalled()
       expect(screen.getAllByText('Closed').length).toBe(2)
@@ -284,9 +313,14 @@ describe('PartnershipDetail', () => {
     it('opens an email template, sends it and reports it', async () => {
       const user = userEvent.setup()
       renderDetail()
-      await user.click(screen.getByRole('radio', { name: /Request more info/i }))
-      await user.type(screen.getByLabelText(/^Reason/), 'Please share regulatory documents.')
-      await user.click(screen.getByRole('button', { name: /Submit decision/i }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      const decision = screen.getByRole('dialog', { name: 'Your decision' })
+      await user.click(within(decision).getByRole('radio', { name: /Request more info/i }))
+      await user.type(
+        within(decision).getByLabelText(/Information needed/),
+        'Please share regulatory documents.'
+      )
+      await user.click(within(decision).getByRole('button', { name: 'Continue to email' }))
 
       const dialog = screen.getByRole('dialog', { name: /Request more information/i })
       expect((within(dialog).getByLabelText('Message') as HTMLTextAreaElement).value).toContain(
@@ -358,6 +392,8 @@ describe('PartnershipDetail', () => {
 
       const dialog = screen.getByRole('dialog', { name: 'Send to Internal Interest' })
       await user.selectOptions(within(dialog).getByLabelText('Questionnaire'), 'technical')
+      expect(within(dialog).queryByRole('checkbox', { name: 'Sara Malik' })).not.toBeInTheDocument()
+      await user.click(within(dialog).getByRole('button', { name: 'Next' }))
       await user.click(within(dialog).getByRole('checkbox', { name: 'Sara Malik' }))
       await user.click(within(dialog).getByRole('button', { name: 'Send Request' }))
       await user.click(
@@ -376,6 +412,8 @@ describe('PartnershipDetail', () => {
       expect(payload.members).toHaveLength(4)
       expect(payload.questionnaire.name).toBe('Technical Questionnaire')
       expect(payload.questionnaire.questions).toHaveLength(3)
+      // The popup closes once sent
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
       // The stage now waits: tracking layout, Awaiting approval, next stage locked
       expect(
@@ -633,7 +671,7 @@ describe('PartnershipDetail', () => {
     it('confirms in the shared popup before moving a Partnership case out of the Director list', async () => {
       const user = userEvent.setup()
       renderDetail({ userProfile: adminProfile, request: routed('Partnership') })
-      expect(screen.getByText(/Decision recorded: Partnership/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
       await user.click(screen.getByRole('button', { name: 'Proceed' }))
       const modal = screen.getByRole('dialog', { name: 'Proceed with this case' })
       await user.click(within(modal).getByRole('button', { name: /Request type/ }))
@@ -659,6 +697,7 @@ describe('PartnershipDetail', () => {
     it('confirms moving a routed case to the Director, and when rejecting', async () => {
       const user = userEvent.setup()
       const { unmount } = renderDetail({ userProfile: adminProfile, request: routed('Procure') })
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
       await user.click(screen.getByRole('button', { name: 'Proceed' }))
       const modal = screen.getByRole('dialog', { name: 'Proceed with this case' })
       await user.click(within(modal).getByRole('button', { name: /Request type/ }))
@@ -678,6 +717,7 @@ describe('PartnershipDetail', () => {
       onRoute.mockClear()
 
       renderDetail({ userProfile: adminProfile, request: routed('Partnership') })
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
       await user.click(screen.getByRole('button', { name: 'Reject' }))
       await user.type(screen.getByLabelText(/^Reason/), 'Changed our mind')
       await user.click(screen.getByRole('button', { name: 'Reject request' }))
@@ -690,6 +730,7 @@ describe('PartnershipDetail', () => {
     it('does not confirm when only the reason changes', async () => {
       const user = userEvent.setup()
       renderDetail({ userProfile: adminProfile, request: routed('Partnership') })
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
       await user.click(screen.getByRole('button', { name: 'Proceed' }))
       const modal = screen.getByRole('dialog', { name: 'Proceed with this case' })
       expect(within(modal).getByRole('button', { name: /Request type/ })).toHaveTextContent(
@@ -704,6 +745,32 @@ describe('PartnershipDetail', () => {
       )
     })
 
+    it('makes a recorded decision view-only until Edit is chosen', async () => {
+      const user = userEvent.setup()
+      renderDetail({ userProfile: adminProfile, request: routed('Partnership') })
+      expect(screen.queryByRole('button', { name: 'Proceed' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
+      expect(screen.getByRole('button', { name: 'Proceed' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(screen.queryByRole('button', { name: 'Proceed' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    })
+
+    it('shows neither company details nor the action bar on the audit log', async () => {
+      const user = userEvent.setup()
+      renderDetail({ userProfile: adminProfile, request: adminCase })
+      expect(screen.getByRole('heading', { name: adminCase.companyName })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Proceed' })).toBeInTheDocument()
+      await user.click(screen.getByRole('tab', { name: 'Audit Log' }))
+      expect(screen.queryByRole('heading', { name: adminCase.companyName })).not.toBeInTheDocument()
+      expect(screen.queryByText('Referred by:')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Proceed' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Audit Log' })).toBeInTheDocument()
+    })
+
     it('locks the decision once the Director has decided', () => {
       renderDetail({
         userProfile: adminProfile,
@@ -713,7 +780,7 @@ describe('PartnershipDetail', () => {
           decision: { status: 'proceeded', reason: 'Approved' },
         },
       })
-      expect(screen.getByText(/The Director has decided/)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Proceed' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
     })

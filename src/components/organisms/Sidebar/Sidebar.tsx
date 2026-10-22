@@ -179,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setShowLogoutConfirm(true)}
                 title="Sign out"
                 aria-label="Sign out"
-                className="p-2 rounded-lg text-slate-400 hover:text-red-400 bg-transparent hover:bg-transparent active:bg-transparent cursor-pointer shrink-0"
+                className="p-2 rounded-lg text-red-500 hover:text-red-400 bg-transparent hover:bg-transparent active:bg-transparent cursor-pointer shrink-0"
               >
                 <LogOut className="w-4 h-4" />
               </button>

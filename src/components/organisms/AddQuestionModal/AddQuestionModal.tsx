@@ -36,7 +36,7 @@ export const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onSave, onCl
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200"
       >
         <div className="flex items-center justify-between gap-3 pb-4 border-b border-[#e2e8f0]">
           <h3 id={titleId} className="text-xl font-semibold text-[#0d212c]">

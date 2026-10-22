@@ -38,7 +38,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative bg-white rounded-3xl max-w-md w-full px-6 sm:px-8 pt-10 pb-7 shadow-2xl flex flex-col items-center text-center gap-4 animate-in fade-in zoom-in-95 duration-200"
+        className="relative bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto px-6 sm:px-8 pt-10 pb-7 shadow-2xl flex flex-col items-center text-center gap-4 animate-in fade-in zoom-in-95 duration-200"
       >
         <button
           type="button"

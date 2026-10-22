@@ -30,6 +30,7 @@ import {
   ArrowLeftRight,
   Clock,
   Eye,
+  Pencil,
 } from 'lucide-react'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import {
@@ -47,6 +48,7 @@ import { RequestInfoModal } from '@/components/organisms/RequestInfoModal'
 import { hasDirectorDecided, type AdminRouting } from '@/lib/caseActions'
 import { AssessmentBrief } from '@/components/organisms/AssessmentBrief'
 import { BriefDecision, type BriefDecisionChoice } from '@/components/organisms/BriefDecision'
+import { BriefDecisionModal } from '@/components/organisms/BriefDecisionModal'
 import { ReviewersLoading } from '@/components/molecules/ReviewersLoading'
 import { WorkflowStepper, type WorkflowStep } from '@/components/molecules/WorkflowStepper'
 import { JudgementForm } from '@/components/organisms/JudgementForm'
@@ -434,8 +436,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [infoReason, setInfoReason] = useState('')
   const [showAnalysis, setShowAnalysis] = useState(false)
+  const [briefModal, setBriefModal] = useState<BriefDecisionChoice | null>(null)
 
   const handleBriefDecision = (decision: BriefDecisionChoice, reason: string) => {
+    setBriefModal(null)
     if (decision === 'request_info') {
       setInfoReason(reason)
       setShowInfoModal(true)
@@ -474,9 +478,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [pendingRouting, setPendingRouting] = useState<AdminRouting | null>(null)
   const previousRouting = request.adminDecision
   const adminCanChange = isAdmin && !hasDirectorDecided(request)
+  // A recorded decision is view-only until the admin chooses Edit
+  const [adminEditing, setAdminEditing] = useState(false)
 
   const handleAdminConfirm = (routing: AdminRouting) => {
     setAdminModal(null)
+    setAdminEditing(false)
     const changed =
       Boolean(previousRouting) &&
       (previousRouting?.action !== routing.action || previousRouting?.type !== routing.type)
@@ -1340,94 +1347,115 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         ))}
       </div>
 
-      {/* Header Card — Status matches outside table, Submitted on moved to bottom right of Overview */}
-      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-xs flex flex-col gap-5">
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
-            {/* Logo box */}
-            <div className="w-14 h-14 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-center p-2.5 shrink-0 shadow-2xs">
-              <Building2 className="w-8 h-8 text-[#36c0c9]" />
+      {activeTab !== 'audit' && (
+        <>
+          {/* Header Card — Status matches outside table, Submitted on moved to bottom right of Overview */}
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-xs flex flex-col gap-5">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                {/* Logo box */}
+                <div className="w-14 h-14 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-center p-2.5 shrink-0 shadow-2xs">
+                  <Building2 className="w-8 h-8 text-[#36c0c9]" />
+                </div>
+
+                {/* Title & Status — Same status as outside, no additional text */}
+                <div className="flex flex-col justify-center min-h-[56px]">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-xl sm:text-2xl font-semibold text-[#0d212c] tracking-tight">
+                      {request.companyName}
+                    </h1>
+                    {isAdmin && request.adminDecision && request.status !== 'On Hold' ? (
+                      <>
+                        <StatusChip
+                          label={
+                            request.adminDecision.action === 'proceed' ? 'Approved' : 'Rejected'
+                          }
+                          status={request.adminDecision.action === 'proceed' ? 'success' : 'error'}
+                          dot={false}
+                        />
+                        {request.adminDecision.type && (
+                          <StatusChip
+                            label={request.adminDecision.type}
+                            status="neutral"
+                            dot={false}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <StatusChip
+                        label={request.status}
+                        status={getStatusCategory(request.status)}
+                        dot={false}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {adminCanChange && request.adminDecision && !adminEditing && (
+                <button
+                  type="button"
+                  onClick={() => setAdminEditing(true)}
+                  className="h-9 px-4 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-1.5 self-start"
+                >
+                  <Pencil className="w-4 h-4" aria-hidden="true" />
+                  Edit
+                </button>
+              )}
             </div>
 
-            {/* Title & Status — Same status as outside, no additional text */}
-            <div className="flex flex-col justify-center min-h-[56px]">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-semibold text-[#0d212c] tracking-tight">
-                  {request.companyName}
-                </h1>
-                {isAdmin && request.adminDecision && request.status !== 'On Hold' ? (
+            {/* Metadata items row — Vendor designation removed, Referred by retained inside, Submitted on on bottom right */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-x-6 gap-y-2 pt-4 border-t border-[#f1f5f9] text-xs text-[#64748b]">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                {!isNonDirector && (
                   <>
-                    <StatusChip
-                      label={request.adminDecision.action === 'proceed' ? 'Approved' : 'Rejected'}
-                      status={request.adminDecision.action === 'proceed' ? 'success' : 'error'}
-                      dot={false}
-                    />
-                    {request.adminDecision.type && (
-                      <StatusChip label={request.adminDecision.type} status="neutral" dot={false} />
+                    <div className="flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="font-medium text-[#0d212c]">{request.companyInfo.name}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{request.companyInfo.email}</span>
+                    </div>
+
+                    {request.companyInfo.phoneNumber && (
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{request.companyInfo.phoneNumber}</span>
+                      </div>
                     )}
                   </>
-                ) : (
-                  <StatusChip
-                    label={request.status}
-                    status={getStatusCategory(request.status)}
-                    dot={false}
-                  />
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Metadata items row — Vendor designation removed, Referred by retained inside, Submitted on on bottom right */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-x-6 gap-y-2 pt-4 border-t border-[#f1f5f9] text-xs text-[#64748b]">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            {!isNonDirector && (
-              <>
-                <div className="flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="font-medium text-[#0d212c]">{request.companyInfo.name}</span>
-                </div>
 
                 <div className="flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{request.companyInfo.email}</span>
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Founded in {request.companyInfo.yearFounded}</span>
                 </div>
 
-                {request.companyInfo.phoneNumber && (
+                {request.companyInfo.location && (
                   <div className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{request.companyInfo.phoneNumber}</span>
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{request.companyInfo.location}</span>
                   </div>
                 )}
-              </>
-            )}
 
-            <div className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span>Founded in {request.companyInfo.yearFounded}</span>
+                {!isNonDirector && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400">Referred by:</span>
+                    <span className="font-medium text-[#0d212c]">{request.referredBy || '—'}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1 text-xs text-[#64748b] sm:ml-auto shrink-0 self-end sm:self-auto">
+                <span>Submitted on:</span>
+                <span className="font-medium text-[#0d212c]">{request.submittedOn}</span>
+              </div>
             </div>
-
-            {request.companyInfo.location && (
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                <span>{request.companyInfo.location}</span>
-              </div>
-            )}
-
-            {!isNonDirector && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400">Referred by:</span>
-                <span className="font-medium text-[#0d212c]">{request.referredBy || '—'}</span>
-              </div>
-            )}
           </div>
-
-          <div className="flex items-center gap-1 text-xs text-[#64748b] sm:ml-auto shrink-0 self-end sm:self-auto">
-            <span>Submitted on:</span>
-            <span className="font-medium text-[#0d212c]">{request.submittedOn}</span>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* On hold: waiting for the vendor to send more information */}
       {request.status === 'On Hold' && (
@@ -1768,7 +1796,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   onViewVendorResponse={() => setShowVendorForm(true)}
                   onOpenAnalysis={() => setShowAnalysis(true)}
                   decision={
-                    isDirector ? (
+                    isDirector && briefSubmitted ? (
                       <BriefDecision
                         key={request.status === 'On Hold' ? 'hold' : 'open'}
                         agentRecommendation={request.agentRecommendation?.status}
@@ -1932,6 +1960,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           request={request}
           actions={analysisActions}
           onClose={() => setShowAnalysis(false)}
+        />
+      )}
+
+      {/* DIRECTOR DECISION ON THE BRIEF */}
+      {briefModal && (
+        <BriefDecisionModal
+          initialChoice={briefModal}
+          agentRecommendation={request.agentRecommendation?.status}
+          onSubmit={handleBriefDecision}
+          onClose={() => setBriefModal(null)}
         />
       )}
 
@@ -2262,12 +2300,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
       {/* SEND TO THE STRATEGY TEAM */}
       {sendTeam === 'strategy' && (
-        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="send-team-title"
-            className="relative bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-6 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto"
+            className="relative bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -2677,8 +2715,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
       {/* VIEW EVALUATION CRITERIA POPUP MODAL (Strategy Team) */}
       {showJudgementCriteriaModal && (
-        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#e2e8f0] flex flex-col gap-4 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#e2e8f0] flex flex-col gap-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
               <h3 className="text-base sm:text-lg font-semibold text-[#0d212c]">
@@ -2756,8 +2794,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
       {/* VIEW MEMBER RESPONSE POPUP MODAL */}
       {viewingResponseMember && (
-        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
               <div className="flex items-center gap-3">
@@ -2917,36 +2955,68 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       )}
 
+      {/* DIRECTOR: decision bar, always in view until the brief has a decision */}
+      {isDirector && !briefSubmitted && activeTab !== 'audit' && activeStep === 'brief' && (
+        <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
+          <span className="text-sm text-[#475569]">
+            Action required: review the brief, then record your decision.
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setBriefModal('reject')}
+              className="h-10 px-5 rounded-lg border border-red-500 bg-white text-sm font-semibold text-red-600 hover:bg-red-50 cursor-pointer transition flex items-center gap-1.5"
+            >
+              <X className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+              Reject
+            </button>
+            <button
+              type="button"
+              onClick={() => setBriefModal('approve')}
+              className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
+            >
+              Next
+              <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* PARTNERSHIP ADMIN: decision bar, always in view so the action is obvious */}
-      {isAdmin && (
+      {isAdmin && activeTab !== 'audit' && (!previousRouting || adminEditing) && (
         <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
           <span className="text-sm text-[#475569]">
             {!previousRouting
               ? 'Action required: decide where this case goes.'
-              : adminCanChange
-                ? `Decision recorded: ${routingLabel(previousRouting)}. You can change it until the Director decides.`
-                : 'The Director has decided, so this can no longer be changed.'}
+              : `Editing the decision (currently ${routingLabel(previousRouting)}). Choose a new action.`}
           </span>
-          {(!previousRouting || adminCanChange) && (
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            {adminEditing && (
               <button
                 type="button"
-                onClick={() => setAdminModal('reject')}
-                className="h-10 px-5 rounded-lg border border-red-500 bg-white text-sm font-semibold text-red-600 hover:bg-red-50 cursor-pointer transition flex items-center gap-1.5"
+                onClick={() => setAdminEditing(false)}
+                className="h-10 px-5 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition"
               >
-                <X className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
-                Reject
+                Cancel
               </button>
-              <button
-                type="button"
-                onClick={() => setAdminModal('proceed')}
-                className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
-              >
-                <Check className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
-                Proceed
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={() => setAdminModal('reject')}
+              className="h-10 px-5 rounded-lg border border-red-500 bg-white text-sm font-semibold text-red-600 hover:bg-red-50 cursor-pointer transition flex items-center gap-1.5"
+            >
+              <X className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+              Reject
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminModal('proceed')}
+              className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
+            >
+              <Check className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+              Proceed
+            </button>
+          </div>
         </div>
       )}
     </div>

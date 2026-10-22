@@ -23,15 +23,15 @@ describe('ReviewersLoading', () => {
     expect(
       screen.getByRole('heading', { name: 'Finding the Internal Interest team' })
     ).toBeInTheDocument()
-    expect(screen.getByText('Finding the Internal Interest team…')).toBeInTheDocument()
+    expect(screen.getByText(/5 reviewers matched/)).toBeInTheDocument()
+    expect(screen.getByText('Analyzing...')).toBeInTheDocument()
 
     runTimers(1)
-    expect(screen.getByText('5 reviewers found')).toBeInTheDocument()
-    expect(screen.getByText('Mapping reviewers to KPIs and expertise…')).toBeInTheDocument()
+    expect(screen.getAllByText('Completed')).toHaveLength(1)
     expect(onComplete).not.toHaveBeenCalled()
 
     runTimers(3)
-    expect(screen.getByText('Matched on KPI and expertise')).toBeInTheDocument()
+    expect(screen.getAllByText('Completed')).toHaveLength(2)
     expect(onComplete).toHaveBeenCalledTimes(1)
   })
 
@@ -39,9 +39,6 @@ describe('ReviewersLoading', () => {
     vi.useFakeTimers()
     render(<ReviewersLoading team="strategy" count={1} onComplete={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'Finding the Strategy team' })).toBeInTheDocument()
-    runTimers(1)
-    expect(screen.getByText('1 reviewer found')).toBeInTheDocument()
-    runTimers(2)
-    expect(screen.getByText('Matched on strategy focus')).toBeInTheDocument()
+    expect(screen.getByText(/1 reviewer matched/)).toBeInTheDocument()
   })
 })

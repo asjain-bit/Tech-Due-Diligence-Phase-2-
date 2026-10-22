@@ -32,7 +32,7 @@ describe('ThinkingMode', () => {
     ])
     THINKING_CHECKS.forEach((label) => expect(screen.getByText(label)).toBeInTheDocument())
     expect(
-      screen.getByRole('img', { name: /flowing into the assessment brief/i })
+      screen.getByRole('img', { name: /assessment brief being prepared/i })
     ).toBeInTheDocument()
   })
 
@@ -91,13 +91,33 @@ describe('ThinkingMode', () => {
     const { container } = render(<ThinkingMode onComplete={vi.fn()} />)
     expect(screen.getByText('Analyzing...')).toBeInTheDocument()
     expect(container.querySelector('animate, animateMotion')).toBeNull()
-    expect(container.querySelector('.animate-pulse')).toBeNull()
+    expect(container.querySelector('.animate-pulse, .animate-spin')).toBeNull()
     window.matchMedia = original
+  })
+
+  it('shows only the document illustration and a spinner on the running step', () => {
+    const { container } = render(<ThinkingMode onComplete={vi.fn()} />)
+    expect(container.querySelector('animateMotion')).toBeNull()
+    expect(container.querySelectorAll('li[data-state="active"] svg').length).toBe(1)
+  })
+
+  it('renders a compact variant with its own checks and title', () => {
+    render(
+      <ThinkingMode
+        compact
+        checks={['One', 'Two']}
+        title="Finding"
+        description="Desc"
+        onComplete={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'Finding' })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
   })
 
   it('animates the vector when motion is allowed', () => {
     const { container } = render(<ThinkingMode onComplete={vi.fn()} />)
-    expect(container.querySelectorAll('animateMotion').length).toBe(8)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
+    expect(container.querySelectorAll('animate').length).toBeGreaterThan(0)
+    expect(container.querySelector('.animate-spin')).not.toBeNull()
   })
 })
