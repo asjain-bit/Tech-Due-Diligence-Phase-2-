@@ -1,5 +1,6 @@
 import type { PartnershipRequest } from '@/types/partnership.types'
-import type { AgentAction } from './AgentActions.types'
+import type { CaseType } from '@/types/partnership.types'
+import type { AgentAction, ConfidenceLevel } from './AgentActions.types'
 
 /** What the agent reads before it starts checking */
 export const AGENT_CONTEXT_SOURCES = [
@@ -25,6 +26,7 @@ interface RequestProfile {
   comparables: string
   differentiator: string
   changeFactors: [string, string, string]
+  types: Record<CaseType, ConfidenceLevel>
 }
 
 const PROFILES: Record<string, RequestProfile> = {
@@ -51,6 +53,7 @@ const PROFILES: Record<string, RequestProfile> = {
       'Regulatory documents found to be out of date or incomplete',
       'A reviewer finds an overlap with a planned roadmap item',
     ],
+    types: { Partnership: 'High', Procure: 'Low', 'M&A': 'Low' },
   },
   'req-002': {
     route: 'Partner',
@@ -74,6 +77,7 @@ const PROFILES: Record<string, RequestProfile> = {
       'Accuracy falls below 94% on M42 ECG data',
       'The CoE shows it can match the model in the same window',
     ],
+    types: { Partnership: 'High', Procure: 'Medium', 'M&A': 'Low' },
   },
   'req-003': {
     route: 'Buy',
@@ -98,6 +102,7 @@ const PROFILES: Record<string, RequestProfile> = {
       'Patient data cannot stay in the UAE',
       'The vendor cannot match the stated sequencing throughput',
     ],
+    types: { Partnership: 'Medium', Procure: 'High', 'M&A': 'Low' },
   },
   'req-004': {
     route: 'Partner',
@@ -122,6 +127,7 @@ const PROFILES: Record<string, RequestProfile> = {
       'The existing remote monitoring module can be extended at lower cost',
       'DoH licence or data security certification lapses',
     ],
+    types: { Partnership: 'High', Procure: 'Medium', 'M&A': 'Low' },
   },
 }
 
@@ -144,6 +150,7 @@ const FALLBACK: RequestProfile = {
     'A reviewer finds a duplicate or roadmap overlap',
     'Baseline data cannot be obtained for the test',
   ],
+  types: { Partnership: 'High', Procure: 'Medium', 'M&A': 'Low' },
 }
 
 const PHASE_BY_MATURITY: Record<string, string> = {
@@ -154,7 +161,8 @@ const PHASE_BY_MATURITY: Record<string, string> = {
 
 const profileFor = (request: PartnershipRequest) => PROFILES[request.id] ?? FALLBACK
 
-const confidenceLevel = (c: number) => (c >= 80 ? 'High' : c >= 50 ? 'Medium' : 'Low')
+export const confidenceLevel = (c: number): ConfidenceLevel =>
+  c >= 80 ? 'High' : c >= 50 ? 'Medium' : 'Low'
 
 export const getChangeFactors = (request: PartnershipRequest): [string, string, string] =>
   profileFor(request).changeFactors
@@ -241,11 +249,11 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
       check: 'Which service line KPIs the claim would move, and the baseline needed to test it',
       runningText: 'Matching the claim to service line KPIs and baselines',
       status: 'complete',
-      confidence: p.kpiConfidence,
+      confidence: confidenceLevel(p.kpiConfidence),
       headline: `${p.kpi}`,
       findings: [
         { label: 'KPI the claim would move', value: p.kpi },
-        { label: 'Confidence', value: `${p.kpiConfidence}% (${confidenceLevel(p.kpiConfidence)})` },
+        { label: 'Confidence', value: confidenceLevel(p.kpiConfidence) },
         { label: 'Why this KPI', value: p.kpiWhy },
         { label: 'Baseline needed to test it', value: p.baseline },
       ],
@@ -253,7 +261,7 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
         name: person.name,
         role: person.role,
         reason: person.whySuggested ?? 'Relevant domain expertise.',
-        confidence: Math.max(50, p.kpiConfidence + (spread[i] ?? -20)),
+        confidence: confidenceLevel(Math.max(50, p.kpiConfidence + (spread[i] ?? -20))),
       })),
       output: `Mapped to "${p.kpi}" with ${confidenceLevel(p.kpiConfidence).toLowerCase()} confidence. The reviewers below are suggested for Internal Review.`,
     },
@@ -282,15 +290,267 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
       check: 'Two pages, including the three things that would change its recommendation',
       runningText: 'Drafting the brief and the three things that would change the recommendation',
       status: recWord === 'Proceed' ? 'passed' : 'attention',
-      confidence: recConfidence,
+      confidence: confidenceLevel(recConfidence),
       headline: `Recommends ${recWord}`,
       findings: [
         { label: 'Recommendation', value: recWord },
-        { label: 'Confidence', value: `${recConfidence}% (${confidenceLevel(recConfidence)})` },
+        { label: 'Confidence', value: confidenceLevel(recConfidence) },
         { label: 'Reasoning', value: rec?.rationale ?? 'See the brief.' },
         { label: 'Would change the recommendation', value: p.changeFactors.join('. ') },
       ],
       output: `Brief drafted. The agent recommends ${recWord.toLowerCase()}. The decision is yours.`,
+    },
+  ]
+}
+
+export const getTypeConfidence = (request: PartnershipRequest): Record<CaseType, ConfidenceLevel> =>
+  profileFor(request).types
+
+interface AdminProfile {
+  reapplying: boolean
+  history: string
+  backlog: string
+  backlogCovered: boolean
+  serviceLine: string
+  uae: { label: string; score: number }[]
+  screening: { blacklist: string; media: string; mediaIsRisk: boolean }
+}
+
+const ADMIN_PROFILES: Record<string, AdminProfile> = {
+  'req-001': {
+    reapplying: false,
+    history: 'No earlier application from this vendor.',
+    backlog: 'No matching item in the CoE build backlog.',
+    backlogCovered: false,
+    serviceLine: 'Radiology and Oncology',
+    uae: [
+      { label: 'DoH Abu Dhabi AI in healthcare policy', score: 4 },
+      { label: 'MOHAP device registration', score: 5 },
+      { label: 'Data residency and ADHICS', score: 4 },
+      { label: 'Clinical safety evidence', score: 4 },
+    ],
+    screening: { blacklist: 'Not listed', media: 'No adverse coverage found', mediaIsRisk: false },
+  },
+  'req-002': {
+    reapplying: false,
+    history: 'No earlier application from this vendor.',
+    backlog: 'Partly covered by the CoE backlog item "ECG interpretation module".',
+    backlogCovered: true,
+    serviceLine: 'Cardiology',
+    uae: [
+      { label: 'DoH Abu Dhabi AI in healthcare policy', score: 3 },
+      { label: 'MOHAP device registration', score: 2 },
+      { label: 'Data residency and ADHICS', score: 3 },
+      { label: 'Clinical safety evidence', score: 3 },
+    ],
+    screening: { blacklist: 'Not listed', media: 'No adverse coverage found', mediaIsRisk: false },
+  },
+  'req-003': {
+    reapplying: true,
+    history: 'Applied in March 2025 and was declined for lack of UAE data residency.',
+    backlog: 'No matching item in the CoE build backlog.',
+    backlogCovered: false,
+    serviceLine: 'Genomics and Oncology',
+    uae: [
+      { label: 'DoH Abu Dhabi AI in healthcare policy', score: 4 },
+      { label: 'MOHAP device registration', score: 5 },
+      { label: 'Data residency and ADHICS', score: 3 },
+      { label: 'Clinical safety evidence', score: 5 },
+    ],
+    screening: { blacklist: 'Not listed', media: 'No adverse coverage found', mediaIsRisk: false },
+  },
+  'req-004': {
+    reapplying: false,
+    history: 'No earlier application from this vendor.',
+    backlog: 'Partly covered by the CoE backlog item "Remote monitoring v2".',
+    backlogCovered: true,
+    serviceLine: 'Chronic care and Virtual health',
+    uae: [
+      { label: 'DoH Abu Dhabi AI in healthcare policy', score: 5 },
+      { label: 'MOHAP device registration', score: 4 },
+      { label: 'Data residency and ADHICS', score: 4 },
+      { label: 'Clinical safety evidence', score: 3 },
+    ],
+    screening: {
+      blacklist: 'Not listed',
+      media: 'One 2024 article on a data incident, since resolved',
+      mediaIsRisk: true,
+    },
+  },
+  'req-005': {
+    reapplying: false,
+    history: 'No earlier application from this vendor.',
+    backlog: 'No matching item in the CoE build backlog.',
+    backlogCovered: false,
+    serviceLine: 'Neurology',
+    uae: [
+      { label: 'DoH Abu Dhabi AI in healthcare policy', score: 4 },
+      { label: 'MOHAP device registration', score: 2 },
+      { label: 'Data residency and ADHICS', score: 3 },
+      { label: 'Clinical safety evidence', score: 4 },
+    ],
+    screening: { blacklist: 'Not listed', media: 'No adverse coverage found', mediaIsRisk: false },
+  },
+}
+
+const ADMIN_FALLBACK: AdminProfile = {
+  reapplying: false,
+  history: 'No earlier application from this vendor.',
+  backlog: 'No matching item in the CoE build backlog.',
+  backlogCovered: false,
+  serviceLine: 'To be confirmed',
+  uae: [
+    { label: 'DoH Abu Dhabi AI in healthcare policy', score: 3 },
+    { label: 'MOHAP device registration', score: 3 },
+    { label: 'Data residency and ADHICS', score: 3 },
+    { label: 'Clinical safety evidence', score: 3 },
+  ],
+  screening: { blacklist: 'Not listed', media: 'No adverse coverage found', mediaIsRisk: false },
+}
+
+/** Checks the Partnership Admin sees when triaging a new case */
+export const buildAdminAgentActions = (
+  request: PartnershipRequest,
+  allRequests: PartnershipRequest[] = []
+): AgentAction[] => {
+  const base = buildAgentActions(request)
+  const kpi = base.find((a) => a.id === 'kpi')!
+  const brief = base.find((a) => a.id === 'brief')!
+  const p = ADMIN_PROFILES[request.id] ?? ADMIN_FALLBACK
+  const earlier = allRequests.filter(
+    (o) =>
+      o.id !== request.id &&
+      o.companyName.trim().toLowerCase() === request.companyName.trim().toLowerCase()
+  )
+  const liveEarlier = earlier.filter((o) => o.status !== 'Exited')
+  const reapplying = p.reapplying || earlier.length > 0
+  const total = p.uae.reduce((sum, i) => sum + i.score, 0)
+  const max = p.uae.length * 5
+  const scoreOutOf10 = Math.round((total / max) * 10)
+  const maturityWeak = total / max < 0.6
+
+  return [
+    {
+      id: 'applicant',
+      icon: 'history',
+      title: 'Applicant history',
+      check: 'Fresh application or re-applying',
+      runningText: 'Checking whether this vendor has applied before',
+      status: reapplying ? 'attention' : 'passed',
+      headline: reapplying ? 'Re-applying' : 'Fresh application',
+      findings: [
+        { label: 'Marked as', value: reapplying ? 'Re-applying' : 'Fresh application' },
+        {
+          label: 'Earlier applications',
+          value:
+            earlier.length > 0
+              ? `${earlier.length} found in the pipeline`
+              : p.reapplying
+                ? '1 found in pipeline history'
+                : 'None',
+        },
+        {
+          label: 'History',
+          value:
+            earlier.length > 0
+              ? `Earlier case ${earlier[0].requestCode} for the same company.`
+              : p.history,
+        },
+      ],
+      output: reapplying
+        ? `${request.companyName} has applied before. Compare with the earlier outcome before routing.`
+        : `${request.companyName} is applying for the first time.`,
+    },
+    {
+      id: 'duplicate',
+      icon: 'duplicate',
+      title: 'Duplicate check',
+      check: 'Against live cases and prior declines',
+      runningText: 'Comparing against live cases and prior declines',
+      status: liveEarlier.length > 0 ? 'attention' : 'passed',
+      headline: liveEarlier.length > 0 ? 'Possible duplicate of a live case' : 'No duplicate found',
+      findings: [
+        { label: 'Live cases compared', value: '24' },
+        { label: 'Prior declines compared', value: '12' },
+        {
+          label: 'Matches found',
+          value: liveEarlier.length > 0 ? `${liveEarlier.length} live case` : 'None',
+        },
+      ],
+      output:
+        liveEarlier.length > 0
+          ? `A live case (${liveEarlier[0].requestCode}) exists for this company. Confirm they are different offerings.`
+          : 'No live case or prior decline matches this request.',
+    },
+    {
+      id: 'backlog',
+      icon: 'backlog',
+      title: 'CoE backlog check',
+      check: 'Whether the Agentic CoE backlog already covers it',
+      runningText: 'Comparing against the Agentic CoE build backlog',
+      status: p.backlogCovered ? 'attention' : 'passed',
+      headline: p.backlogCovered ? 'Partly covered in the backlog' : 'Not in the backlog',
+      findings: [
+        { label: 'Backlog items compared', value: '41' },
+        { label: 'Result', value: p.backlog },
+      ],
+      output: p.backlogCovered
+        ? 'Part of this scope is already planned in the CoE backlog. Consider whether to build or partner.'
+        : 'Nothing in the CoE backlog covers this request.',
+    },
+    {
+      id: 'service-line',
+      icon: 'kpi',
+      title: 'Service line and KPI mapping',
+      check: 'Comparison against service lines and their KPIs',
+      runningText: 'Mapping the claim to service lines and KPIs',
+      status: 'complete',
+      confidence: kpi.confidence,
+      headline: `${p.serviceLine}. ${kpi.findings[0].value}`,
+      findings: [
+        { label: 'Service line', value: p.serviceLine },
+        ...kpi.findings.filter((f) => f.label !== 'Confidence'),
+        { label: 'Confidence', value: kpi.confidence ?? 'Medium' },
+      ],
+      output: `Mapped to ${p.serviceLine} and the KPI "${kpi.findings[0].value}".`,
+    },
+    {
+      id: 'uae-maturity',
+      icon: 'uae',
+      title: 'Solution maturity scoring',
+      check: 'Across UAE rules and regulations',
+      runningText: 'Scoring maturity against UAE rules and regulations',
+      status: maturityWeak ? 'attention' : 'complete',
+      headline: `${scoreOutOf10} out of 10`,
+      findings: [
+        ...p.uae.map((i) => ({ label: i.label, value: `${i.score} out of 5` })),
+        { label: 'Overall score', value: `${scoreOutOf10} out of 10` },
+      ],
+      output: maturityWeak
+        ? `Scored ${scoreOutOf10} out of 10. Gaps in UAE regulatory readiness need to be closed before a pilot.`
+        : `Scored ${scoreOutOf10} out of 10 across UAE rules and regulations.`,
+    },
+    {
+      id: 'screening',
+      icon: 'screening',
+      title: 'Vendor screening',
+      check: 'Blacklist and adverse media coverage',
+      runningText: 'Screening the vendor against blacklists and media coverage',
+      status: p.screening.mediaIsRisk ? 'attention' : 'passed',
+      headline: p.screening.mediaIsRisk ? 'Adverse media found' : 'No blacklist or media concerns',
+      findings: [
+        { label: 'Blacklist', value: p.screening.blacklist },
+        { label: 'Adverse media', value: p.screening.media },
+      ],
+      output: p.screening.mediaIsRisk
+        ? 'Not blacklisted, but adverse coverage was found. Review before routing.'
+        : 'The vendor is not blacklisted and no adverse coverage was found.',
+    },
+    {
+      ...brief,
+      title: 'Initial assessment brief',
+      check: 'Two pages, ready for your routing decision',
+      runningText: 'Drafting the initial assessment brief',
     },
   ]
 }

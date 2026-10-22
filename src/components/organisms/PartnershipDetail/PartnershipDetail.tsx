@@ -27,10 +27,20 @@ import {
   Send,
   FileText,
   UserPlus,
+  Clock,
   Eye,
 } from 'lucide-react'
 import { StatusChip } from '@/components/atoms/StatusChip'
-import { AgentActions } from '@/components/organisms/AgentActions'
+import {
+  AgentActions,
+  buildAdminAgentActions,
+  buildAgentActions,
+  getTypeConfidence,
+} from '@/components/organisms/AgentActions'
+import { AdminDecision } from '@/components/organisms/AdminDecision'
+import { AnalysisDrawer } from '@/components/organisms/AnalysisDrawer'
+import { RequestInfoModal } from '@/components/organisms/RequestInfoModal'
+import { hasDirectorDecided, type AdminRouting } from '@/lib/caseActions'
 import { AssessmentBrief } from '@/components/organisms/AssessmentBrief'
 import { BriefDecision, type BriefDecisionChoice } from '@/components/organisms/BriefDecision'
 import { ReviewersLoading } from '@/components/molecules/ReviewersLoading'
@@ -155,7 +165,7 @@ const STRATEGY_CANDIDATE_DIRECTORY = [
   },
 ]
 
-type StepId = 'agent' | 'brief' | 'review' | 'approval' | 'questionnaire' | 'judgement'
+type StepId = 'brief' | 'alignment' | 'canvas' | 'approval' | 'questionnaire' | 'judgement'
 
 const DEFAULT_QUESTIONNAIRE: QuestionnaireValues = {
   problem:
@@ -193,6 +203,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   onProceed,
   onReject,
   userProfile,
+  allRequests = [],
+  onRequestInfo,
+  onResume,
+  onRoute,
   animateAgentRun = true,
   className = '',
 }) => {
@@ -201,6 +215,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const isStrategyTeam =
     userProfile?.id === 'strategy-fit' || userProfile?.roleTitle === 'Strategy Team'
   const isNonDirector = isInternalTeam || isStrategyTeam
+  const isAdmin = userProfile?.id === 'partnership-admin'
+  const isDirector = !isNonDirector && !isAdmin
 
   // Delete note state
   const [deleteNote, setDeleteNote] = useState('')
@@ -289,48 +305,54 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   // Review workflow: each step unlocks only after the one before it is completed
   const stepDefs: { id: StepId; label: string }[] = isInternalTeam
     ? [
-        { id: 'agent', label: 'Agent Actions' },
         { id: 'brief', label: 'Initial Assessment Brief' },
         { id: 'questionnaire', label: 'Questionnaire' },
       ]
     : isStrategyTeam
       ? [
-          { id: 'agent', label: 'Agent Actions' },
           { id: 'brief', label: 'Initial Assessment Brief' },
           { id: 'judgement', label: 'Judgement' },
         ]
-      : [
-          { id: 'agent', label: 'Agent Actions' },
-          { id: 'brief', label: 'Initial Assessment Brief' },
-          { id: 'review', label: 'Internal Review' },
-          { id: 'approval', label: 'Approval' },
-        ]
+      : isAdmin
+        ? [{ id: 'brief', label: 'Initial Assessment Brief' }]
+        : [
+            { id: 'brief', label: 'Initial Assessment Brief' },
+            { id: 'alignment', label: 'Strategic Alignment' },
+            { id: 'canvas', label: 'Internal Canvas' },
+            { id: 'approval', label: 'Approval' },
+          ]
 
   const alreadyReviewed =
-    !isNonDirector && (request.status === 'In Progress' || request.status === 'At Risk')
-  const alreadyExited = !isNonDirector && request.status === 'Exited'
+    isDirector && (request.status === 'In Progress' || request.status === 'At Risk')
+  const alreadyExited = isDirector && request.status === 'Exited'
+  const wasSeen =
+    alreadyReviewed ||
+    alreadyExited ||
+    request.status === 'On Hold' ||
+    (isAdmin && Boolean(request.adminDecision))
 
   const [completedSteps, setCompletedSteps] = useState<StepId[]>(() => {
-    if (alreadyExited) return ['agent', 'brief']
-    if (alreadyReviewed) return ['agent', 'brief', 'review']
-    return animateAgentRun ? [] : ['agent']
+    if (alreadyExited) return ['brief']
+    if (alreadyReviewed) return ['brief', 'alignment', 'canvas']
+    return []
   })
-  const [activeStep, setActiveStep] = useState<StepId>(() => {
-    if (alreadyExited) return 'brief'
-    if (alreadyReviewed) return 'approval'
-    return animateAgentRun ? 'agent' : 'brief'
+  const [activeStep, setActiveStep] = useState<StepId>(alreadyReviewed ? 'approval' : 'brief')
+  // The agent run plays the first time the brief opens, then the brief takes over
+  const [runDone, setRunDone] = useState(!animateAgentRun || wasSeen)
+  const [readyTeams, setReadyTeams] = useState({
+    strategy: alreadyReviewed || !animateAgentRun,
+    internal: alreadyReviewed || !animateAgentRun,
   })
-  const [reviewersReady, setReviewersReady] = useState(alreadyReviewed || !animateAgentRun)
 
   const completeStep = (id: StepId) =>
     setCompletedSteps((prev) => (prev.includes(id) ? prev : [...prev, id]))
 
   const [localDecision, setLocalDecision] = useState<{
     decision: BriefDecisionChoice
-    rationale: string
+    reason: string
   } | null>(null)
   const isRejected =
-    !isNonDirector &&
+    isDirector &&
     (request.status === 'Exited' ||
       request.decision?.status === 'rejected' ||
       localDecision?.decision === 'reject')
@@ -362,18 +384,18 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     setActiveStep(id as StepId)
   }
 
-  const playAgent = animateAgentRun && !completedSteps.includes('agent')
   const advanceTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const stepperRef = React.useRef<HTMLDivElement>(null)
   const isFirstStepRender = React.useRef(true)
 
-  const handleAgentComplete = () => {
-    completeStep('agent')
-    // Let the finished checklist settle for a moment, then move to the brief
-    advanceTimer.current = setTimeout(
-      () => setActiveStep((current) => (current === 'agent' ? 'brief' : current)),
-      1100
-    )
+  const analysisActions = React.useMemo(
+    () => (isAdmin ? buildAdminAgentActions(request, allRequests) : buildAgentActions(request)),
+    [isAdmin, request, allRequests]
+  )
+
+  const handleRunComplete = () => {
+    // Let the finished checklist settle for a moment, then show the brief
+    advanceTimer.current = setTimeout(() => setRunDone(true), 1100)
   }
 
   React.useEffect(() => () => clearTimeout(advanceTimer.current), [])
@@ -389,24 +411,73 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     }
   }, [activeStep])
 
-  const handleBriefDecision = (decision: BriefDecisionChoice, rationale: string) => {
-    setLocalDecision({ decision, rationale })
+  // Director decision on the brief
+  const [showInfoModal, setShowInfoModal] = useState(false)
+  const [infoReason, setInfoReason] = useState('')
+  const [showAnalysis, setShowAnalysis] = useState(false)
+
+  const handleBriefDecision = (decision: BriefDecisionChoice, reason: string) => {
+    if (decision === 'request_info') {
+      setInfoReason(reason)
+      setShowInfoModal(true)
+      return
+    }
+    setLocalDecision({ decision, reason })
     completeStep('brief')
     if (decision === 'approve') {
-      onProceed?.(request.id, rationale)
-      setActiveStep('review')
+      onProceed?.(request.id, reason)
+      setActiveStep('alignment')
     } else {
-      onReject?.(request.id, rationale)
+      onReject?.(request.id, reason)
     }
   }
 
-  const briefSubmitted =
-    !isNonDirector && completedSteps.includes('brief')
+  const handleSendInfo = (email: { to: string; subject: string; body: string }) => {
+    onRequestInfo?.(request.id, email)
+    setShowInfoModal(false)
+  }
+
+  const briefSubmitted: { decision: BriefDecisionChoice; reason?: string } | undefined = !isDirector
+    ? undefined
+    : request.status === 'On Hold'
       ? {
-          decision: (isRejected ? 'reject' : 'approve') as BriefDecisionChoice,
-          rationale: localDecision?.rationale ?? request.decision?.reason,
+          decision: 'request_info',
+          reason: infoReason || 'More information requested from the vendor.',
         }
-      : undefined
+      : completedSteps.includes('brief')
+        ? {
+            decision: isRejected ? 'reject' : 'approve',
+            reason: localDecision?.reason ?? request.decision?.reason,
+          }
+        : undefined
+
+  // Partnership Admin routing, with a confirmation when it changes an earlier routing
+  const [pendingRouting, setPendingRouting] = useState<AdminRouting | null>(null)
+  const previousRouting = request.adminDecision
+
+  const handleAdminSubmit = (routing: AdminRouting) => {
+    const changed =
+      Boolean(previousRouting) &&
+      (previousRouting?.action !== routing.action || previousRouting?.type !== routing.type)
+    if (changed) {
+      setPendingRouting(routing)
+      return
+    }
+    onRoute?.(request.id, routing)
+  }
+
+  const routingConsequence = (routing: AdminRouting) => {
+    const wasPartnership =
+      previousRouting?.action === 'proceed' && previousRouting.type === 'Partnership'
+    const isPartnership = routing.action === 'proceed' && routing.type === 'Partnership'
+    if (wasPartnership && !isPartnership)
+      return "This will remove the case from the Director's list."
+    if (!wasPartnership && isPartnership) return 'This will send the case to the Director.'
+    return 'This will change where the case is routed.'
+  }
+
+  const routingLabel = (routing: AdminRouting) =>
+    routing.action === 'reject' ? 'Rejected' : (routing.type ?? 'Partnership')
 
   // Status category mapper (matching external table: Pending, In Progress, At Risk, Exited)
   const getStatusCategory = (status: string) => {
@@ -521,7 +592,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [maxStrategyLimitWarning, setMaxStrategyLimitWarning] = useState(false)
 
   // Send Review states
-  const [showSendBothModal, setShowSendBothModal] = useState(false)
+  const [sendTeam, setSendTeam] = useState<'strategy' | 'internal' | null>(null)
   const [showVendorForm, setShowVendorForm] = useState(false)
   const [selectedInternalSendIds, setSelectedInternalSendIds] = useState<string[]>(
     stakeholders.map((s) => s.id)
@@ -538,10 +609,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [reviewToast, setReviewToast] = useState<string | null>(null)
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   const [showJudgementCriteriaModal, setShowJudgementCriteriaModal] = useState(false)
-  // Reviewer tables: edit layout on Internal Review, tracking layout on Approval
-  const requestsSent = completedSteps.includes('review')
+  // Reviewer tables: edit layout until the request is sent, tracking layout on Approval
+  const canEditStrategy = !completedSteps.includes('alignment')
+  const canEditInternal = !completedSteps.includes('canvas')
   const showSent = activeStep === 'approval'
-  const canEditReviewers = !requestsSent
   const internalRequestSent = showSent
   const strategyRequestSent = showSent
 
@@ -685,7 +756,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     isAddModalOpen ||
     deletingStakeholder ||
     maxLimitWarning ||
-    showSendBothModal ||
+    sendTeam ||
+    showAnalysis ||
+    showInfoModal ||
+    pendingRouting ||
     showVendorForm ||
     isAddStrategyModalOpen ||
     deletingStrategyMember ||
@@ -706,6 +780,493 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     }
   }, [isAnyModalOpen])
 
+  const sentChip = (
+    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
+      <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+      Request sent
+    </span>
+  )
+
+  const sendButtonClass = (disabled: boolean) =>
+    `px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-xs transition shrink-0 flex items-center gap-1.5 ${
+      disabled
+        ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+        : 'bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer'
+    }`
+
+  const stepHeader = (title: string, subtitle: string, action?: React.ReactNode) => (
+    <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base font-semibold text-[#0d212c]">{title}</h2>
+        <p className="text-xs text-[#64748b]">{subtitle}</p>
+      </div>
+      {action}
+    </div>
+  )
+
+  const internalSection = (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2.5">
+          <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">Internal Interest</h3>
+          {/* Subheading data in custom tooltip via i button */}
+          <div className="relative group inline-flex items-center">
+            <button
+              type="button"
+              className="text-slate-400 hover:text-slate-600 transition cursor-pointer flex items-center"
+              aria-label="Info"
+            >
+              <Info className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl text-center">
+              Select up to 5 internal stakeholders to request their interest in this partnership.
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0d212c]" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {canEditInternal && (
+        <p className="text-xs text-[#64748b] -mt-2 pl-[30px] flex items-center gap-2 flex-wrap">
+          <span>Reviewers answer 5 short questions.</span>
+          <button
+            type="button"
+            onClick={() => setShowQuestionnaireModal(true)}
+            className="inline-flex items-center gap-1 font-medium text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer"
+          >
+            <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+            Preview questions
+          </button>
+        </p>
+      )}
+
+      {/* Table 1: Internal Interest Stakeholders */}
+      <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
+                <th className="py-3 px-4">Name</th>
+                {internalRequestSent ? (
+                  <>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Deadline</th>
+                    <th className="py-3 px-4">Decision</th>
+                    <th className="py-3 px-4">Type</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="py-3 px-4">Recommended</th>
+                    <th className="py-3 px-4">Expertise</th>
+                    <th className="py-3 px-4">Type</th>
+                    {canEditInternal && <th className="py-3 px-4 text-right">Actions</th>}
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e2e8f0]">
+              {stakeholders.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-[#64748b]">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Users className="w-6 h-6 text-slate-300" />
+                      <div className="text-xs font-medium text-[#0d212c]">
+                        No respondents added yet
+                      </div>
+                      <div className="text-xs text-[#64748b]">
+                        Click &quot;+ Add Respondant&quot; to assign review team members.
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                stakeholders.map((person, idx) => (
+                  <tr key={person.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
+                          style={{
+                            backgroundColor: person.avatarColorBg,
+                            color: person.avatarColorText,
+                          }}
+                        >
+                          {person.initials}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
+                            {person.name}
+                          </span>
+                          <span className="text-[11px] font-medium text-[#64748b] truncate">
+                            {person.role}
+                            {person.department ? ` • ${person.department}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {internalRequestSent ? (
+                      <>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {renderRequestStatusBadge(
+                            person.status ||
+                              (idx === 0 ? 'Completed' : idx === 1 ? 'In Progress' : 'Pending')
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
+                            {person.deadline || '5 days'}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {renderDecisionBadge(
+                            person.decision !== undefined
+                              ? person.decision
+                              : idx === 0
+                                ? 'Proceed'
+                                : '-'
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {person.source === 'manual' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                              <UserPlus className="w-3 h-3 text-slate-500" />
+                              <span>Manually Added</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
+                              <span>AI Recommended</span>
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setViewingResponseMember(person)}
+                            title="View member response"
+                            aria-label="View member response"
+                            className="p-1.5 text-slate-500 hover:text-[#008a8a] hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
+                          <span className="text-[#334155] leading-relaxed">
+                            {person.whySuggested ||
+                              'Selected based on clinical domain expertise and alignment.'}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
+                          <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
+                            {person.expertise}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {person.source === 'manual' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                              <UserPlus className="w-3 h-3 text-slate-500" />
+                              <span>Manually Added</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
+                              <span>AI Recommended</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {canEditInternal && (
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDeleteStakeholder(person)}
+                                title="Delete respondent"
+                                aria-label="Delete respondent"
+                                className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Table 1 Bottom Actions (hidden when request is sent) */}
+      {canEditInternal && (
+        <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
+          <div className="relative group inline-block shrink-0">
+            <button
+              type="button"
+              disabled={stakeholders.length >= 5}
+              onClick={handleOpenAddStakeholder}
+              className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
+                stakeholders.length >= 5
+                  ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
+                  : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
+              }`}
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add Respondant</span>
+            </button>
+            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
+              {stakeholders.length >= 5
+                ? 'Maximum 5 respondents reached'
+                : 'Add up to 5 respondents'}
+              <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
+            </div>
+          </div>
+          <span className="text-xs text-[#64748b]">You can add up to 5 respondents.</span>
+        </div>
+      )}
+    </div>
+  )
+
+  const strategySection = (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2.5">
+          <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">Strategy Team</h3>
+          {/* Subheading data in custom tooltip via i button */}
+          <div className="relative group inline-flex items-center">
+            <button
+              type="button"
+              className="text-slate-400 hover:text-slate-600 transition cursor-pointer flex items-center"
+              aria-label="Info"
+            >
+              <Info className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl text-center">
+              Select the strategy team members to review this partnership.
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0d212c]" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {canEditStrategy && (
+        <p className="text-xs text-[#64748b] -mt-2 pl-[30px] flex items-center gap-2 flex-wrap">
+          <span>Reviewers rate 7 criteria and give a final decision.</span>
+          <button
+            type="button"
+            onClick={() => setShowJudgementCriteriaModal(true)}
+            className="inline-flex items-center gap-1 font-medium text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer"
+          >
+            <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+            Preview criteria
+          </button>
+        </p>
+      )}
+
+      {/* Table 2: Strategy Team Members */}
+      <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
+                <th className="py-3 px-4">Name</th>
+                {strategyRequestSent ? (
+                  <>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Deadline</th>
+                    <th className="py-3 px-4">Decision</th>
+                    <th className="py-3 px-4">Type</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="py-3 px-4">Recommended</th>
+                    <th className="py-3 px-4">Expertise</th>
+                    <th className="py-3 px-4">Type</th>
+                    {canEditStrategy && <th className="py-3 px-4 text-right">Actions</th>}
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e2e8f0]">
+              {strategyMembers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-[#64748b]">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Users className="w-6 h-6 text-slate-300" />
+                      <div className="text-xs font-medium text-[#0d212c]">
+                        No strategy members added yet
+                      </div>
+                      <div className="text-xs text-[#64748b]">
+                        Click &quot;+ Add Member&quot; to assign strategy reviewers.
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                strategyMembers.map((person) => (
+                  <tr key={person.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
+                          style={{
+                            backgroundColor: person.avatarColorBg,
+                            color: person.avatarColorText,
+                          }}
+                        >
+                          {person.initials}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
+                            {person.name}
+                          </span>
+                          <span className="text-[11px] font-medium text-[#64748b] truncate">
+                            {person.role}
+                            {person.department ? ` • ${person.department}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {strategyRequestSent ? (
+                      <>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {renderRequestStatusBadge(person.status || 'In Progress')}
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
+                            {person.deadline || '2-3 days'}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {renderDecisionBadge(person.decision)}
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {person.source === 'manual' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                              <UserPlus className="w-3 h-3 text-slate-500" />
+                              <span>Manually Added</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
+                              <span>AI Recommended</span>
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setViewingResponseMember(person)}
+                            title="View member response"
+                            aria-label="View member response"
+                            className="p-1.5 text-slate-500 hover:text-[#008a8a] hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
+                          <span className="text-[#334155] leading-relaxed">
+                            {person.whySuggested ||
+                              'Selected based on market strategy alignment and expansion feasibility.'}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
+                          <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
+                            {person.expertise}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {person.source === 'manual' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                              <UserPlus className="w-3 h-3 text-slate-500" />
+                              <span>Manually Added</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
+                              <span>AI Recommended</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {canEditStrategy && (
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDeleteStrategyMember(person)}
+                                title="Delete respondent"
+                                aria-label="Delete respondent"
+                                className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Table 2 Bottom Actions (hidden when request is sent) */}
+      {canEditStrategy && (
+        <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
+          <div className="relative group inline-block shrink-0">
+            <button
+              type="button"
+              disabled={strategyMembers.length >= 1}
+              onClick={handleOpenAddStrategyMember}
+              className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
+                strategyMembers.length >= 1
+                  ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
+                  : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
+              }`}
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add Member</span>
+            </button>
+            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
+              {strategyMembers.length >= 1 ? 'Only 1 member for now' : 'Add 1 member'}
+              <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
+            </div>
+          </div>
+          <span className="text-xs text-[#64748b]">You can add 1 member for now.</span>
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <div className={`flex flex-col gap-6 w-full text-[#0d212c] ${className}`.trim()}>
       {/* Top Back Link */}
@@ -717,6 +1278,30 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Partnership Requests</span>
         </button>
+      </div>
+
+      {/* Tabs sit directly under the back link */}
+      <div role="tablist" className="flex items-center gap-8 border-b border-[#e2e8f0] pb-0">
+        {(
+          [
+            { id: 'overview', label: 'Overview' },
+            { id: 'review', label: 'Review' },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
+              activeTab === tab.id
+                ? 'text-[#36c0c9] font-semibold border-b-2 border-[#36c0c9]'
+                : 'text-[#64748b] hover:text-[#0d212c] border-b-2 border-transparent'
+            }`}
+          >
+            <span>{tab.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Header Card — Status matches outside table, Submitted on moved to bottom right of Overview */}
@@ -795,6 +1380,32 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       </div>
 
+      {/* On hold: waiting for the vendor to send more information */}
+      {request.status === 'On Hold' && (
+        <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 flex items-start justify-between gap-4 flex-wrap text-xs sm:text-sm animate-in fade-in">
+          <div className="flex items-start gap-3">
+            <Clock className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <div className="font-semibold">On hold: waiting for the vendor</div>
+              <div className="mt-1 text-xs opacity-90 leading-relaxed">
+                {request.holdInfo
+                  ? `Information requested on ${request.holdInfo.requestedOn}. The case continues once the vendor replies.`
+                  : 'The case continues once the vendor replies.'}
+              </div>
+            </div>
+          </div>
+          {isDirector && (
+            <button
+              type="button"
+              onClick={() => onResume?.(request.id)}
+              className="px-4 py-2 rounded-lg bg-white border border-amber-300 text-amber-800 hover:bg-amber-100 font-medium text-xs sm:text-sm cursor-pointer transition"
+            >
+              Mark info received
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Decision Status Banner (if decision has already been recorded) */}
       {request.decision && (
         <div
@@ -826,30 +1437,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
       {/* LARGE WHITE BOX ENCLOSING TABS AND ALL CONTENT */}
       <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col gap-6">
-        {/* Tabs Bar inside the large white box */}
-        <div role="tablist" className="flex items-center gap-8 border-b border-[#f1f5f9] pb-0">
-          {(
-            [
-              { id: 'overview', label: 'Overview' },
-              { id: 'review', label: 'Review' },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`pb-3.5 text-sm font-medium transition-all relative cursor-pointer ${
-                activeTab === tab.id
-                  ? 'text-[#36c0c9] font-semibold border-b-2 border-[#36c0c9]'
-                  : 'text-[#64748b] hover:text-[#0d212c] border-b-2 border-transparent'
-              }`}
-            >
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="flex flex-col gap-8 w-full animate-in fade-in duration-150">
@@ -1109,605 +1696,144 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             ref={stepperRef}
             className="flex flex-col gap-8 w-full animate-in fade-in duration-200 scroll-mt-4"
           >
-            <WorkflowStepper steps={stepperSteps} activeId={activeStep} onSelect={goToStep} />
+            {stepperSteps.length > 1 && (
+              <WorkflowStepper steps={stepperSteps} activeId={activeStep} onSelect={goToStep} />
+            )}
 
             <div
               key={activeStep}
               className="animate-in fade-in slide-in-from-bottom-2 duration-300"
             >
-              {/* STEP: Agent Actions */}
-              {activeStep === 'agent' && (
-                <AgentActions
-                  request={request}
-                  animate={playAgent}
-                  onComplete={handleAgentComplete}
-                />
-              )}
-
-              {/* STEP: Initial Assessment Brief */}
-              {activeStep === 'brief' && (
-                <AssessmentBrief
-                  request={request}
-                  onViewVendorResponse={() => setShowVendorForm(true)}
-                >
-                  {isNonDirector ? (
-                    <div className="flex items-center justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={() => goToStep('agent')}
-                        className="px-5 py-2.5 rounded-xl border border-[#e2e8f0] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-2"
-                      >
-                        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-                        Back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          completeStep('brief')
-                          setActiveStep(isInternalTeam ? 'questionnaire' : 'judgement')
-                        }}
-                        className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
-                      >
-                        {isInternalTeam ? 'Continue to Questionnaire' : 'Continue to Judgement'}
-                        <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                      </button>
-                    </div>
-                  ) : (
-                    <BriefDecision
-                      agentRecommendation={request.agentRecommendation?.status}
-                      onSubmit={handleBriefDecision}
-                      onBack={() => goToStep('agent')}
-                      submitted={briefSubmitted}
-                    />
-                  )}
-                </AssessmentBrief>
-              )}
-
-              {/* STEPS: Internal Review and Approval (Director) */}
-              {!isNonDirector &&
-                (activeStep === 'review' || activeStep === 'approval') &&
-                (activeStep === 'review' && !reviewersReady ? (
-                  <ReviewersLoading
-                    internalCount={stakeholders.length}
-                    strategyCount={strategyMembers.length}
-                    onComplete={() => setReviewersReady(true)}
+              {/* STEP: Initial Assessment Brief (agent run first, then the brief) */}
+              {activeStep === 'brief' &&
+                (!runDone ? (
+                  <AgentActions
+                    request={request}
+                    actions={analysisActions}
+                    animate
+                    onComplete={handleRunComplete}
                   />
                 ) : (
-                  <div className="flex flex-col gap-6 w-full animate-in fade-in duration-150">
-                    {/* Header: Title reduced by 2 units and reduced subtitle */}
-                    <div className="flex items-start justify-between gap-4 flex-wrap">
-                      <div className="flex flex-col gap-1">
-                        <h2 className="text-base font-semibold text-[#0d212c]">
-                          {showSent ? 'Approval' : 'Review & Alignment'}
-                        </h2>
-                        <p className="text-xs text-[#64748b]">
-                          {showSent
-                            ? 'Track each reviewer’s response. This updates as reviewers respond.'
-                            : 'Choose the reviewers for each team, then send one request to both.'}
-                        </p>
-                      </div>
-                      {!showSent &&
-                        (requestsSent ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
-                            <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                            Requests sent to both teams
-                          </span>
-                        ) : (
+                  <AssessmentBrief
+                    request={request}
+                    actions={analysisActions}
+                    hideContact={isNonDirector}
+                    onViewVendorResponse={() => setShowVendorForm(true)}
+                    onOpenAnalysis={() => setShowAnalysis(true)}
+                    decision={
+                      isDirector ? (
+                        <BriefDecision
+                          key={request.status === 'On Hold' ? 'hold' : 'open'}
+                          agentRecommendation={request.agentRecommendation?.status}
+                          onSubmit={handleBriefDecision}
+                          submitted={briefSubmitted}
+                        />
+                      ) : isAdmin ? (
+                        <AdminDecision
+                          key={request.adminDecision ? 'decided' : 'open'}
+                          typeConfidence={getTypeConfidence(request)}
+                          submitted={request.adminDecision}
+                          canEdit={!hasDirectorDecided(request)}
+                          onSubmit={handleAdminSubmit}
+                        />
+                      ) : undefined
+                    }
+                    footer={
+                      isNonDirector ? (
+                        <div className="flex items-center justify-end">
                           <button
                             type="button"
-                            disabled={stakeholders.length === 0 || strategyMembers.length === 0}
-                            onClick={() => setShowSendBothModal(true)}
-                            className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-xs transition shrink-0 flex items-center gap-1.5 ${
-                              stakeholders.length === 0 || strategyMembers.length === 0
-                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                : 'bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer'
-                            }`}
+                            onClick={() => {
+                              completeStep('brief')
+                              setActiveStep(isInternalTeam ? 'questionnaire' : 'judgement')
+                            }}
+                            className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
                           >
-                            <Send className="w-4 h-4" aria-hidden="true" />
-                            <span>Send Request to Both Teams</span>
+                            {isInternalTeam ? 'Continue to Questionnaire' : 'Continue to Judgement'}
+                            <ArrowRight className="w-4 h-4" aria-hidden="true" />
                           </button>
-                        ))}
-                    </div>
-
-                    {/* STEP 1: Internal Interest (No outer bounding box) */}
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center justify-between gap-4 flex-wrap">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-semibold text-[11px] shrink-0">
-                            1
-                          </div>
-                          <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">
-                            Internal Interest
-                          </h3>
-                          {/* Subheading data in custom tooltip via i button */}
-                          <div className="relative group inline-flex items-center">
-                            <button
-                              type="button"
-                              className="text-slate-400 hover:text-slate-600 transition cursor-pointer flex items-center"
-                              aria-label="Info"
-                            >
-                              <Info className="w-3.5 h-3.5 text-slate-400" />
-                            </button>
-                            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl text-center">
-                              Select up to 5 internal stakeholders to request their interest in this
-                              partnership.
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0d212c]" />
-                            </div>
-                          </div>
                         </div>
-                      </div>
+                      ) : undefined
+                    }
+                  />
+                ))}
 
-                      {canEditReviewers && (
-                        <p className="text-xs text-[#64748b] -mt-2 pl-[30px] flex items-center gap-2 flex-wrap">
-                          <span>Reviewers answer 5 short questions.</span>
-                          <button
-                            type="button"
-                            onClick={() => setShowQuestionnaireModal(true)}
-                            className="inline-flex items-center gap-1 font-medium text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-                            Preview questions
-                          </button>
-                        </p>
-                      )}
-
-                      {/* Table 1: Internal Interest Stakeholders */}
-                      <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
-                        <div className="overflow-x-auto w-full">
-                          <table className="w-full text-left border-collapse">
-                            <thead>
-                              <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
-                                <th className="py-3 px-4">Name</th>
-                                {internalRequestSent ? (
-                                  <>
-                                    <th className="py-3 px-4">Status</th>
-                                    <th className="py-3 px-4">Deadline</th>
-                                    <th className="py-3 px-4">Decision</th>
-                                    <th className="py-3 px-4">Type</th>
-                                    <th className="py-3 px-4 text-right">Actions</th>
-                                  </>
-                                ) : (
-                                  <>
-                                    <th className="py-3 px-4">Recommended</th>
-                                    <th className="py-3 px-4">Expertise</th>
-                                    <th className="py-3 px-4">Type</th>
-                                    {canEditReviewers && (
-                                      <th className="py-3 px-4 text-right">Actions</th>
-                                    )}
-                                  </>
-                                )}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#e2e8f0]">
-                              {stakeholders.length === 0 ? (
-                                <tr>
-                                  <td colSpan={6} className="py-12 text-center text-[#64748b]">
-                                    <div className="flex flex-col items-center justify-center gap-2">
-                                      <Users className="w-6 h-6 text-slate-300" />
-                                      <div className="text-xs font-medium text-[#0d212c]">
-                                        No respondents added yet
-                                      </div>
-                                      <div className="text-xs text-[#64748b]">
-                                        Click &quot;+ Add Respondant&quot; to assign review team
-                                        members.
-                                      </div>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ) : (
-                                stakeholders.map((person, idx) => (
-                                  <tr
-                                    key={person.id}
-                                    className="hover:bg-slate-50/70 transition-colors"
-                                  >
-                                    <td className="py-3.5 px-4">
-                                      <div className="flex items-center gap-3">
-                                        <div
-                                          className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
-                                          style={{
-                                            backgroundColor: person.avatarColorBg,
-                                            color: person.avatarColorText,
-                                          }}
-                                        >
-                                          {person.initials}
-                                        </div>
-                                        <div className="flex flex-col min-w-0">
-                                          <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
-                                            {person.name}
-                                          </span>
-                                          <span className="text-[11px] font-medium text-[#64748b] truncate">
-                                            {person.role}
-                                            {person.department ? ` • ${person.department}` : ''}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </td>
-
-                                    {internalRequestSent ? (
-                                      <>
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          {renderRequestStatusBadge(
-                                            person.status ||
-                                              (idx === 0
-                                                ? 'Completed'
-                                                : idx === 1
-                                                  ? 'In Progress'
-                                                  : 'Pending')
-                                          )}
-                                        </td>
-
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
-                                            {person.deadline || '5 days'}
-                                          </span>
-                                        </td>
-
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          {renderDecisionBadge(
-                                            person.decision !== undefined
-                                              ? person.decision
-                                              : idx === 0
-                                                ? 'Proceed'
-                                                : '-'
-                                          )}
-                                        </td>
-
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          {person.source === 'manual' ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                              <UserPlus className="w-3 h-3 text-slate-500" />
-                                              <span>Manually Added</span>
-                                            </span>
-                                          ) : (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
-                                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
-                                              <span>AI Recommended</span>
-                                            </span>
-                                          )}
-                                        </td>
-
-                                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                          <button
-                                            type="button"
-                                            onClick={() => setViewingResponseMember(person)}
-                                            title="View member response"
-                                            aria-label="View member response"
-                                            className="p-1.5 text-slate-500 hover:text-[#008a8a] hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                                          >
-                                            <FileText className="w-4 h-4" />
-                                          </button>
-                                        </td>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
-                                          <span className="text-[#334155] leading-relaxed">
-                                            {person.whySuggested ||
-                                              'Selected based on clinical domain expertise and alignment.'}
-                                          </span>
-                                        </td>
-
-                                        <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
-                                          <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
-                                            {person.expertise}
-                                          </span>
-                                        </td>
-
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          {person.source === 'manual' ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                              <UserPlus className="w-3 h-3 text-slate-500" />
-                                              <span>Manually Added</span>
-                                            </span>
-                                          ) : (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
-                                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
-                                              <span>AI Recommended</span>
-                                            </span>
-                                          )}
-                                        </td>
-
-                                        {canEditReviewers && (
-                                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                            <div className="inline-flex items-center gap-2 justify-end">
-                                              <button
-                                                type="button"
-                                                onClick={() => handleOpenDeleteStakeholder(person)}
-                                                title="Delete respondent"
-                                                aria-label="Delete respondent"
-                                                className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
-                                              >
-                                                <Trash2 className="w-4 h-4" />
-                                              </button>
-                                            </div>
-                                          </td>
-                                        )}
-                                      </>
-                                    )}
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* Table 1 Bottom Actions (hidden when request is sent) */}
-                      {canEditReviewers && (
-                        <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
-                          <div className="relative group inline-block shrink-0">
-                            <button
-                              type="button"
-                              disabled={stakeholders.length >= 5}
-                              onClick={handleOpenAddStakeholder}
-                              className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
-                                stakeholders.length >= 5
-                                  ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
-                                  : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
-                              }`}
-                            >
-                              <Plus className="w-4 h-4 stroke-[2.5]" />
-                              <span>Add Respondant</span>
-                            </button>
-                            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
-                              {stakeholders.length >= 5
-                                ? 'Maximum 5 respondents reached'
-                                : 'Add up to 5 respondents'}
-                              <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
-                            </div>
-                          </div>
-                          <span className="text-xs text-[#64748b]">
-                            You can add up to 5 respondents.
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Horizontal Line Separator */}
-                    <div className="h-[1px] bg-[#e2e8f0] w-full my-4" />
-
-                    {/* STEP 2: Strategy Team (No outer bounding box, shows only 1 person by default) */}
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center justify-between gap-4 flex-wrap">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-5 h-5 rounded-full bg-[#36c0c9] text-white flex items-center justify-center font-semibold text-[11px] shrink-0">
-                            2
-                          </div>
-                          <h3 className="text-sm sm:text-base font-semibold text-[#0d212c]">
-                            Strategy Team
-                          </h3>
-                          {/* Subheading data in custom tooltip via i button */}
-                          <div className="relative group inline-flex items-center">
-                            <button
-                              type="button"
-                              className="text-slate-400 hover:text-slate-600 transition cursor-pointer flex items-center"
-                              aria-label="Info"
-                            >
-                              <Info className="w-3.5 h-3.5 text-slate-400" />
-                            </button>
-                            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl text-center">
-                              Select the strategy team members to review this partnership.
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0d212c]" />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {canEditReviewers && (
-                        <p className="text-xs text-[#64748b] -mt-2 pl-[30px] flex items-center gap-2 flex-wrap">
-                          <span>Reviewers rate 7 criteria and give a final decision.</span>
-                          <button
-                            type="button"
-                            onClick={() => setShowJudgementCriteriaModal(true)}
-                            className="inline-flex items-center gap-1 font-medium text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-                            Preview criteria
-                          </button>
-                        </p>
-                      )}
-
-                      {/* Table 2: Strategy Team Members */}
-                      <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
-                        <div className="overflow-x-auto w-full">
-                          <table className="w-full text-left border-collapse">
-                            <thead>
-                              <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
-                                <th className="py-3 px-4">Name</th>
-                                {strategyRequestSent ? (
-                                  <>
-                                    <th className="py-3 px-4">Status</th>
-                                    <th className="py-3 px-4">Deadline</th>
-                                    <th className="py-3 px-4">Decision</th>
-                                    <th className="py-3 px-4">Type</th>
-                                    <th className="py-3 px-4 text-right">Actions</th>
-                                  </>
-                                ) : (
-                                  <>
-                                    <th className="py-3 px-4">Recommended</th>
-                                    <th className="py-3 px-4">Expertise</th>
-                                    <th className="py-3 px-4">Type</th>
-                                    {canEditReviewers && (
-                                      <th className="py-3 px-4 text-right">Actions</th>
-                                    )}
-                                  </>
-                                )}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#e2e8f0]">
-                              {strategyMembers.length === 0 ? (
-                                <tr>
-                                  <td colSpan={6} className="py-12 text-center text-[#64748b]">
-                                    <div className="flex flex-col items-center justify-center gap-2">
-                                      <Users className="w-6 h-6 text-slate-300" />
-                                      <div className="text-xs font-medium text-[#0d212c]">
-                                        No strategy members added yet
-                                      </div>
-                                      <div className="text-xs text-[#64748b]">
-                                        Click &quot;+ Add Member&quot; to assign strategy reviewers.
-                                      </div>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ) : (
-                                strategyMembers.map((person) => (
-                                  <tr
-                                    key={person.id}
-                                    className="hover:bg-slate-50/70 transition-colors"
-                                  >
-                                    <td className="py-3.5 px-4">
-                                      <div className="flex items-center gap-3">
-                                        <div
-                                          className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs shrink-0"
-                                          style={{
-                                            backgroundColor: person.avatarColorBg,
-                                            color: person.avatarColorText,
-                                          }}
-                                        >
-                                          {person.initials}
-                                        </div>
-                                        <div className="flex flex-col min-w-0">
-                                          <span className="text-xs sm:text-sm font-semibold text-[#0d212c] truncate">
-                                            {person.name}
-                                          </span>
-                                          <span className="text-[11px] font-medium text-[#64748b] truncate">
-                                            {person.role}
-                                            {person.department ? ` • ${person.department}` : ''}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </td>
-
-                                    {strategyRequestSent ? (
-                                      <>
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          {renderRequestStatusBadge(person.status || 'In Progress')}
-                                        </td>
-
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
-                                            {person.deadline || '2-3 days'}
-                                          </span>
-                                        </td>
-
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          {renderDecisionBadge(person.decision)}
-                                        </td>
-
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          {person.source === 'manual' ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                              <UserPlus className="w-3 h-3 text-slate-500" />
-                                              <span>Manually Added</span>
-                                            </span>
-                                          ) : (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
-                                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
-                                              <span>AI Recommended</span>
-                                            </span>
-                                          )}
-                                        </td>
-
-                                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                          <button
-                                            type="button"
-                                            onClick={() => setViewingResponseMember(person)}
-                                            title="View member response"
-                                            aria-label="View member response"
-                                            className="p-1.5 text-slate-500 hover:text-[#008a8a] hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                                          >
-                                            <FileText className="w-4 h-4" />
-                                          </button>
-                                        </td>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <td className="py-3.5 px-4 text-xs text-[#0d212c] max-w-sm">
-                                          <span className="text-[#334155] leading-relaxed">
-                                            {person.whySuggested ||
-                                              'Selected based on market strategy alignment and expansion feasibility.'}
-                                          </span>
-                                        </td>
-
-                                        <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
-                                          <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
-                                            {person.expertise}
-                                          </span>
-                                        </td>
-
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
-                                          {person.source === 'manual' ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                              <UserPlus className="w-3 h-3 text-slate-500" />
-                                              <span>Manually Added</span>
-                                            </span>
-                                          ) : (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
-                                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
-                                              <span>AI Recommended</span>
-                                            </span>
-                                          )}
-                                        </td>
-
-                                        {canEditReviewers && (
-                                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                            <div className="inline-flex items-center gap-2 justify-end">
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  handleOpenDeleteStrategyMember(person)
-                                                }
-                                                title="Delete respondent"
-                                                aria-label="Delete respondent"
-                                                className="p-1.5 text-slate-400 hover:text-red-600 transition cursor-pointer"
-                                              >
-                                                <Trash2 className="w-4 h-4" />
-                                              </button>
-                                            </div>
-                                          </td>
-                                        )}
-                                      </>
-                                    )}
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* Table 2 Bottom Actions (hidden when request is sent) */}
-                      {canEditReviewers && (
-                        <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
-                          <div className="relative group inline-block shrink-0">
-                            <button
-                              type="button"
-                              disabled={strategyMembers.length >= 1}
-                              onClick={handleOpenAddStrategyMember}
-                              className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
-                                strategyMembers.length >= 1
-                                  ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
-                                  : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
-                              }`}
-                            >
-                              <Plus className="w-4 h-4 stroke-[2.5]" />
-                              <span>Add Member</span>
-                            </button>
-                            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
-                              {strategyMembers.length >= 1
-                                ? 'Only 1 member for now'
-                                : 'Add 1 member'}
-                              <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
-                            </div>
-                          </div>
-                          <span className="text-xs text-[#64748b]">
-                            You can add 1 member for now.
-                          </span>
-                        </div>
-                      )}
-                    </div>
+              {/* STEP: Strategic Alignment (Director) */}
+              {isDirector &&
+                activeStep === 'alignment' &&
+                (!readyTeams.strategy ? (
+                  <ReviewersLoading
+                    team="strategy"
+                    count={strategyMembers.length}
+                    onComplete={() => setReadyTeams((r) => ({ ...r, strategy: true }))}
+                  />
+                ) : (
+                  <div className="flex flex-col gap-6 w-full">
+                    {stepHeader(
+                      'Strategic Alignment',
+                      'Choose the Strategy Team reviewer, then send the request.',
+                      canEditStrategy ? (
+                        <button
+                          type="button"
+                          disabled={strategyMembers.length === 0}
+                          onClick={() => setSendTeam('strategy')}
+                          className={sendButtonClass(strategyMembers.length === 0)}
+                        >
+                          <Send className="w-4 h-4" aria-hidden="true" />
+                          <span>Send Request</span>
+                        </button>
+                      ) : (
+                        sentChip
+                      )
+                    )}
+                    {strategySection}
                   </div>
                 ))}
+
+              {/* STEP: Internal Canvas (Director) */}
+              {isDirector &&
+                activeStep === 'canvas' &&
+                (!readyTeams.internal ? (
+                  <ReviewersLoading
+                    team="internal"
+                    count={stakeholders.length}
+                    onComplete={() => setReadyTeams((r) => ({ ...r, internal: true }))}
+                  />
+                ) : (
+                  <div className="flex flex-col gap-6 w-full">
+                    {stepHeader(
+                      'Internal Canvas',
+                      'Choose the Internal Interest reviewers, then send the request.',
+                      canEditInternal ? (
+                        <button
+                          type="button"
+                          disabled={stakeholders.length === 0}
+                          onClick={() => setSendTeam('internal')}
+                          className={sendButtonClass(stakeholders.length === 0)}
+                        >
+                          <Send className="w-4 h-4" aria-hidden="true" />
+                          <span>Send Request</span>
+                        </button>
+                      ) : (
+                        sentChip
+                      )
+                    )}
+                    {internalSection}
+                  </div>
+                ))}
+
+              {/* STEP: Approval (Director) */}
+              {isDirector && activeStep === 'approval' && (
+                <div className="flex flex-col gap-6 w-full">
+                  {stepHeader(
+                    'Approval',
+                    'Track each reviewer’s response. This updates as reviewers respond.'
+                  )}
+                  {strategySection}
+                  <div className="h-[1px] bg-[#e2e8f0] w-full my-2" />
+                  {internalSection}
+                </div>
+              )}
 
               {/* STEP: Questionnaire (Internal Interest Team) */}
               {isInternalTeam && activeStep === 'questionnaire' && (
@@ -1761,6 +1887,81 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       </div>
 
       {/* POPUP MODALS — Designed strictly matching SOW Generator App */}
+
+      {/* AI ANALYSIS DRAWER */}
+      {showAnalysis && (
+        <AnalysisDrawer
+          request={request}
+          actions={analysisActions}
+          onClose={() => setShowAnalysis(false)}
+        />
+      )}
+
+      {/* REQUEST MORE INFO EMAIL */}
+      {showInfoModal && (
+        <RequestInfoModal
+          request={request}
+          reason={infoReason}
+          senderName={userProfile?.name ?? 'Director'}
+          onSend={handleSendInfo}
+          onClose={() => setShowInfoModal(false)}
+        />
+      )}
+
+      {/* CONFIRM CHANGING AN EARLIER ROUTING (Partnership Admin) */}
+      {pendingRouting && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-routing-title"
+            className="relative bg-white rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6" aria-hidden="true" />
+              </div>
+              <h3 id="confirm-routing-title" className="text-lg font-semibold text-[#0d212c]">
+                Change how this case is routed?
+              </h3>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[#64748b]">From</span>
+                <span className="font-semibold text-[#0d212c]">
+                  {previousRouting ? routingLabel(previousRouting) : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[#64748b]">To</span>
+                <span className="font-semibold text-[#0d212c]">{routingLabel(pendingRouting)}</span>
+              </div>
+            </div>
+            <p className="text-sm text-[#475569] leading-relaxed">
+              {routingConsequence(pendingRouting)}
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setPendingRouting(null)}
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 cursor-pointer transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onRoute?.(request.id, pendingRouting)
+                  setPendingRouting(null)
+                }}
+                className="px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold shadow-xs cursor-pointer transition"
+              >
+                Confirm change
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ADD RESPONDANT MODAL */}
       {isAddModalOpen && (
@@ -2017,12 +2218,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       )}
 
       {/* SEND REVIEW REQUESTS TO BOTH TEAMS */}
-      {showSendBothModal && (
+      {sendTeam && (
         <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="send-both-title"
+            aria-labelledby="send-team-title"
             className="relative bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-6 animate-in fade-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between gap-3">
@@ -2031,17 +2232,19 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <Send className="w-5 h-5 -rotate-12" />
                 </div>
                 <div>
-                  <h3 id="send-both-title" className="text-lg font-semibold text-[#0d212c]">
-                    Send Review Requests
+                  <h3 id="send-team-title" className="text-lg font-semibold text-[#0d212c]">
+                    {sendTeam === 'strategy'
+                      ? 'Send to the Strategy Team'
+                      : 'Send to Internal Interest'}
                   </h3>
                   <p className="text-xs text-[#64748b] mt-0.5">
-                    Both teams are notified at the same time.
+                    The reviewers are notified as soon as you send it.
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setShowSendBothModal(false)}
-                aria-label="Close send review requests"
+                onClick={() => setSendTeam(null)}
+                aria-label="Close send review request"
                 className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -2071,93 +2274,96 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   due: '2-3 business days',
                 },
               ] as const
-            ).map((team) => (
-              <div key={team.key} className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <h4 className="text-sm font-semibold text-[#0d212c]">
-                    {team.title}{' '}
-                    <span className="font-normal text-[#64748b]">
-                      ({team.selected.length} selected)
+            )
+              .filter((team) => team.key === sendTeam)
+              .map((team) => (
+                <div key={team.key} className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <h4 className="text-sm font-semibold text-[#0d212c]">
+                      {team.title}{' '}
+                      <span className="font-normal text-[#64748b]">
+                        ({team.selected.length} selected)
+                      </span>
+                    </h4>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-[#64748b]">
+                      <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
+                      Response due in {team.due}
                     </span>
-                  </h4>
-                  <span className="inline-flex items-center gap-1.5 text-xs text-[#64748b]">
-                    <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
-                    Response due in {team.due}
-                  </span>
-                </div>
+                  </div>
 
-                <div className="border border-[#e2e8f0] rounded-xl divide-y divide-[#f1f5f9] bg-white">
-                  {team.people.map((person) => {
-                    const isChecked = team.selected.includes(person.id)
-                    return (
-                      <div
-                        key={person.id}
-                        onClick={() => team.toggle(person.id)}
-                        className="flex items-center justify-between p-3 hover:bg-slate-50 transition cursor-pointer select-none"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            role="checkbox"
-                            aria-checked={isChecked}
-                            aria-label={person.name}
-                            tabIndex={0}
-                            className={`w-5 h-5 rounded-md border flex items-center justify-center transition shrink-0 ${
-                              isChecked
-                                ? 'bg-[#36c0c9] border-[#36c0c9] text-white'
-                                : 'border-slate-300 bg-white'
-                            }`}
-                          >
-                            {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  <div className="border border-[#e2e8f0] rounded-xl divide-y divide-[#f1f5f9] bg-white">
+                    {team.people.map((person) => {
+                      const isChecked = team.selected.includes(person.id)
+                      return (
+                        <div
+                          key={person.id}
+                          onClick={() => team.toggle(person.id)}
+                          className="flex items-center justify-between p-3 hover:bg-slate-50 transition cursor-pointer select-none"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              role="checkbox"
+                              aria-checked={isChecked}
+                              aria-label={person.name}
+                              tabIndex={0}
+                              className={`w-5 h-5 rounded-md border flex items-center justify-center transition shrink-0 ${
+                                isChecked
+                                  ? 'bg-[#36c0c9] border-[#36c0c9] text-white'
+                                  : 'border-slate-300 bg-white'
+                              }`}
+                            >
+                              {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            </div>
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center font-semibold text-[11px] shrink-0"
+                              style={{
+                                backgroundColor: person.avatarColorBg,
+                                color: person.avatarColorText,
+                              }}
+                            >
+                              {person.initials}
+                            </div>
+                            <span className="text-xs sm:text-sm font-medium text-[#0d212c] truncate">
+                              {person.name}
+                            </span>
                           </div>
-                          <div
-                            className="w-7 h-7 rounded-full flex items-center justify-center font-semibold text-[11px] shrink-0"
-                            style={{
-                              backgroundColor: person.avatarColorBg,
-                              color: person.avatarColorText,
-                            }}
-                          >
-                            {person.initials}
-                          </div>
-                          <span className="text-xs sm:text-sm font-medium text-[#0d212c] truncate">
-                            {person.name}
+                          <span className="text-xs font-normal text-[#64748b] shrink-0 pl-2">
+                            {person.expertise}
                           </span>
                         </div>
-                        <span className="text-xs font-normal text-[#64748b] shrink-0 pl-2">
-                          {person.expertise}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })}
+                  </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor={`send-note-${team.key}`}
-                    className="text-xs font-medium text-[#0d212c]"
-                  >
-                    Note to {team.title}
-                  </label>
-                  <textarea
-                    id={`send-note-${team.key}`}
-                    rows={4}
-                    value={team.note}
-                    onChange={(e) => team.setNote(e.target.value)}
-                    className="w-full p-3 rounded-lg border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white leading-relaxed"
-                  />
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      htmlFor={`send-note-${team.key}`}
+                      className="text-xs font-medium text-[#0d212c]"
+                    >
+                      Note to {team.title}
+                    </label>
+                    <textarea
+                      id={`send-note-${team.key}`}
+                      rows={4}
+                      value={team.note}
+                      onChange={(e) => team.setNote(e.target.value)}
+                      className="w-full p-3 rounded-lg border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white leading-relaxed"
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
             <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#f1f5f9] flex-wrap">
               <span className="text-xs text-[#64748b]">
-                {selectedInternalSendIds.length === 0 || selectedStrategySendIds.length === 0
-                  ? 'Select at least one reviewer in each team.'
+                {(sendTeam === 'strategy' ? selectedStrategySendIds : selectedInternalSendIds)
+                  .length === 0
+                  ? 'Select at least one reviewer.'
                   : ''}
               </span>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowSendBothModal(false)}
+                  onClick={() => setSendTeam(null)}
                   className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
@@ -2165,21 +2371,29 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <button
                   type="button"
                   disabled={
-                    selectedInternalSendIds.length === 0 || selectedStrategySendIds.length === 0
+                    (sendTeam === 'strategy' ? selectedStrategySendIds : selectedInternalSendIds)
+                      .length === 0
                   }
                   onClick={() => {
-                    setShowSendBothModal(false)
-                    completeStep('review')
-                    setActiveStep('approval')
-                    setReviewToast('Review requests sent to both teams.')
+                    if (sendTeam === 'strategy') {
+                      completeStep('alignment')
+                      setActiveStep('canvas')
+                      setReviewToast('Request sent to the Strategy Team.')
+                    } else {
+                      completeStep('canvas')
+                      setActiveStep('approval')
+                      setReviewToast('Request sent to the Internal Interest team.')
+                    }
+                    setSendTeam(null)
                   }}
                   className={`px-5 py-2.5 rounded-lg font-semibold text-xs shadow-xs transition ${
-                    selectedInternalSendIds.length === 0 || selectedStrategySendIds.length === 0
+                    (sendTeam === 'strategy' ? selectedStrategySendIds : selectedInternalSendIds)
+                      .length === 0
                       ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                       : 'bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer'
                   }`}
                 >
-                  Send to Both Teams
+                  Send Request
                 </button>
               </div>
             </div>

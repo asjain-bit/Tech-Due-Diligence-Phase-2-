@@ -3,7 +3,13 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { AgentActions } from './AgentActions'
-import { AGENT_CONTEXT_SOURCES, buildAgentActions, getChangeFactors } from './agentActions.data'
+import {
+  AGENT_CONTEXT_SOURCES,
+  buildAdminAgentActions,
+  buildAgentActions,
+  getChangeFactors,
+  getTypeConfidence,
+} from './agentActions.data'
 import { INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
 
 const request = INITIAL_PARTNERSHIP_REQUESTS[0]
@@ -11,7 +17,6 @@ const request = INITIAL_PARTNERSHIP_REQUESTS[0]
 describe('AgentActions (finished checklist)', () => {
   it('lists the six checks and the context the agent read', () => {
     render(<AgentActions request={request} />)
-    expect(screen.getByText('6 checks completed')).toBeInTheDocument()
     ;[
       'Duplicate check',
       'Classification',
@@ -24,9 +29,26 @@ describe('AgentActions (finished checklist)', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
-  it('shows how many checks need attention', () => {
+  it('does not show Completed or Passed chips, only Needs attention', () => {
     render(<AgentActions request={INITIAL_PARTNERSHIP_REQUESTS[1]} />)
-    expect(screen.getByText('2 needs attention')).toBeInTheDocument()
+    expect(screen.queryByText('Completed')).not.toBeInTheDocument()
+    expect(screen.queryByText('Passed')).not.toBeInTheDocument()
+    expect(screen.queryByText('Complete')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Needs attention').length).toBe(2)
+  })
+
+  it('can hide the heading and the context row for the drawer', () => {
+    render(<AgentActions request={request} showHeader={false} showSources={false} />)
+    expect(screen.queryByRole('heading', { name: 'Agent Actions' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Reading')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Agent checks')).toBeInTheDocument()
+  })
+
+  it('shows the checks it is given instead of the default list', () => {
+    const actions = buildAdminAgentActions(request)
+    render(<AgentActions request={request} actions={actions} showSources={false} />)
+    expect(screen.getByText('Applicant history')).toBeInTheDocument()
+    expect(screen.queryByText('Commodity test')).not.toBeInTheDocument()
   })
 
   it('expands a check to show its findings and output', async () => {
@@ -39,14 +61,15 @@ describe('AgentActions (finished checklist)', () => {
     expect(screen.queryByText('Live cases compared')).not.toBeInTheDocument()
   })
 
-  it('shows confidence, baseline and suggested reviewers for KPI mapping', async () => {
+  it('shows confidence as a level, never a percentage', async () => {
     const user = userEvent.setup()
-    render(<AgentActions request={request} />)
+    const { container } = render(<AgentActions request={request} />)
     await user.click(screen.getByRole('button', { name: /KPI mapping/i }))
     expect(screen.getByText('Baseline needed to test it')).toBeInTheDocument()
     expect(screen.getByText('Suggested reviewers')).toBeInTheDocument()
     expect(screen.getByText('Riza Sayeed')).toBeInTheDocument()
-    expect(screen.getAllByLabelText(/Confidence \d+%/).length).toBeGreaterThan(0)
+    expect(screen.getAllByLabelText(/Confidence (High|Medium|Low)/).length).toBeGreaterThan(0)
+    expect(container.textContent).not.toMatch(/\d+%/)
   })
 })
 
@@ -70,13 +93,12 @@ describe('AgentActions (animated run)', () => {
       screen.getByText(/Reviewing the submission from MedTech Innovations/)
     ).toBeInTheDocument()
     const rows = screen.getAllByRole('listitem').filter((li) => li.dataset.state)
-    // First context source is running, every check is waiting and cannot be opened
     expect(rows[0]).toHaveAttribute('data-state', 'running')
     expect(screen.getByRole('button', { name: /Duplicate check/i })).toBeDisabled()
     expect(onComplete).not.toHaveBeenCalled()
 
     runTimers(12)
-    expect(screen.getByText('6 checks completed')).toBeInTheDocument()
+    expect(screen.getByText(/Analysis complete/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Duplicate check/i })).toBeEnabled()
     expect(onComplete).toHaveBeenCalledTimes(1)
     runTimers(3)
@@ -89,7 +111,7 @@ describe('AgentActions (animated run)', () => {
     const onComplete = vi.fn()
     render(<AgentActions request={request} animate onComplete={onComplete} />)
     await user.click(screen.getByRole('button', { name: 'Skip' }))
-    expect(screen.getByText('6 checks completed')).toBeInTheDocument()
+    expect(screen.getByText(/Analysis complete/)).toBeInTheDocument()
     expect(onComplete).toHaveBeenCalledTimes(1)
   })
 
@@ -100,7 +122,7 @@ describe('AgentActions (animated run)', () => {
       .mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia
     const onComplete = vi.fn()
     render(<AgentActions request={request} animate onComplete={onComplete} />)
-    expect(screen.getByText('6 checks completed')).toBeInTheDocument()
+    expect(screen.getByText(/Analysis complete/)).toBeInTheDocument()
     expect(onComplete).toHaveBeenCalledTimes(1)
     window.matchMedia = original
   })
@@ -121,6 +143,9 @@ describe('buildAgentActions', () => {
       actions.forEach((a) => {
         expect(a.output.length).toBeGreaterThan(10)
         expect(a.runningText.length).toBeGreaterThan(5)
+        a.findings
+          .filter((f) => f.label === 'Confidence')
+          .forEach((f) => expect(f.value).toMatch(/^(High|Medium|Low)$/))
       })
       expect(getChangeFactors(r)).toHaveLength(3)
     })
@@ -154,5 +179,72 @@ describe('buildAgentActions', () => {
     expect(byId.commodity.status).toBe('attention')
     expect(byId.brief.headline).toBe('Recommends Reject')
     expect(byId.kpi.stakeholders).toEqual([])
+  })
+})
+
+describe('buildAdminAgentActions', () => {
+  it('covers the Partnership Admin checks in order', () => {
+    const actions = buildAdminAgentActions(request)
+    expect(actions.map((a) => a.id)).toEqual([
+      'applicant',
+      'duplicate',
+      'backlog',
+      'service-line',
+      'uae-maturity',
+      'screening',
+      'brief',
+    ])
+    expect(actions.find((a) => a.id === 'uae-maturity')!.findings.at(-1)?.label).toBe(
+      'Overall score'
+    )
+  })
+
+  it('marks a vendor as re-applying from history or from the pipeline', () => {
+    const history = buildAdminAgentActions(INITIAL_PARTNERSHIP_REQUESTS[2]).find(
+      (a) => a.id === 'applicant'
+    )!
+    expect(history.headline).toBe('Re-applying')
+    expect(history.status).toBe('attention')
+
+    const twin = { ...request, id: 'req-new', requestCode: 'PR-200' }
+    const found = buildAdminAgentActions(twin, [request]).filter((a) =>
+      ['applicant', 'duplicate'].includes(a.id)
+    )
+    expect(found.map((a) => a.status)).toEqual(['attention', 'attention'])
+
+    const fresh = buildAdminAgentActions(request, INITIAL_PARTNERSHIP_REQUESTS).find(
+      (a) => a.id === 'applicant'
+    )!
+    expect(fresh.headline).toBe('Fresh application')
+  })
+
+  it('flags CoE backlog overlap, weak UAE maturity and adverse media', () => {
+    const byId = (r: (typeof INITIAL_PARTNERSHIP_REQUESTS)[number]) =>
+      Object.fromEntries(buildAdminAgentActions(r).map((a) => [a.id, a]))
+    expect(byId(INITIAL_PARTNERSHIP_REQUESTS[1]).backlog.status).toBe('attention')
+    expect(byId(INITIAL_PARTNERSHIP_REQUESTS[1])['uae-maturity'].status).toBe('attention')
+    expect(byId(INITIAL_PARTNERSHIP_REQUESTS[3]).screening.status).toBe('attention')
+    expect(byId(INITIAL_PARTNERSHIP_REQUESTS[0]).backlog.status).toBe('passed')
+  })
+
+  it('falls back for unknown requests', () => {
+    const unknown = {
+      ...request,
+      id: 'req-unknown',
+      requestCode: 'PR-300',
+      companyName: 'Brand New Co',
+    }
+    expect(buildAdminAgentActions(unknown)).toHaveLength(7)
+  })
+})
+
+describe('getTypeConfidence', () => {
+  it('gives a level for every case type', () => {
+    INITIAL_PARTNERSHIP_REQUESTS.forEach((r) => {
+      const c = getTypeConfidence(r)
+      expect(Object.keys(c).sort()).toEqual(['M&A', 'Partnership', 'Procure'])
+      Object.values(c).forEach((level) => expect(['High', 'Medium', 'Low']).toContain(level))
+    })
+    expect(getTypeConfidence({ ...request, id: 'x' }).Partnership).toBe('High')
   })
 })

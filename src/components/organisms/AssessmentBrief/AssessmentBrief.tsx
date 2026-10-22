@@ -2,97 +2,149 @@
 
 /**
  * AssessmentBrief — Organism
- * The agent's initial assessment brief, written from what the vendor filled in on the
- * submission form: overview, highlights, asks from M42, track record and the agent verdict.
+ * The initial assessment brief, split into sections with a side panel to jump between them.
+ * Content comes from what the vendor filled in, with the agent verdict first.
  * Used in: PartnershipDetail
  */
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import {
+  Activity,
+  Award,
   Building2,
-  ExternalLink,
-  FileText,
+  CheckSquare,
+  ChevronRight,
+  Eye,
   HeartHandshake,
   Layers,
-  Sparkles,
-  Target,
+  Scale,
   ShieldCheck,
+  Sparkles,
+  Square,
+  Target,
+  User,
   Users,
-  Gauge,
-  Lightbulb,
 } from 'lucide-react'
-import { getChangeFactors } from '@/components/organisms/AgentActions'
+import {
+  ConfidenceBadge,
+  confidenceLevel,
+  getChangeFactors,
+} from '@/components/organisms/AgentActions'
 import type { AssessmentBriefProps } from './AssessmentBrief.types'
 
-const splitList = (text: string) =>
-  text
-    .replace(/\.$/, '')
-    .split(/,\s*(?:and\s+)?/)
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .map((t) => t.charAt(0).toUpperCase() + t.slice(1))
+const POPULATIONS = ['Adult patients', 'Pediatric patients', "Women's health"]
 
-const levelOf = (c: number) => (c >= 80 ? 'High' : c >= 50 ? 'Medium' : 'Low')
+const NAV = [
+  { id: 'verdict', label: 'Agent Verdict', icon: Sparkles },
+  { id: 'company-info', label: 'Company Information', icon: Building2 },
+  { id: 'company-experience', label: 'Company Experience', icon: Award },
+  { id: 'collaboration-proposal', label: 'Collaboration Proposal', icon: HeartHandshake },
+  { id: 'focus-area', label: 'Focus Area', icon: Target },
+  { id: 'solution-maturity', label: 'Solution Maturity', icon: Activity },
+  { id: 'regulatory-approvals', label: 'Regulatory Approvals', icon: ShieldCheck },
+  { id: 'innovation-differentiation', label: 'Innovation & Differentiation', icon: Sparkles },
+  { id: 'development-approach', label: 'Development Approach', icon: Layers },
+  { id: 'support-from-m42', label: 'Support from M42', icon: HeartHandshake },
+  { id: 'target-population', label: 'Target Population & Impact', icon: Users },
+]
+
+const DECISION_NAV = { id: 'decision', label: 'Your Decision', icon: Scale }
+
+const Section: React.FC<{
+  id: string
+  title: string
+  icon: React.ComponentType<{ className?: string }>
+  children: React.ReactNode
+}> = ({ id, title, icon: Icon, children }) => (
+  <section id={`brief-${id}`} className="scroll-mt-6 py-8 first:pt-0 flex flex-col gap-4">
+    <div className="flex items-center gap-2.5">
+      <Icon className="w-5 h-5 text-[#36c0c9]" />
+      <h3 className="text-base font-semibold text-[#0d212c]">{title}</h3>
+    </div>
+    {children}
+  </section>
+)
+
+const Chip: React.FC<{ children: React.ReactNode; muted?: boolean }> = ({ children, muted }) => (
+  <span
+    className={`px-3 py-1 rounded-xl text-xs font-medium border ${
+      muted
+        ? 'bg-slate-50 text-slate-500 border-slate-200'
+        : 'bg-[#f0fdfa] text-[#0f766e] border-[#ccfbf1]'
+    }`}
+  >
+    {children}
+  </span>
+)
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div>
+    <div className="text-xs font-medium text-[#64748b]">{label}</div>
+    <div className="text-sm font-medium text-[#0d212c] mt-1">{children}</div>
+  </div>
+)
+
+const Body: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p className="text-sm text-[#475569] leading-relaxed">{children}</p>
+)
+
+const Callout: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm flex flex-col gap-1">
+    <div className="text-xs font-semibold text-[#0d212c]">{title}</div>
+    <p className="text-[#475569] leading-relaxed">{children}</p>
+  </div>
+)
 
 export const AssessmentBrief: React.FC<AssessmentBriefProps> = ({
   request,
+  actions,
   onViewVendorResponse,
-  children,
+  onOpenAnalysis,
+  hideContact = false,
+  decision,
+  footer,
   className = '',
 }) => {
-  const { assessmentAreas: a, companyInfo: info, overviewCards: cards } = request
+  const { assessmentAreas: a, companyInfo: info } = request
   const rec = request.agentRecommendation
   const isReject = rec?.status === 'reject'
-  const asks = splitList(a.requestedM42Resources)
-  const populations = [...(a.impactedPatientPopulations ?? []), ...(a.clinicalAreas ?? [])]
+  const nav = decision ? [...NAV, DECISION_NAV] : NAV
+  const [active, setActive] = useState(nav[0].id)
+  const attention = actions.filter((x) => x.status === 'attention').length
+  const populations = a.impactedPatientPopulations ?? []
+  const milestones = a.milestones ?? []
 
-  const highlights: {
-    icon: React.ComponentType<{ className?: string }>
-    label: string
-    value: React.ReactNode
-  }[] = [
-    { icon: FileText, label: 'Proposed solution', value: a.productPlatformServiceDetails },
-    {
-      icon: Target,
-      label: 'Focus areas',
-      value: (
-        <span className="flex flex-wrap gap-1.5">
-          {a.focusAreas.map((f) => (
-            <span
-              key={f}
-              className="px-2.5 py-0.5 rounded-lg bg-[#f0fdfa] text-[#0f766e] text-xs font-medium border border-[#ccfbf1]"
-            >
-              {f}
-            </span>
-          ))}
-        </span>
-      ),
-    },
-    {
-      icon: Gauge,
-      label: 'Current stage',
-      value: `${request.solutionMaturity}. ${a.solutionMaturityLevelAndRegulatory}`,
-    },
-    {
-      icon: ShieldCheck,
-      label: 'Regulatory status',
-      value: a.relevantApprovals || (a.regulatoryApprovalList ?? []).join(', ') || 'Not applicable',
-    },
-    { icon: Lightbulb, label: 'What sets it apart', value: a.noveltyAndDifferentiation },
-    {
-      icon: Layers,
-      label: 'Development approach',
-      value: a.developmentApproach || 'Not specified',
-    },
-    ...(populations.length > 0
-      ? [{ icon: Users, label: 'Who it affects', value: populations.join(', ') }]
-      : []),
-  ]
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const top = entries
+          .filter((e) => e.isIntersecting)
+          .sort((x, y) => x.boundingClientRect.top - y.boundingClientRect.top)[0]
+        if (top) setActive(top.target.id.replace('brief-', ''))
+      },
+      { rootMargin: '-10% 0px -70% 0px' }
+    )
+    nav.forEach((item) => {
+      const el = document.getElementById(`brief-${item.id}`)
+      if (el) observer.observe(el)
+    })
+    return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(decision)])
+
+  const scrollTo = (id: string) => {
+    setActive(id)
+    const el = document.getElementById(`brief-${id}`)
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
 
   return (
     <section
       aria-labelledby="assessment-brief-heading"
-      className={`flex flex-col gap-8 ${className}`.trim()}
+      className={`flex flex-col gap-6 ${className}`.trim()}
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -111,150 +163,257 @@ export const AssessmentBrief: React.FC<AssessmentBriefProps> = ({
         <button
           type="button"
           onClick={onViewVendorResponse}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
+          className="inline-flex items-center gap-2 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
         >
+          <Eye className="w-4 h-4" aria-hidden="true" />
           View vendor response
-          <ExternalLink className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 
-      {/* Overview */}
-      <div className="flex flex-col gap-2 pt-6 border-t border-[#f1f5f9]">
-        <h3 className="text-sm font-semibold text-[#0d212c]">Overview</h3>
-        <p className="text-sm text-[#475569] leading-relaxed max-w-4xl">
-          {request.companyName} was founded in {info.yearFounded}
-          {info.location ? ` (${info.location})` : ''} and is submitting &ldquo;{request.solution}
-          &rdquo; at {request.solutionMaturity} maturity. On record: {cards.evidence.toLowerCase()},{' '}
-          {cards.deployment}, and {cards.regulatory} for regulatory status.
-        </p>
-      </div>
-
-      {/* Highlights and asks */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-10 gap-y-8 pt-6 border-t border-[#f1f5f9]">
-        <div className="lg:col-span-3 flex flex-col gap-4">
-          <h3 className="text-sm font-semibold text-[#0d212c]">Key highlights</h3>
-          <dl className="flex flex-col gap-4">
-            {highlights.map(({ icon: Icon, label, value }) => (
-              <div key={label} className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-slate-50 text-[#36c0c9] flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4" />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] gap-x-4 gap-y-0.5 flex-1 min-w-0">
-                  <dt className="text-xs font-semibold text-[#0d212c] pt-1.5">{label}</dt>
-                  <dd className="text-sm text-[#475569] leading-relaxed pt-0.5">{value}</dd>
-                </div>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        <div className="lg:col-span-2 flex flex-col gap-7 lg:border-l lg:border-[#f1f5f9] lg:pl-10">
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-semibold text-[#0d212c] flex items-center gap-2">
-              <HeartHandshake className="w-4 h-4 text-[#36c0c9]" aria-hidden="true" />
-              What they ask from M42
-            </h3>
-            <ul className="flex flex-col gap-2">
-              {asks.map((ask) => (
-                <li
-                  key={ask}
-                  className="flex items-start gap-2.5 text-sm text-[#475569] leading-relaxed"
-                >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#36c0c9] mt-2 shrink-0"
-                    aria-hidden="true"
-                  />
-                  {ask}
-                </li>
-              ))}
-            </ul>
+      {/* AI analysis banner */}
+      <div className="rounded-2xl border border-[#ccfbf1] bg-[#f0fdfa]/70 px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-white text-[#36c0c9] border border-[#ccfbf1] flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5" aria-hidden="true" />
           </div>
-
-          {a.milestones && a.milestones.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <h3 className="text-sm font-semibold text-[#0d212c]">Track record</h3>
-              <ul className="flex flex-col gap-2">
-                {a.milestones.map((m) => (
-                  <li
-                    key={m}
-                    className="flex items-start gap-2.5 text-sm text-[#475569] leading-relaxed"
-                  >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1] mt-2 shrink-0"
-                      aria-hidden="true"
-                    />
-                    {m}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold text-[#0d212c]">AI analysis completed</span>
+            <span className="text-xs text-[#475569]">
+              {actions.length} checks completed
+              {attention > 0 && ` · ${attention} ${attention === 1 ? 'risk' : 'risks'} identified`}
+            </span>
+          </div>
         </div>
-      </div>
-
-      {/* Agent verdict */}
-      {rec && (
-        <div
-          className={`rounded-2xl border p-5 sm:p-6 flex flex-col gap-5 ${
-            isReject ? 'bg-red-50/40 border-red-200' : 'bg-[#f0fdfa]/70 border-[#ccfbf1]'
-          }`}
+        <button
+          type="button"
+          onClick={onOpenAnalysis}
+          className="px-4 py-2 rounded-xl bg-white border border-[#cbd5e1] text-sm font-medium text-[#0d212c] hover:bg-slate-50 cursor-pointer transition inline-flex items-center gap-1.5"
         >
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex items-start gap-3">
+          View checks and findings
+          <ChevronRight className="w-4 h-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      {/* Side panel and sections */}
+      <div className="flex flex-col lg:flex-row gap-8 w-full items-start">
+        <nav
+          aria-label="Brief sections"
+          className="w-full lg:w-64 shrink-0 bg-slate-50/70 rounded-xl p-2 flex flex-col gap-1 border border-[#e2e8f0]/60 lg:sticky lg:top-4"
+        >
+          {nav.map((item) => {
+            const Icon = item.icon
+            const isActive = active === item.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={isActive ? 'true' : undefined}
+                onClick={() => scrollTo(item.id)}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer ${
+                  isActive
+                    ? 'bg-white text-[#36c0c9] font-semibold shadow-2xs border-l-4 border-[#36c0c9]'
+                    : 'text-[#64748b] hover:bg-white/60 hover:text-[#0d212c]'
+                }`}
+              >
+                <Icon
+                  className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#36c0c9]' : 'text-slate-400'}`}
+                />
+                <span className="truncate">{item.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+
+        <div className="flex-1 min-w-0 w-full flex flex-col divide-y divide-[#f1f5f9]">
+          {rec && (
+            <Section id="verdict" title="Agent Verdict" icon={Sparkles}>
               <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isReject ? 'bg-red-100 text-red-600' : 'bg-[#e6fffa] text-[#36c0c9]'
+                className={`rounded-xl border p-5 flex flex-col gap-4 ${
+                  isReject ? 'bg-red-50/40 border-red-200' : 'bg-[#f0fdfa]/60 border-[#ccfbf1]'
                 }`}
               >
-                <Sparkles className="w-5 h-5" aria-hidden="true" />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <h3 className="text-sm font-semibold text-[#0d212c]">Agent verdict</h3>
-                <p className="text-xs text-[#475569] leading-relaxed max-w-xl">
-                  {isReject
-                    ? 'Based on the checks, the agent recommends rejecting this request.'
-                    : 'Based on the checks, the agent recommends proceeding to internal review.'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-[#64748b]">Confidence level</span>
-              <span
-                className={`px-3 py-1.5 rounded-lg border text-sm font-semibold ${
-                  isReject
-                    ? 'bg-white text-red-700 border-red-200'
-                    : 'bg-white text-emerald-700 border-emerald-200'
-                }`}
-              >
-                {levelOf(rec.confidence)} · {rec.confidence}%
-              </span>
-            </div>
-          </div>
-
-          <p className="text-sm text-[#334155] leading-relaxed">{rec.rationale}</p>
-
-          <div className="flex flex-col gap-2.5 pt-4 border-t border-black/5">
-            <h4 className="text-xs font-semibold text-[#0d212c]">
-              Three things that would change this recommendation
-            </h4>
-            <ol className="flex flex-col gap-2">
-              {getChangeFactors(request).map((factor, i) => (
-                <li
-                  key={factor}
-                  className="flex items-start gap-3 text-sm text-[#475569] leading-relaxed"
-                >
-                  <span className="w-5 h-5 rounded-full bg-white border border-[#e2e8f0] text-[11px] font-semibold text-[#475569] flex items-center justify-center shrink-0 mt-0.5">
-                    {i + 1}
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <span className="text-sm font-semibold text-[#0d212c]">
+                    {isReject ? 'Recommends rejecting this request' : 'Recommends proceeding'}
                   </span>
-                  {factor}
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      )}
+                  <ConfidenceBadge level={confidenceLevel(rec.confidence)} />
+                </div>
+                <Body>{rec.rationale}</Body>
+                <div className="flex flex-col gap-2 pt-3 border-t border-black/5">
+                  <span className="text-xs font-semibold text-[#0d212c]">
+                    Three things that would change this recommendation
+                  </span>
+                  <ol className="flex flex-col gap-1.5">
+                    {getChangeFactors(request).map((factor, i) => (
+                      <li key={factor} className="flex items-start gap-2.5 text-sm text-[#475569]">
+                        <span className="w-5 h-5 rounded-full bg-white border border-[#e2e8f0] text-[11px] font-semibold flex items-center justify-center shrink-0 mt-0.5">
+                          {i + 1}
+                        </span>
+                        {factor}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            </Section>
+          )}
 
-      {children && <div className="pt-6 border-t border-[#f1f5f9]">{children}</div>}
+          <Section id="company-info" title="1. Company Information" icon={Building2}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <Field label="Company Name">{info.company}</Field>
+              {!hideContact && (
+                <>
+                  <Field label="Contact Person Name">{info.name}</Field>
+                  <Field label="Job Title">{info.jobTitle}</Field>
+                  <Field label="Email Address">{info.email}</Field>
+                  <Field label="Phone Number">{info.phoneNumber || 'Not provided'}</Field>
+                </>
+              )}
+              <Field label="Year Company Was Founded">{info.yearFounded}</Field>
+              {info.location && <Field label="Location">{info.location}</Field>}
+              {!hideContact && <Field label="Referred By">{request.referredBy || '—'}</Field>}
+            </div>
+          </Section>
+
+          <Section
+            id="company-experience"
+            title="2. Company's Stage of Maturity and Experience"
+            icon={Award}
+          >
+            <Body>{a.stageOfMaturityAndExperience}</Body>
+            {a.growthJourneyAndRegionalExperience && (
+              <Body>{a.growthJourneyAndRegionalExperience}</Body>
+            )}
+            {milestones.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <div className="text-xs font-semibold text-[#0d212c]">Key milestones</div>
+                <ul className="flex flex-col gap-1.5">
+                  {milestones.map((m) => (
+                    <li key={m} className="flex items-start gap-2.5 text-sm text-[#475569]">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full bg-[#36c0c9] mt-2 shrink-0"
+                        aria-hidden="true"
+                      />
+                      {m}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Section>
+
+          <Section
+            id="collaboration-proposal"
+            title="3. Proposal of Collaboration"
+            icon={HeartHandshake}
+          >
+            <Body>{a.proposalOfCollaboration}</Body>
+            {a.productPlatformServiceDetails !== a.proposalOfCollaboration && (
+              <Callout title="Product, Platform & Service Details">
+                {a.productPlatformServiceDetails}
+              </Callout>
+            )}
+          </Section>
+
+          <Section id="focus-area" title="4. Focus Area(s)" icon={Target}>
+            <div className="flex flex-wrap gap-2">
+              {a.focusAreas.map((f) => (
+                <Chip key={f}>{f}</Chip>
+              ))}
+            </div>
+          </Section>
+
+          <Section
+            id="solution-maturity"
+            title="5. Solution Maturity & Regulatory Approvals"
+            icon={Activity}
+          >
+            <Body>{a.solutionMaturityLevelAndRegulatory}</Body>
+            {a.relevantApprovals && (
+              <Callout title="Regulatory Clearances">{a.relevantApprovals}</Callout>
+            )}
+          </Section>
+
+          <Section
+            id="regulatory-approvals"
+            title="6. Regulatory Approvals Checklist"
+            icon={ShieldCheck}
+          >
+            <div className="flex flex-wrap gap-2">
+              {(a.regulatoryApprovalList ?? ['Not applicable']).map((appr) => (
+                <Chip key={appr} muted={appr === 'Not applicable'}>
+                  {appr}
+                </Chip>
+              ))}
+            </div>
+          </Section>
+
+          <Section
+            id="innovation-differentiation"
+            title="7. Innovation & Differentiation"
+            icon={Sparkles}
+          >
+            <Body>{a.noveltyAndDifferentiation}</Body>
+          </Section>
+
+          <Section id="development-approach" title="8. Development Approach" icon={Layers}>
+            <Body>{a.developmentApproach || 'Not specified'}</Body>
+          </Section>
+
+          <Section
+            id="support-from-m42"
+            title="9. Specific Resources & Support from M42"
+            icon={HeartHandshake}
+          >
+            <Body>{a.requestedM42Resources}</Body>
+          </Section>
+
+          <Section
+            id="target-population"
+            title="10. Target Patient Population & Impact"
+            icon={User}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {POPULATIONS.map((pop) => {
+                const checked = populations.some((p) => p.toLowerCase() === pop.toLowerCase())
+                return (
+                  <div
+                    key={pop}
+                    className={`p-3 rounded-xl border flex items-center gap-2.5 ${
+                      checked
+                        ? 'bg-[#f0fdfa] border-[#ccfbf1] text-[#0d212c]'
+                        : 'bg-slate-50 border-slate-200 text-slate-400'
+                    }`}
+                  >
+                    {checked ? (
+                      <CheckSquare className="w-4 h-4 text-[#0f766e] shrink-0" aria-hidden="true" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-300 shrink-0" aria-hidden="true" />
+                    )}
+                    <span className="text-xs font-medium">{pop}</span>
+                  </div>
+                )
+              })}
+            </div>
+            {a.clinicalAreas && a.clinicalAreas.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-[#64748b]">Clinical areas:</span>
+                {a.clinicalAreas.map((c) => (
+                  <Chip key={c}>{c}</Chip>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          {decision && (
+            <Section id="decision" title="Your Decision" icon={Scale}>
+              {decision}
+            </Section>
+          )}
+
+          {footer && <div className="pt-8">{footer}</div>}
+        </div>
+      </div>
     </section>
   )
 }

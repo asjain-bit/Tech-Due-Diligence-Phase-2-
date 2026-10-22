@@ -1,6 +1,14 @@
 import type { StrategyDecision } from './judgementCriteria'
 
-export type PartnershipStatus = 'Pending' | 'In Progress' | 'At Risk' | 'Exited'
+export type PartnershipStatus = 'Pending' | 'In Progress' | 'At Risk' | 'Exited' | 'On Hold'
+
+/** How the Partnership Admin routes a case */
+export type CaseType = 'Partnership' | 'Procure' | 'M&A'
+
+/** Which team's list a case currently sits in */
+export type CaseQueue = 'admin' | 'director' | 'routed' | 'closed'
+
+export type SlaStatus = 'On track' | 'At risk' | 'Breached'
 
 export type StageStatus = 'completed' | 'in_progress' | 'not_started'
 
@@ -30,7 +38,7 @@ export interface CompanyInfo {
 
 export interface KeyAssessmentAreas {
   stageOfMaturityAndExperience: string // *
-  growthJourneyAndRegionalExperience: string // *
+  growthJourneyAndRegionalExperience?: string
   milestones?: string[]
   proposalOfCollaboration: string // *
   productPlatformServiceDetails: string // *
@@ -136,6 +144,25 @@ export interface PartnershipRequest {
     reason?: string
     date?: string
     decidedBy?: string
+  }
+  /** Route chosen by the Partnership Admin */
+  caseType?: CaseType
+  queue: CaseQueue
+  daysInStage: number
+  owner: string
+  slaStatus: SlaStatus
+  /** Set while the Director waits for more information from the vendor */
+  holdInfo?: {
+    requestedOn: string
+    to: string
+    subject: string
+    body: string
+  }
+  adminDecision?: {
+    action: 'proceed' | 'reject'
+    type?: CaseType
+    reason: string
+    date: string
   }
 }
 
@@ -276,6 +303,11 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   {
     id: 'req-001',
     requestCode: 'PR-124',
+    caseType: 'Partnership',
+    queue: 'director',
+    daysInStage: 3,
+    owner: 'Zaid Al Ali',
+    slaStatus: 'On track',
     companyName: 'MedTech Innovations',
     vendorName: 'Sarah Ahmed',
     referredBy: 'Dr. Noura Al Ghaithi',
@@ -378,6 +410,11 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   {
     id: 'req-002',
     requestCode: 'PR-123',
+    caseType: 'Partnership',
+    queue: 'director',
+    daysInStage: 5,
+    owner: 'Zaid Al Ali',
+    slaStatus: 'At risk',
     companyName: 'AlphaHealth BioTech',
     vendorName: 'Dr. Tariq Mansoor',
     referredBy: 'Ahmed Al Hosani',
@@ -478,6 +515,11 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   {
     id: 'req-003',
     requestCode: 'PR-122',
+    caseType: 'Partnership',
+    queue: 'director',
+    daysInStage: 9,
+    owner: 'Zaid Al Ali',
+    slaStatus: 'Breached',
     companyName: 'GenomicX MENA FZ-LLC',
     vendorName: 'Karim El-Sayed',
     referredBy: null,
@@ -572,6 +614,11 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   {
     id: 'req-004',
     requestCode: 'PR-121',
+    caseType: 'Partnership',
+    queue: 'director',
+    daysInStage: 2,
+    owner: 'Zaid Al Ali',
+    slaStatus: 'On track',
     companyName: 'CarePulse Technologies',
     vendorName: 'Elena Rostova',
     referredBy: 'Sponsor Office',
@@ -654,6 +701,99 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
         'Formal partnership with M42 Ambulatory Healthcare Services and joint clinical pathways.',
       impactedPatientPopulations: ['Adult Patients', "Women's health"],
       clinicalAreas: ['Chronic Care', 'Virtual Health'],
+    },
+  },
+  {
+    id: 'req-005',
+    requestCode: 'PR-125',
+    caseType: undefined,
+    queue: 'admin',
+    daysInStage: 1,
+    owner: 'Nadia Al-Farsi',
+    slaStatus: 'On track',
+    companyName: 'NeuroLink Diagnostics',
+    vendorName: 'Dr. Layla Haddad',
+    referredBy: null,
+    solution: 'EEG-based seizure detection and monitoring platform',
+    headline: 'EEG-based seizure detection and monitoring platform',
+    focusArea: 'Neurology & Digital Health',
+    solutionMaturity: 'Clinical Validation',
+    status: 'Pending',
+    submittedOn: '20 Oct 2026',
+    deadline: '03 Nov 2026',
+    submittedRelative: '2 days ago',
+    tags: ['Neurology & Digital Health', 'AI & Diagnostics'],
+    internalInterests: DEFAULT_INTERNAL_INTERESTS,
+    agentRecommendation: {
+      status: 'proceed',
+      label: 'Recommended to Proceed',
+      confidence: 84,
+      rationale:
+        'Validated seizure detection accuracy in two European centres and a clear fit with M42 neurology and digital health priorities.',
+    },
+    workflowStages: [
+      { id: 1, title: 'Submission', subheading: '20 Oct 2026', status: 'completed' },
+      { id: 2, title: 'Intake & Triage', subheading: 'In Progress', status: 'in_progress' },
+      { id: 3, title: 'Screening & Fit', subheading: 'Not Started', status: 'not_started' },
+      { id: 4, title: 'NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
+      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
+      { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
+    ],
+    overviewCards: {
+      evidence: 'Two-centre clinical validation',
+      deployment: '2 European hospitals',
+      regulatory: 'CE Mark approved',
+      duplicateCheck: 'Clear',
+    },
+    sowDetails: {
+      sowName: 'NeuroLink Diagnostics — EEG Seizure Detection Platform',
+      sowDeadline: '03/11/2026',
+      tokenConsumption: '900',
+    },
+    uploadedDocuments: [
+      {
+        id: 'doc-11',
+        name: 'NeuroLink_Clinical_Validation.pdf',
+        size: '2.1 MB',
+        type: 'APPLICATION/PDF',
+      },
+    ],
+    companyInfo: {
+      name: 'Dr. Layla Haddad',
+      jobTitle: 'Chief Medical Officer',
+      company: 'NeuroLink Diagnostics',
+      phoneNumber: '+971 55 301 2244',
+      email: 'layla.haddad@neurolink.health',
+      yearFounded: '2020',
+      location: 'UAE, Abu Dhabi',
+    },
+    assessmentAreas: {
+      stageOfMaturityAndExperience:
+        'Clinical-stage neurotechnology company with an EEG analytics platform validated in two European epilepsy centres.',
+      growthJourneyAndRegionalExperience:
+        'Opened an Abu Dhabi office in 2025 and started conversations with two local neurology clinics.',
+      milestones: [
+        'CE Mark in 2024',
+        'Validation study in two European centres',
+        'Abu Dhabi office opened in 2025',
+      ],
+      proposalOfCollaboration:
+        'Pilot continuous EEG seizure detection in M42 neurology wards and extend it to home monitoring for epilepsy patients.',
+      productPlatformServiceDetails:
+        'Cloud EEG analytics platform that flags seizure events in real time and prioritises clinician review.',
+      focusAreas: ['Neurology & Digital Health', 'AI & Diagnostics'],
+      solutionMaturityLevelAndRegulatory:
+        'Clinically validated in two centres. CE Mark approved. Preparing a UAE MOHAP submission.',
+      relevantApprovals: 'CE Mark approved, ISO 13485 certified, UAE MOHAP in progress.',
+      regulatoryApprovalList: ['CE', 'ISO 13485', 'UAE MOHAP'],
+      noveltyAndDifferentiation:
+        'Detects seizures with 93% sensitivity and cuts clinician review time by 60% using a patient-specific model.',
+      developmentApproach: 'Internally developed with clinical research partners',
+      requestedM42Resources:
+        'Neurology ward pilot sites, de-identified EEG data access, and integration with the M42 EHR.',
+      impactedPatientPopulations: ['Adult Patients', 'Pediatric Patients'],
+      clinicalAreas: ['Neurology', 'Epilepsy'],
     },
   },
 ]

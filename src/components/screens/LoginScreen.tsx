@@ -23,6 +23,22 @@ export interface UserProfile {
 
 export const AVAILABLE_PROFILES: UserProfile[] = [
   {
+    id: 'vendor',
+    name: 'Vendor',
+    designation: 'Vendor Web Form',
+    email: 'Public partnership request form',
+    roleTitle: 'Vendor Web Form',
+  },
+  {
+    id: 'partnership-admin',
+    name: 'Nadia Al-Farsi',
+    designation: 'Partnership Admin',
+    email: 'nadia.alfarsi@m42.ae',
+    roleTitle: 'Partnership Admin',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+  },
+  {
     id: 'director',
     name: 'Zaid Al Ali',
     designation: 'Director',
@@ -252,6 +268,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               {AVAILABLE_PROFILES.filter((profile) => profile.id !== 'legal-director').map(
                 (profile) => {
                   const isAccessible =
+                    profile.id === 'vendor' ||
+                    profile.id === 'partnership-admin' ||
                     profile.id === 'director' ||
                     profile.id === 'evaluator' ||
                     profile.id === 'strategy-fit'

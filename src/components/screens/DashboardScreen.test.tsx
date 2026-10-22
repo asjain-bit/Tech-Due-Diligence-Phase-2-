@@ -1,8 +1,25 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect } from 'vitest'
+import { act } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
 import { DashboardScreen } from './DashboardScreen'
+import { INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
+
+const directorProfile = {
+  id: 'director',
+  name: 'Zaid Al Ali',
+  designation: 'Director',
+  email: 'zaid.alali@m42.ae',
+  roleTitle: 'Director',
+}
+const adminProfile = {
+  id: 'partnership-admin',
+  name: 'Nadia Al-Farsi',
+  designation: 'Partnership Admin',
+  email: 'nadia.alfarsi@m42.ae',
+  roleTitle: 'Partnership Admin',
+}
 
 describe('DashboardScreen', () => {
   it('renders all 4 KPI cards matching Image 2 design without breadcrumb', () => {
@@ -29,29 +46,105 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('Filtered out during initial agent screening')).toBeInTheDocument()
   })
 
-  it('renders Partnership Requests title and table columns without Referred by', () => {
+  it('shows the Director the Case ID led table with the new columns', () => {
     render(<DashboardScreen />)
 
     expect(screen.getByText('Partnership Requests')).toBeInTheDocument()
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent)
+    expect(headers).toEqual([
+      'Case ID',
+      'Company',
+      'Solution description',
+      'Type',
+      'Stage',
+      'Days in stage',
+      'Owner',
+      'SLA status',
+    ])
+    expect(screen.queryByRole('columnheader', { name: 'Request ID' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Vendor Name' })).not.toBeInTheDocument()
 
-    expect(screen.getByRole('columnheader', { name: 'Request ID' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Company name' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Vendor Name' })).toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: 'Referred by' })).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('columnheader', { name: (content) => content === 'Solution' })
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Focus Area' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Solution Maturity' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Deadline' })).toBeInTheDocument()
-
-    // Request ID leads, Submitted Date closes
-    const headers = screen.getAllByRole('columnheader')
-    expect(headers[0]).toHaveTextContent('Request ID')
-    expect(headers[headers.length - 1]).toHaveTextContent('Submitted Date')
     expect(screen.getByText('PR-124')).toBeInTheDocument()
-    expect(screen.getByText('PR-121')).toBeInTheDocument()
+    const row = screen.getByText('MedTech Innovations').closest('tr')!
+    expect(row).toHaveTextContent('Partnership')
+    expect(row).toHaveTextContent('Screening & Fit')
+    expect(row).toHaveTextContent('3 days')
+    expect(row).toHaveTextContent('Zaid Al Ali')
+    expect(row).toHaveTextContent('On track')
+    expect(screen.getByText('At risk')).toBeInTheDocument()
+    expect(screen.getByText('Breached')).toBeInTheDocument()
+  })
+
+  it('clamps the solution description to two lines and shows the full text in a tooltip', async () => {
+    const user = userEvent.setup()
+    render(<DashboardScreen />)
+    const full = INITIAL_PARTNERSHIP_REQUESTS[0].assessmentAreas.productPlatformServiceDetails
+    const cell = screen.getAllByLabelText(full)[0]
+    expect(cell).toHaveClass('line-clamp-2')
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    await user.hover(cell)
+    expect(screen.getByRole('tooltip')).toHaveTextContent(full)
+    await user.unhover(cell)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    act(() => cell.focus())
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+    act(() => cell.blur())
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('only shows the Director cases the Partnership Admin has sent on', () => {
+    render(<DashboardScreen userProfile={directorProfile} />)
+    expect(screen.queryByText('NeuroLink Diagnostics')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /All requests/ })).toHaveTextContent('4')
+    expect(screen.getByRole('button', { name: /On Hold/ })).toHaveTextContent('0')
+  })
+
+  it('shows the Partnership Admin every case, including ones waiting for triage', () => {
+    render(<DashboardScreen userProfile={adminProfile} />)
+    const row = screen.getByText('NeuroLink Diagnostics').closest('tr')!
+    expect(row).toHaveTextContent('PR-125')
+    expect(row).toHaveTextContent('Unassigned')
+    expect(row).toHaveTextContent('Admin review')
+    expect(row).toHaveTextContent('Nadia Al-Farsi')
+    expect(screen.getByRole('button', { name: /All requests/ })).toHaveTextContent('5')
+  })
+
+  it('searches by Case ID', async () => {
+    const user = userEvent.setup()
+    render(<DashboardScreen />)
+    await user.type(screen.getByPlaceholderText('Search partnership requests...'), 'pr-122')
+    expect(screen.getByText('GenomicX MENA FZ-LLC')).toBeInTheDocument()
+    expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
+  })
+
+  it('uses shared cases when given and reports changes', async () => {
+    const user = userEvent.setup()
+    const onRequestsChange = vi.fn()
+    render(
+      <DashboardScreen
+        userProfile={adminProfile}
+        requests={[INITIAL_PARTNERSHIP_REQUESTS[4]]}
+        onRequestsChange={onRequestsChange}
+      />
+    )
+    expect(screen.getByText('NeuroLink Diagnostics')).toBeInTheDocument()
+    expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
+
+    await user.click(screen.getByText('NeuroLink Diagnostics'))
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    await user.click(
+      await screen.findByRole('radio', { name: /^Reject request/i }, { timeout: 3000 })
+    )
+    await user.type(screen.getByLabelText(/^Reason/), 'Out of scope')
+    await user.click(screen.getByRole('button', { name: /Submit decision/i }))
+    expect(onRequestsChange).toHaveBeenCalledTimes(1)
+    const update = onRequestsChange.mock.calls[0][0] as (
+      prev: typeof INITIAL_PARTNERSHIP_REQUESTS
+    ) => typeof INITIAL_PARTNERSHIP_REQUESTS
+    expect(update([INITIAL_PARTNERSHIP_REQUESTS[4]])[0]).toMatchObject({
+      queue: 'closed',
+      status: 'Exited',
+    })
   })
 
   it('filters records via search bar and filter chips', async () => {
@@ -179,9 +272,9 @@ describe('DashboardScreen', () => {
     expect(screen.queryByRole('button', { name: /Internal Review/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Approval/i })).not.toBeInTheDocument()
 
-    // Steps for this profile: Agent Actions, Brief, Questionnaire
+    // Steps for this profile: Brief, Questionnaire
     const stepper = screen.getByRole('navigation', { name: 'Review progress' })
-    expect(stepper).toHaveTextContent('Agent Actions')
+    expect(stepper).not.toHaveTextContent('Agent Actions')
     expect(stepper).toHaveTextContent('Initial Assessment Brief')
     expect(stepper).toHaveTextContent('Questionnaire')
 

@@ -14,26 +14,34 @@ describe('ReviewersLoading', () => {
     }
   }
 
-  it('finds the teams, maps them, then completes once', () => {
+  it('finds the Internal Interest team, maps it, then completes once', () => {
     vi.useFakeTimers()
     const onComplete = vi.fn()
-    render(<ReviewersLoading internalCount={5} strategyCount={1} onComplete={onComplete} />)
+    render(<ReviewersLoading team="internal" count={5} onComplete={onComplete} />)
 
     expect(screen.getByRole('status')).toBeInTheDocument()
-    expect(screen.getByText('Finding reviewers')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Finding the Internal Interest team' })
+    ).toBeInTheDocument()
     expect(screen.getByText('Finding the Internal Interest team…')).toBeInTheDocument()
 
     runTimers(1)
     expect(screen.getByText('5 reviewers found')).toBeInTheDocument()
-    expect(screen.getByText('Finding the Strategy team…')).toBeInTheDocument()
-
-    runTimers(1)
-    expect(screen.getByText('1 reviewer found')).toBeInTheDocument()
-    expect(screen.getByText('Mapping reviewers to this request…')).toBeInTheDocument()
+    expect(screen.getByText('Mapping reviewers to KPIs and expertise…')).toBeInTheDocument()
     expect(onComplete).not.toHaveBeenCalled()
 
     runTimers(3)
     expect(screen.getByText('Matched on KPI and expertise')).toBeInTheDocument()
     expect(onComplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('finds the Strategy team', () => {
+    vi.useFakeTimers()
+    render(<ReviewersLoading team="strategy" count={1} onComplete={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'Finding the Strategy team' })).toBeInTheDocument()
+    runTimers(1)
+    expect(screen.getByText('1 reviewer found')).toBeInTheDocument()
+    runTimers(2)
+    expect(screen.getByText('Matched on strategy focus')).toBeInTheDocument()
   })
 })

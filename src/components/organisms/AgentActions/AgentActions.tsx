@@ -4,7 +4,7 @@
  * AgentActions — Organism
  * The agent's checklist for a request. Plays as a step-by-step run (context first, then each
  * check) and settles into an expandable list of what the agent checked and found.
- * Used in: PartnershipDetail
+ * Used in: PartnershipDetail, AnalysisDrawer
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -16,15 +16,23 @@ import {
   Copy,
   FileText,
   Gauge,
+  History,
   Layers,
+  ListChecks,
   Loader2,
   Route,
+  Scale,
+  ShieldAlert,
   Target,
 } from 'lucide-react'
-import type { AgentActionIcon, AgentActionStatus, AgentActionsProps } from './AgentActions.types'
+import type { AgentActionIcon, AgentActionsProps, ConfidenceLevel } from './AgentActions.types'
 import { AGENT_CONTEXT_SOURCES, buildAgentActions } from './agentActions.data'
 
 const ICONS: Record<AgentActionIcon, React.ComponentType<{ className?: string }>> = {
+  history: History,
+  backlog: ListChecks,
+  uae: Scale,
+  screening: ShieldAlert,
   duplicate: Copy,
   classification: Route,
   maturity: Gauge,
@@ -33,40 +41,45 @@ const ICONS: Record<AgentActionIcon, React.ComponentType<{ className?: string }>
   brief: FileText,
 }
 
-const STATUS_LABEL: Record<AgentActionStatus, string> = {
-  passed: 'Passed',
-  attention: 'Needs attention',
-  complete: 'Complete',
-}
-
 const SOURCE_MS = 260
 const CHECK_MS = 1000
-
-const levelOf = (c: number) => (c >= 80 ? 'High' : c >= 50 ? 'Medium' : 'Low')
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const ConfidenceMeter: React.FC<{ value: number; label?: string }> = ({ value, label }) => (
-  <div className="flex items-center gap-2" aria-label={`${label ?? 'Confidence'} ${value}%`}>
-    <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-      <div className="h-full rounded-full bg-[#36c0c9]" style={{ width: `${value}%` }} />
-    </div>
-    <span className="text-[11px] font-semibold text-[#0d212c] tabular-nums">{value}%</span>
-    <span className="text-[11px] text-[#64748b]">{levelOf(value)}</span>
-  </div>
+/** Confidence is always shown as a level, never as a percentage */
+export const ConfidenceBadge: React.FC<{ level: ConfidenceLevel; label?: string }> = ({
+  level,
+  label,
+}) => (
+  <span
+    aria-label={`${label ?? 'Confidence'} ${level}`}
+    className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border whitespace-nowrap ${
+      level === 'High'
+        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        : level === 'Medium'
+          ? 'bg-amber-50 text-amber-700 border-amber-200'
+          : 'bg-slate-50 text-slate-600 border-slate-200'
+    }`}
+  >
+    {level} confidence
+  </span>
 )
 
 export const AgentActions: React.FC<AgentActionsProps> = ({
   request,
+  actions: actionsProp,
+  showHeader = true,
+  showSources = true,
   animate = false,
   onComplete,
   className = '',
 }) => {
-  const actions = useMemo(() => buildAgentActions(request), [request])
-  const sourceCount = AGENT_CONTEXT_SOURCES.length
+  const built = useMemo(() => buildAgentActions(request), [request])
+  const actions = actionsProp ?? built
+  const sourceCount = showSources ? AGENT_CONTEXT_SOURCES.length : 0
   const total = sourceCount + actions.length
 
   const [step, setStep] = useState(() => (animate && !prefersReducedMotion() ? 0 : total))
@@ -75,7 +88,6 @@ export const AgentActions: React.FC<AgentActionsProps> = ({
   onCompleteRef.current = onComplete
 
   const running = step < total
-  const attentionCount = actions.filter((a) => a.status === 'attention').length
 
   useEffect(() => {
     if (!animate || step >= total) return
@@ -91,49 +103,39 @@ export const AgentActions: React.FC<AgentActionsProps> = ({
 
   return (
     <section
-      aria-labelledby="agent-actions-heading"
+      aria-labelledby={showHeader ? 'agent-actions-heading' : undefined}
+      aria-label={showHeader ? undefined : 'Agent checks'}
       className={`flex flex-col gap-6 ${className}`.trim()}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#e6fffa] text-[#36c0c9] flex items-center justify-center shrink-0">
-            <Bot className="w-5 h-5" aria-hidden="true" />
+      {showHeader && (
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#e6fffa] text-[#36c0c9] flex items-center justify-center shrink-0">
+              <Bot className="w-5 h-5" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <h2 id="agent-actions-heading" className="text-base font-semibold text-[#0d212c]">
+                Agent Actions
+              </h2>
+              <p className="text-xs text-[#64748b]" aria-live="polite">
+                {running
+                  ? `Reviewing the submission from ${request.companyName}`
+                  : 'Analysis complete. Preparing the initial assessment brief…'}
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <h2 id="agent-actions-heading" className="text-base font-semibold text-[#0d212c]">
-              Agent Actions
-            </h2>
-            <p className="text-xs text-[#64748b]" aria-live="polite">
-              {running
-                ? `Reviewing the submission from ${request.companyName}`
-                : 'The agent analysed the submission and ran the checks below. Open any check to see the detail.'}
-            </p>
-          </div>
-        </div>
 
-        {running ? (
-          <button
-            type="button"
-            onClick={() => setStep(total)}
-            className="text-xs font-medium text-[#64748b] hover:text-[#0d212c] cursor-pointer transition"
-          >
-            Skip
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 animate-in fade-in duration-300">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <Check className="w-3.5 h-3.5" aria-hidden="true" />
-              {actions.length} checks completed
-            </span>
-            {attentionCount > 0 && (
-              <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                {attentionCount} needs attention
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+          {running && (
+            <button
+              type="button"
+              onClick={() => setStep(total)}
+              className="text-xs font-medium text-[#64748b] hover:text-[#0d212c] cursor-pointer transition"
+            >
+              Skip
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Progress */}
       {running && (
@@ -153,41 +155,46 @@ export const AgentActions: React.FC<AgentActionsProps> = ({
       )}
 
       {/* Context the agent reads */}
-      <div className="flex flex-col gap-2.5">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-[#94a3b8]">
-          Reading
-        </span>
-        <ul className="flex flex-wrap gap-2">
-          {AGENT_CONTEXT_SOURCES.map((source, i) => {
-            const state = step > i ? 'done' : step === i ? 'running' : 'pending'
-            return (
-              <li
-                key={source}
-                data-state={state}
-                className={`inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-300 ${
-                  state === 'pending'
-                    ? 'bg-white border-[#e2e8f0] text-[#94a3b8]'
-                    : state === 'running'
-                      ? 'bg-[#f0fdfa] border-[#36c0c9] text-[#0f766e]'
-                      : 'bg-white border-[#e2e8f0] text-[#0d212c]'
-                }`}
-              >
-                {state === 'done' ? (
-                  <Check
-                    className="w-3.5 h-3.5 text-[#10b981] animate-in zoom-in-50 duration-300"
-                    aria-hidden="true"
-                  />
-                ) : state === 'running' ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1] mx-1" aria-hidden="true" />
-                )}
-                {source}
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+      {showSources && (
+        <div className="flex flex-col gap-2.5">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-[#94a3b8]">
+            Reading
+          </span>
+          <ul className="flex flex-wrap gap-2">
+            {AGENT_CONTEXT_SOURCES.map((source, i) => {
+              const state = step > i ? 'done' : step === i ? 'running' : 'pending'
+              return (
+                <li
+                  key={source}
+                  data-state={state}
+                  className={`inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-300 ${
+                    state === 'pending'
+                      ? 'bg-white border-[#e2e8f0] text-[#94a3b8]'
+                      : state === 'running'
+                        ? 'bg-[#f0fdfa] border-[#36c0c9] text-[#0f766e]'
+                        : 'bg-white border-[#e2e8f0] text-[#0d212c]'
+                  }`}
+                >
+                  {state === 'done' ? (
+                    <Check
+                      className="w-3.5 h-3.5 text-[#10b981] animate-in zoom-in-50 duration-300"
+                      aria-hidden="true"
+                    />
+                  ) : state === 'running' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1] mx-1"
+                      aria-hidden="true"
+                    />
+                  )}
+                  {source}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Checks */}
       <ol className="flex flex-col gap-3">
@@ -232,17 +239,9 @@ export const AgentActions: React.FC<AgentActionsProps> = ({
                 <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-[#0d212c]">{action.title}</span>
-                    {state === 'done' && (
-                      <span
-                        className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border animate-in fade-in duration-300 ${
-                          action.status === 'attention'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : action.status === 'passed'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-[#f0fdfa] text-[#0f766e] border-[#ccfbf1]'
-                        }`}
-                      >
-                        {STATUS_LABEL[action.status]}
+                    {state === 'done' && action.status === 'attention' && (
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border bg-amber-50 text-amber-700 border-amber-200 animate-in fade-in duration-300">
+                        Needs attention
                       </span>
                     )}
                   </div>
@@ -260,10 +259,10 @@ export const AgentActions: React.FC<AgentActionsProps> = ({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-4 shrink-0">
+                <div className="flex items-center gap-3 shrink-0">
                   {state === 'done' && action.confidence !== undefined && (
                     <div className="hidden sm:block">
-                      <ConfidenceMeter value={action.confidence} />
+                      <ConfidenceBadge level={action.confidence} />
                     </div>
                   )}
                   {state === 'done' ? (
@@ -336,7 +335,7 @@ export const AgentActions: React.FC<AgentActionsProps> = ({
                                 {s.reason}
                               </span>
                             </div>
-                            <ConfidenceMeter value={s.confidence} label={`Match for ${s.name}`} />
+                            <ConfidenceBadge level={s.confidence} label={`Match for ${s.name}`} />
                           </li>
                         ))}
                       </ul>

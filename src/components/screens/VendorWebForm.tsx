@@ -1,0 +1,617 @@
+'use client'
+
+import React, { useMemo, useRef, useState } from 'react'
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Loader2,
+  LogOut,
+  Send,
+  Sparkles,
+  X,
+} from 'lucide-react'
+import { runVendorFormCheck, type VendorFormSuggestion } from '@/lib/vendorFormCheck'
+import {
+  DEVELOPMENT_APPROACH_OPTIONS,
+  EMPTY_VENDOR_FORM,
+  FOCUS_AREA_OPTIONS,
+  POPULATION_OPTIONS,
+  missingVendorFields,
+  type VendorFormValues,
+} from '@/types/vendorForm'
+
+export interface VendorWebFormProps {
+  /** Receives the finished form and returns the case ID created for it */
+  onSubmitCase: (values: VendorFormValues) => string
+  onSignOut?: () => void
+}
+
+const FIELD =
+  'w-full rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] placeholder:text-[#9aa8b5] shadow-2xs transition focus:outline-none focus:border-[#36c0c9] focus:ring-4 focus:ring-[#36c0c9]/15'
+const FIELD_ERROR = 'border-red-300'
+
+interface QuestionConfig {
+  field: keyof VendorFormValues
+  label: string
+  helper: string
+  placeholder: string
+  rows: number
+  required: boolean
+}
+
+const QUESTIONS: Record<string, QuestionConfig> = {
+  stageAndExperience: {
+    field: 'stageAndExperience',
+    label: "How would you describe your company's stage of maturity and experience?",
+    helper:
+      "Company's growth journey and regional experience. Include relevant milestones such as product launches, market entries or partnerships in UAE or other healthcare systems.",
+    placeholder: 'Describe your journey, regional experience and key milestones...',
+    rows: 4,
+    required: true,
+  },
+  proposal: {
+    field: 'proposal',
+    label: 'Briefly describe your proposal of collaboration.',
+    helper: 'Details about the product, platform or service you are submitting for consideration.',
+    placeholder: 'What are you proposing, and what would M42 do with you?',
+    rows: 4,
+    required: true,
+  },
+  maturityAndRegulatory: {
+    field: 'maturityAndRegulatory',
+    label:
+      'What is the current maturity level of your solution and have you secured any regulatory approvals or certifications (if applicable)?',
+    helper:
+      "Briefly describe the solution's current stage of maturity, any deployments to date and regulatory clearances obtained (e.g. CE, FDA, DoH Abu Dhabi).",
+    placeholder: 'Maturity, deployments to date and clearances obtained...',
+    rows: 3,
+    required: true,
+  },
+  relevantApprovals: {
+    field: 'relevantApprovals',
+    label:
+      'Please list any relevant approvals (e.g. CE, FDA, ISO, UAE MOHAP, DOH) or state "Not applicable."',
+    helper: '',
+    placeholder: 'e.g. CE Mark, FDA cleared, ISO 13485',
+    rows: 2,
+    required: true,
+  },
+  novelty: {
+    field: 'novelty',
+    label: 'How novel or differentiated is your solution compared to others in the market?',
+    helper:
+      'Assess the innovation potential, uniqueness and whether the solution brings new intellectual property or care modules to M42.',
+    placeholder: 'What sets it apart from alternatives?',
+    rows: 4,
+    required: true,
+  },
+  resources: {
+    field: 'resources',
+    label: 'What specific resources, input, or partnerships are you seeking from M42?',
+    helper:
+      'Outline the type of support expected, such as data, access, clinical collaboration, technical integration, funding or pilot sites.',
+    placeholder: 'The support you expect from M42...',
+    rows: 3,
+    required: true,
+  },
+}
+
+const Field: React.FC<{
+  id: string
+  label: string
+  helper?: string
+  required?: boolean
+  error?: boolean
+  suggestion?: VendorFormSuggestion
+  onIgnore?: () => void
+  children: React.ReactNode
+}> = ({ id, label, helper, required, error, suggestion, onIgnore, children }) => (
+  <div id={`field-${id}`} className="flex flex-col gap-1.5 scroll-mt-24">
+    <label htmlFor={id} className="text-xs font-semibold text-[#0d212c] leading-snug">
+      {label}
+      {required && <span className="text-red-500 font-semibold"> *</span>}
+    </label>
+    {helper && <p className="text-[11px] text-[#64748b] leading-relaxed">{helper}</p>}
+    {children}
+    {error && (
+      <span className="text-[11px] text-red-600 flex items-center gap-1">
+        <AlertCircle className="w-3 h-3" aria-hidden="true" />
+        This field is required
+      </span>
+    )}
+    {suggestion && (
+      <div
+        role="note"
+        className="rounded-xl border border-[#bae6fd] bg-[#f0f9ff] px-3.5 py-3 flex items-start justify-between gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
+      >
+        <div className="flex items-start gap-2.5">
+          <Sparkles className="w-4 h-4 text-[#0369a1] shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="text-xs text-[#0c4a6e] leading-relaxed">{suggestion.message}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onIgnore}
+          className="text-[11px] font-semibold text-[#0369a1] hover:underline shrink-0 cursor-pointer"
+        >
+          Ignore
+        </button>
+      </div>
+    )}
+  </div>
+)
+
+export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSignOut }) => {
+  const [values, setValues] = useState<VendorFormValues>(EMPTY_VENDOR_FORM)
+  const [showErrors, setShowErrors] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
+  const [suggestions, setSuggestions] = useState<VendorFormSuggestion[] | null>(null)
+  const [ignored, setIgnored] = useState<string[]>([])
+  const [confirming, setConfirming] = useState(false)
+  const [caseId, setCaseId] = useState<string | null>(null)
+  const [focusOpen, setFocusOpen] = useState(false)
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  const set = <K extends keyof VendorFormValues>(field: K, value: VendorFormValues[K]) =>
+    setValues((prev) => ({ ...prev, [field]: value }))
+
+  const missing = useMemo(() => missingVendorFields(values), [values])
+  const isMissing = (field: keyof VendorFormValues) => showErrors && missing.includes(field)
+
+  const openSuggestions = (suggestions ?? []).filter((s) => !ignored.includes(s.field))
+  const suggestionFor = (field: keyof VendorFormValues) =>
+    openSuggestions.find((s) => s.field === field)
+  const ignore = (field: string) => setIgnored((prev) => [...prev, field])
+
+  const handleRunCheck = () => {
+    setIsChecking(true)
+    setIgnored([])
+    clearTimeout(checkTimer.current)
+    checkTimer.current = setTimeout(() => {
+      setSuggestions(runVendorFormCheck(values))
+      setIsChecking(false)
+    }, 1600)
+  }
+
+  const handleSubmit = () => {
+    if (missing.length > 0) {
+      setShowErrors(true)
+      const el = document.getElementById(`field-${missing[0]}`)
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      return
+    }
+    setConfirming(true)
+  }
+
+  const handleConfirm = () => {
+    setConfirming(false)
+    setCaseId(onSubmitCase(values))
+  }
+
+  const reset = () => {
+    setValues(EMPTY_VENDOR_FORM)
+    setShowErrors(false)
+    setSuggestions(null)
+    setIgnored([])
+    setCaseId(null)
+  }
+
+  const textField = (
+    field: 'name' | 'jobTitle' | 'company' | 'phone' | 'email' | 'yearFounded',
+    label: string,
+    opts: { required?: boolean; type?: string; placeholder?: string } = {}
+  ) => (
+    <Field id={field} label={label} required={opts.required} error={isMissing(field)}>
+      <input
+        id={field}
+        type={opts.type ?? 'text'}
+        value={values[field]}
+        onChange={(e) => set(field, e.target.value)}
+        placeholder={opts.placeholder}
+        className={`${FIELD} h-11 px-3.5 ${isMissing(field) ? FIELD_ERROR : ''}`}
+      />
+    </Field>
+  )
+
+  const question = (key: keyof typeof QUESTIONS) => {
+    const q = QUESTIONS[key]
+    const field = q.field as 'stageAndExperience'
+    return (
+      <Field
+        id={q.field}
+        label={q.label}
+        helper={q.helper}
+        required={q.required}
+        error={isMissing(q.field)}
+        suggestion={suggestionFor(q.field)}
+        onIgnore={() => ignore(q.field)}
+      >
+        <textarea
+          id={q.field}
+          rows={q.rows}
+          value={values[field]}
+          onChange={(e) => set(field, e.target.value)}
+          placeholder={q.placeholder}
+          className={`${FIELD} p-3.5 leading-relaxed resize-none ${
+            isMissing(q.field) ? FIELD_ERROR : ''
+          }`}
+        />
+      </Field>
+    )
+  }
+
+  const header = (
+    <header className="w-full bg-white border-b border-[#e2e8f0] px-6 lg:px-10 py-3.5 flex items-center justify-between sticky top-0 z-30">
+      <div className="flex items-center gap-3">
+        <img src="/dark-logo.png" alt="M42 logo" className="h-7 w-auto object-contain" />
+        <span className="text-sm font-semibold text-[#0d212c]">Partnership request</span>
+      </div>
+      {onSignOut && (
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#0d212c] cursor-pointer transition"
+        >
+          <LogOut className="w-4 h-4" aria-hidden="true" />
+          Sign out
+        </button>
+      )}
+    </header>
+  )
+
+  if (caseId) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] text-[#0d212c] font-sans antialiased flex flex-col">
+        {header}
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-8 flex flex-col items-center text-center gap-5 animate-in fade-in zoom-in-95 duration-300">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 text-[#10b981] flex items-center justify-center">
+              <CheckCircle2 className="w-8 h-8" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h1 className="text-xl font-semibold">Request submitted</h1>
+              <p className="text-sm text-[#64748b] leading-relaxed">
+                Thank you. M42 will review your partnership request and get in touch.
+              </p>
+            </div>
+            <div className="w-full rounded-xl bg-[#f0fdfa] border border-[#ccfbf1] py-4 flex flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-[#64748b]">
+                Your case ID
+              </span>
+              <span className="text-3xl font-semibold tracking-tight text-[#0f766e]">{caseId}</span>
+            </div>
+            <p className="text-xs text-[#64748b]">Keep this ID to follow up on your request.</p>
+            <button
+              type="button"
+              onClick={reset}
+              className="text-sm font-medium text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer"
+            >
+              Submit another request
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-[#0d212c] font-sans antialiased">
+      {header}
+
+      <main className="w-full max-w-3xl mx-auto px-6 py-10 flex flex-col gap-8">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight">Partnership request form</h1>
+          <p className="text-sm text-[#64748b] leading-relaxed">
+            Tell us about your company and solution. You can run an AI check before you submit to
+            see which answers could use more detail.
+          </p>
+        </div>
+
+        {suggestions && (
+          <div
+            role="status"
+            className={`rounded-xl border px-4 py-3.5 flex items-start gap-3 animate-in fade-in duration-300 ${
+              openSuggestions.length > 0
+                ? 'bg-[#f0f9ff] border-[#bae6fd]'
+                : 'bg-emerald-50 border-emerald-200'
+            }`}
+          >
+            {openSuggestions.length > 0 ? (
+              <Sparkles className="w-5 h-5 text-[#0369a1] shrink-0" aria-hidden="true" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" aria-hidden="true" />
+            )}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold">
+                {openSuggestions.length > 0
+                  ? `AI check found ${openSuggestions.length} ${
+                      openSuggestions.length === 1 ? 'suggestion' : 'suggestions'
+                    }`
+                  : 'AI check found nothing to improve'}
+              </span>
+              <span className="text-xs text-[#475569] leading-relaxed">
+                {openSuggestions.length > 0
+                  ? 'Update an answer or ignore the suggestion. You can still submit as it is.'
+                  : 'Your answers look clear and complete.'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Company information */}
+        <section className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-6 sm:p-8 flex flex-col gap-6">
+          <h2 className="text-base font-semibold">Company Information</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+            {textField('name', 'Name', { required: true })}
+            {textField('jobTitle', 'Job Title', { required: true })}
+            {textField('company', 'Company', { required: true })}
+            {textField('phone', 'Phone Number', { type: 'tel' })}
+            {textField('email', 'Email Address', { required: true, type: 'email' })}
+            {textField('yearFounded', 'Year Company Was Founded', {
+              required: true,
+              placeholder: 'e.g. 2018',
+            })}
+          </div>
+        </section>
+
+        {/* Key assessment areas */}
+        <section className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-6 sm:p-8 flex flex-col gap-7">
+          <h2 className="text-base font-semibold">Key Assessment Areas</h2>
+
+          {question('stageAndExperience')}
+          {question('proposal')}
+
+          <Field
+            id="focusAreas"
+            label="Which Focus Area does your solution address?"
+            helper="Select the primary area your solution addresses. These focus areas align with M42 transformation and innovation priorities. Select all that apply."
+            required
+            error={isMissing('focusAreas')}
+            suggestion={suggestionFor('focusAreas')}
+            onIgnore={() => ignore('focusAreas')}
+          >
+            <div className="relative">
+              <button
+                id="focusAreas"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={focusOpen}
+                onClick={() => setFocusOpen((o) => !o)}
+                className={`${FIELD} min-h-11 pl-3.5 pr-10 py-2 text-left flex flex-wrap items-center gap-1.5 cursor-pointer ${
+                  isMissing('focusAreas') ? FIELD_ERROR : ''
+                }`}
+              >
+                {values.focusAreas.length === 0 ? (
+                  <span className="text-[#9aa8b5]">Select focus areas</span>
+                ) : (
+                  values.focusAreas.map((f) => (
+                    <span
+                      key={f}
+                      className="px-2.5 py-0.5 rounded-lg bg-[#f0fdfa] text-[#0f766e] text-xs font-medium border border-[#ccfbf1]"
+                    >
+                      {f}
+                    </span>
+                  ))
+                )}
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 transition-transform ${
+                    focusOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+              {focusOpen && (
+                <ul
+                  role="listbox"
+                  aria-label="Focus areas"
+                  aria-multiselectable="true"
+                  className="absolute z-20 mt-1.5 w-full max-h-64 overflow-y-auto rounded-xl border border-[#e2e8f0] bg-white shadow-lg py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+                >
+                  {FOCUS_AREA_OPTIONS.map((opt) => {
+                    const selected = values.focusAreas.includes(opt)
+                    return (
+                      <li key={opt} role="option" aria-selected={selected}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            set(
+                              'focusAreas',
+                              selected
+                                ? values.focusAreas.filter((f) => f !== opt)
+                                : [...values.focusAreas, opt]
+                            )
+                          }
+                          className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-left hover:bg-slate-50 cursor-pointer"
+                        >
+                          <span
+                            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                              selected
+                                ? 'bg-[#36c0c9] border-[#36c0c9] text-white'
+                                : 'border-slate-300'
+                            }`}
+                          >
+                            {selected && (
+                              <Check className="w-3 h-3 stroke-[3]" aria-hidden="true" />
+                            )}
+                          </span>
+                          {opt}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          </Field>
+
+          {question('maturityAndRegulatory')}
+          {question('relevantApprovals')}
+          {question('novelty')}
+
+          <Field
+            id="developmentApproach"
+            label="If applicable, was the solution developed entirely by your team or in collaboration with external partners?"
+            helper="Understand whether the solution was developed internally, co-developed with partners or built using third-party technologies or platforms. Indicate the primary development approach."
+          >
+            <div className="relative">
+              <select
+                id="developmentApproach"
+                value={values.developmentApproach}
+                onChange={(e) => set('developmentApproach', e.target.value)}
+                className={`${FIELD} h-11 appearance-none pl-3.5 pr-10 cursor-pointer`}
+              >
+                <option value="">Select an option</option>
+                {DEVELOPMENT_APPROACH_OPTIONS.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              />
+            </div>
+          </Field>
+
+          {question('resources')}
+
+          <Field
+            id="populations"
+            label="If applicable, which patient populations, clinical areas, or operational workflows will be impacted?"
+            helper="Identify who or what will be directly affected by your solution (patients, clinical teams, care pathways or administrative workflows) to help assess relevance and scope."
+            suggestion={suggestionFor('populations')}
+            onIgnore={() => ignore('populations')}
+          >
+            <div
+              id="populations"
+              role="group"
+              aria-label="Patient populations"
+              className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+            >
+              {POPULATION_OPTIONS.map((pop) => {
+                const checked = values.populations.includes(pop)
+                return (
+                  <label
+                    key={pop}
+                    className="px-3.5 py-2.5 rounded-xl border border-[#d6dee6] bg-white flex items-center gap-2.5 text-sm cursor-pointer hover:bg-slate-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        set(
+                          'populations',
+                          checked
+                            ? values.populations.filter((p) => p !== pop)
+                            : [...values.populations, pop]
+                        )
+                      }
+                      className="w-4 h-4 accent-[#36c0c9]"
+                    />
+                    {pop}
+                  </label>
+                )
+              })}
+            </div>
+          </Field>
+        </section>
+
+        {showErrors && missing.length > 0 && (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700 flex items-center gap-2"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+            Please fill in the required fields marked with *.
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-3 flex-wrap pb-10">
+          <button
+            type="button"
+            onClick={handleRunCheck}
+            disabled={isChecking}
+            className="px-5 py-2.5 rounded-xl border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 disabled:opacity-70 disabled:cursor-wait cursor-pointer transition flex items-center gap-2"
+          >
+            {isChecking ? (
+              <Loader2 className="w-4 h-4 animate-spin text-[#36c0c9]" aria-hidden="true" />
+            ) : (
+              <Sparkles className="w-4 h-4 text-[#36c0c9]" aria-hidden="true" />
+            )}
+            {isChecking
+              ? 'Checking your answers…'
+              : suggestions
+                ? 'Run AI check again'
+                : 'Run AI check'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
+          >
+            Submit request
+            <Send className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
+      </main>
+
+      {confirming && (
+        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-submit-title"
+            className="relative bg-white rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-5 animate-in fade-in zoom-in-95"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#e6fffa] text-[#36c0c9] flex items-center justify-center shrink-0">
+                  <Send className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <h3 id="confirm-submit-title" className="text-lg font-semibold">
+                  Submit your request?
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                aria-label="Close confirmation"
+                className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-[#475569] leading-relaxed">
+              Your answers will be sent to M42 for review. You will not be able to edit them after
+              submitting.
+              {openSuggestions.length > 0 &&
+                ` ${openSuggestions.length} AI ${
+                  openSuggestions.length === 1 ? 'suggestion is' : 'suggestions are'
+                } still open.`}
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                className="px-4 py-2.5 rounded-lg border border-[#e2e8f0] text-xs font-semibold text-[#64748b] hover:text-[#0d212c] hover:bg-slate-50 cursor-pointer"
+              >
+                Review again
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                className="px-5 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-xs font-semibold shadow-xs cursor-pointer"
+              >
+                Confirm &amp; submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -9,6 +9,8 @@ const renderWithTheme = (ui: React.ReactElement) => {
   return render(<ThemeProvider>{ui}</ThemeProvider>)
 }
 
+const profileById = (id: string) => AVAILABLE_PROFILES.find((p) => p.id === id)
+
 describe('LoginScreen', () => {
   it('renders SSO welcome view with Tech Due Diligence branding', () => {
     renderWithTheme(<LoginScreen onLogin={vi.fn()} />)
@@ -24,7 +26,16 @@ describe('LoginScreen', () => {
     await user.click(screen.getByText('Sign in with SSO'))
     expect(screen.getByText('Select Profile')).toBeInTheDocument()
 
-    // Legal Team is hidden; the other 4 profiles are listed
+    // Vendor Web Form and Partnership Admin come first, Legal Team stays hidden
+    expect(screen.getByText('Vendor Web Form')).toBeInTheDocument()
+    expect(screen.getByText('Partnership Admin')).toBeInTheDocument()
+    const order = screen.getAllByRole('button').map((b) => b.textContent ?? '')
+    expect(order.findIndex((t) => t.includes('Vendor Web Form'))).toBeLessThan(
+      order.findIndex((t) => t.includes('Partnership Admin'))
+    )
+    expect(order.findIndex((t) => t.includes('Partnership Admin'))).toBeLessThan(
+      order.findIndex((t) => t.includes('Director'))
+    )
     expect(screen.getByText('Director')).toBeInTheDocument()
     expect(screen.getByText('Internal Interest Team')).toBeInTheDocument()
     expect(screen.getByText('Strategy Team')).toBeInTheDocument()
@@ -65,7 +76,7 @@ describe('LoginScreen', () => {
       vi.advanceTimersByTime(800)
     })
 
-    expect(handleLogin).toHaveBeenCalledWith(AVAILABLE_PROFILES[0])
+    expect(handleLogin).toHaveBeenCalledWith(profileById('director'))
     vi.useRealTimers()
   })
 
@@ -85,7 +96,7 @@ describe('LoginScreen', () => {
       vi.advanceTimersByTime(800)
     })
 
-    expect(handleLogin).toHaveBeenCalledWith(AVAILABLE_PROFILES[1])
+    expect(handleLogin).toHaveBeenCalledWith(profileById('evaluator'))
     vi.useRealTimers()
   })
 
@@ -105,7 +116,7 @@ describe('LoginScreen', () => {
       vi.advanceTimersByTime(800)
     })
 
-    expect(handleLogin).toHaveBeenCalledWith(AVAILABLE_PROFILES[2])
+    expect(handleLogin).toHaveBeenCalledWith(profileById('strategy-fit'))
     vi.useRealTimers()
   })
 
@@ -136,5 +147,24 @@ describe('LoginScreen', () => {
     AVAILABLE_PROFILES.filter((p) => p.id !== 'legal-director').forEach((p) => {
       expect(screen.getByText(p.roleTitle)).toBeInTheDocument()
     })
+  })
+
+  it.each([
+    ['Vendor Web Form', 'vendor'],
+    ['Partnership Admin', 'partnership-admin'],
+  ])('selects the %s profile and triggers onLogin', async (label, id) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const handleLogin = vi.fn()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderWithTheme(<LoginScreen onLogin={handleLogin} />)
+
+    await user.click(screen.getByText('Sign in with SSO'))
+    await user.click(screen.getByText(label))
+    act(() => {
+      vi.advanceTimersByTime(800)
+    })
+
+    expect(handleLogin).toHaveBeenCalledWith(profileById(id))
+    vi.useRealTimers()
   })
 })

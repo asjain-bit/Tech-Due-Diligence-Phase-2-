@@ -15,23 +15,88 @@ import {
 import { SearchBar } from '@/components/molecules/SearchBar'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import { PartnershipDetail } from '@/components/organisms/PartnershipDetail'
-import { type PartnershipRequest, INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
+import {
+  type PartnershipRequest,
+  type SlaStatus,
+  INITIAL_PARTNERSHIP_REQUESTS,
+} from '@/types/partnership.types'
+import {
+  getStageLabel,
+  holdRequest,
+  proceedRequest,
+  rejectRequest,
+  resumeRequest,
+  routeRequest,
+  type AdminRouting,
+} from '@/lib/caseActions'
 import { type UserProfile } from './LoginScreen'
 
 export interface DashboardScreenProps {
   userProfile?: UserProfile
+  /** Shared cases. When omitted the screen keeps its own copy of the seed data. */
+  requests?: PartnershipRequest[]
+  onRequestsChange?: React.Dispatch<React.SetStateAction<PartnershipRequest[]>>
 }
 
-export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile }) => {
+const SLA_CATEGORY: Record<SlaStatus, 'success' | 'warning' | 'error'> = {
+  'On track': 'success',
+  'At risk': 'warning',
+  Breached: 'error',
+}
+
+/** Two lines of the solution description, with the full text in a tooltip */
+const DescriptionCell: React.FC<{ text: string }> = ({ text }) => {
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+  const show = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect()
+    setPos({ left: Math.min(r.left, window.innerWidth - 320), top: r.bottom + 6 })
+  }
+  return (
+    <>
+      <p
+        tabIndex={0}
+        aria-label={text}
+        onMouseEnter={(e) => show(e.currentTarget)}
+        onMouseLeave={() => setPos(null)}
+        onFocus={(e) => show(e.currentTarget)}
+        onBlur={() => setPos(null)}
+        className="text-xs font-normal text-[#0d212c] leading-relaxed line-clamp-2 max-w-[260px] outline-none"
+      >
+        {text}
+      </p>
+      {pos && (
+        <div
+          role="tooltip"
+          style={{ left: pos.left, top: pos.top }}
+          className="fixed z-50 w-80 bg-[#0d212c] text-white text-[11px] font-medium leading-relaxed px-3 py-2 rounded-xl shadow-xl pointer-events-none animate-in fade-in duration-150"
+        >
+          {text}
+        </div>
+      )}
+    </>
+  )
+}
+
+export const DashboardScreen: React.FC<DashboardScreenProps> = ({
+  userProfile,
+  requests: sharedRequests,
+  onRequestsChange,
+}) => {
   const isInternalTeam =
     userProfile?.id === 'evaluator' || userProfile?.roleTitle === 'Internal Interest Team'
   const isStrategyTeam =
     userProfile?.id === 'strategy-fit' || userProfile?.roleTitle === 'Strategy Team'
   const isNonDirector = isInternalTeam || isStrategyTeam
-  const [requests, setRequests] = useState<PartnershipRequest[]>(INITIAL_PARTNERSHIP_REQUESTS)
+  const isAdmin = userProfile?.id === 'partnership-admin'
+  const [localRequests, setLocalRequests] = useState<PartnershipRequest[]>(
+    INITIAL_PARTNERSHIP_REQUESTS
+  )
+  const requests = sharedRequests ?? localRequests
+  const setRequests = onRequestsChange ?? setLocalRequests
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedRequest, setSelectedRequest] = useState<PartnershipRequest | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedRequest = requests.find((r) => r.id === selectedId) ?? null
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Status categories for StatusChip (Pending, In Progress, At Risk, Exited)
@@ -45,97 +110,64 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
         return 'error'
       case 'Exited':
         return 'neutral'
+      case 'On Hold':
+        return 'neutral'
       default:
         return 'neutral'
     }
   }
 
-  // Handle proceed from detailed view
-  const handleProceed = (requestId: string, reason: string) => {
-    setRequests((prev) =>
-      prev.map((r) => {
-        if (r.id !== requestId) return r
-        const updatedStages = r.workflowStages.map((stage) => {
-          if (stage.id === 3)
-            return { ...stage, status: 'completed' as const, subheading: 'Completed' }
-          if (stage.id === 4)
-            return { ...stage, status: 'in_progress' as const, subheading: 'In Progress' }
-          return stage
-        })
-        return {
-          ...r,
-          status: 'In Progress' as const,
-          workflowStages: updatedStages,
-          decision: {
-            status: 'proceeded',
-            reason: reason || 'Approved to proceed to next stage.',
-            date: 'Just now',
-          },
-        }
-      })
-    )
-
-    setSelectedRequest((prev) => {
-      if (!prev || prev.id !== requestId) return prev
-      const updatedStages = prev.workflowStages.map((stage) => {
-        if (stage.id === 3)
-          return { ...stage, status: 'completed' as const, subheading: 'Completed' }
-        if (stage.id === 4)
-          return { ...stage, status: 'in_progress' as const, subheading: 'In Progress' }
-        return stage
-      })
-      return {
-        ...prev,
-        status: 'In Progress' as const,
-        workflowStages: updatedStages,
-        decision: {
-          status: 'proceeded',
-          reason: reason || 'Approved to proceed to next stage.',
-          date: 'Just now',
-        },
-      }
-    })
-
-    setToastMessage('Partnership request has been approved to proceed to the next stage.')
+  const notify = (message: string) => {
+    setToastMessage(message)
     setTimeout(() => setToastMessage(null), 4000)
   }
 
-  // Handle reject from detailed view
+  const updateRequest = (requestId: string, fn: (r: PartnershipRequest) => PartnershipRequest) =>
+    setRequests((prev) => prev.map((r) => (r.id === requestId ? fn(r) : r)))
+
+  // Director approves the brief
+  const handleProceed = (requestId: string, reason: string) => {
+    updateRequest(requestId, (r) => proceedRequest(r, reason))
+    notify('Partnership request has been approved to proceed to the next stage.')
+  }
+
+  // Director rejects the request
   const handleReject = (requestId: string, reason: string) => {
-    setRequests((prev) =>
-      prev.map((r) => {
-        if (r.id !== requestId) return r
-        return {
-          ...r,
-          status: 'Exited' as const,
-          decision: {
-            status: 'rejected',
-            reason,
-            date: 'Just now',
-          },
-        }
-      })
+    updateRequest(requestId, (r) => rejectRequest(r, reason))
+    notify('Partnership request has been rejected.')
+  }
+
+  // Director asks the vendor for more information
+  const handleRequestInfo = (
+    requestId: string,
+    email: { to: string; subject: string; body: string }
+  ) => {
+    updateRequest(requestId, (r) => holdRequest(r, email))
+    notify('Information request sent. The case is on hold until the vendor replies.')
+  }
+
+  const handleResume = (requestId: string) => {
+    updateRequest(requestId, resumeRequest)
+    notify('Vendor information received. The case is back with the Director.')
+  }
+
+  // Partnership Admin routes the case
+  const handleRoute = (requestId: string, routing: AdminRouting) => {
+    updateRequest(requestId, (r) => routeRequest(r, routing))
+    notify(
+      routing.action === 'reject'
+        ? 'Case has been rejected.'
+        : routing.type === 'Partnership'
+          ? 'Case sent to the Director.'
+          : `Case routed to ${routing.type}. It is no longer in the Director's list.`
     )
-
-    setSelectedRequest((prev) => {
-      if (!prev || prev.id !== requestId) return prev
-      return {
-        ...prev,
-        status: 'Exited' as const,
-        decision: {
-          status: 'rejected',
-          reason,
-          date: 'Just now',
-        },
-      }
-    })
-
-    setToastMessage('Partnership request has been rejected.')
-    setTimeout(() => setToastMessage(null), 4000)
   }
 
   // Filter requests
-  const filteredRequests = requests.filter((req) => {
+  // Directors and reviewers only see cases the Partnership Admin has sent on; the admin sees all
+  const scopedRequests = isAdmin ? requests : requests.filter((r) => r.queue === 'director')
+
+  const filteredRequests = scopedRequests.filter((req) => {
     // Exited status hidden from internal and strategy teams
     if (isNonDirector && req.status.toLowerCase() === 'exited') {
       return false
@@ -161,32 +193,37 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
 
   // Filter options with dynamic counts (Pending, In progress, At Risk, Exited)
   const visibleRequestsForCount = isNonDirector
-    ? requests.filter((r) => r.status.toLowerCase() !== 'exited')
-    : requests
+    ? scopedRequests.filter((r) => r.status.toLowerCase() !== 'exited')
+    : scopedRequests
 
   const filterOptions = [
     { key: 'all', label: 'All requests', count: visibleRequestsForCount.length },
     {
       key: 'pending',
       label: 'Pending',
-      count: requests.filter((r) => r.status === 'Pending').length,
+      count: scopedRequests.filter((r) => r.status === 'Pending').length,
     },
     {
       key: 'in progress',
       label: 'In Progress',
-      count: requests.filter((r) => r.status === 'In Progress').length,
+      count: scopedRequests.filter((r) => r.status === 'In Progress').length,
     },
     {
       key: 'at risk',
       label: 'At Risk',
-      count: requests.filter((r) => r.status === 'At Risk').length,
+      count: scopedRequests.filter((r) => r.status === 'At Risk').length,
     },
     ...(!isNonDirector
       ? [
           {
             key: 'exited',
             label: 'Exited',
-            count: requests.filter((r) => r.status === 'Exited').length,
+            count: scopedRequests.filter((r) => r.status === 'Exited').length,
+          },
+          {
+            key: 'on hold',
+            label: 'On Hold',
+            count: scopedRequests.filter((r) => r.status === 'On Hold').length,
           },
         ]
       : []),
@@ -206,9 +243,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
         )}
         <PartnershipDetail
           request={selectedRequest}
-          onBack={() => setSelectedRequest(null)}
+          allRequests={requests}
+          onBack={() => setSelectedId(null)}
           onProceed={handleProceed}
           onReject={handleReject}
+          onRequestInfo={handleRequestInfo}
+          onResume={handleResume}
+          onRoute={handleRoute}
           userProfile={userProfile}
         />
       </div>
@@ -479,16 +520,28 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
-              {/* Column titles: font size text-[11px], font weight font-medium */}
               <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
-                <th className="py-4 px-4">Request ID</th>
-                <th className="py-4 px-4">Company name</th>
-                {!isNonDirector && <th className="py-4 px-4">Vendor Name</th>}
-                <th className="py-4 px-4">Focus Area</th>
-                <th className="py-4 px-4">Solution Maturity</th>
-                <th className="py-4 px-4">Status</th>
-                <th className="py-4 px-4">Deadline</th>
-                <th className="py-4 px-4">Submitted Date</th>
+                <th className="py-4 px-4">Case ID</th>
+                {isNonDirector ? (
+                  <>
+                    <th className="py-4 px-4">Company name</th>
+                    <th className="py-4 px-4">Focus Area</th>
+                    <th className="py-4 px-4">Solution Maturity</th>
+                    <th className="py-4 px-4">Status</th>
+                    <th className="py-4 px-4">Deadline</th>
+                    <th className="py-4 px-4">Submitted Date</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="py-4 px-4">Company</th>
+                    <th className="py-4 px-4">Solution description</th>
+                    <th className="py-4 px-4">Type</th>
+                    <th className="py-4 px-4">Stage</th>
+                    <th className="py-4 px-4">Days in stage</th>
+                    <th className="py-4 px-4">Owner</th>
+                    <th className="py-4 px-4">SLA status</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e2e8f0]/60">
@@ -512,64 +565,99 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
                 filteredRequests.map((req) => (
                   <tr
                     key={req.id}
-                    onClick={() => setSelectedRequest(req)}
+                    onClick={() => setSelectedId(req.id)}
                     className="hover:bg-slate-50 transition-colors cursor-pointer group"
                   >
                     <td className="py-4.5 px-4 text-xs font-medium text-[#64748b] whitespace-nowrap">
                       {req.requestCode}
                     </td>
 
-                    {/* Increased row height via py-4.5 padding */}
                     <td className="py-4.5 px-4 text-xs font-medium text-[#0d212c] group-hover:text-[#36c0c9]">
                       {req.companyName}
                     </td>
 
-                    {/* Vendor Name — only for Director profile */}
-                    {!isNonDirector && (
-                      <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c]">
-                        {req.vendorName}
-                      </td>
+                    {isNonDirector ? (
+                      <>
+                        <td className="py-4.5 px-4 text-xs font-normal text-[#64748b]">
+                          <div className="flex flex-wrap gap-1.5 max-w-xs">
+                            {(req.assessmentAreas?.focusAreas &&
+                            req.assessmentAreas.focusAreas.length > 0
+                              ? req.assessmentAreas.focusAreas
+                              : req.tags && req.tags.length > 0
+                                ? req.tags
+                                : [req.focusArea]
+                            ).map((area, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-normal whitespace-nowrap"
+                              >
+                                {area}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+
+                        <td className="py-4.5 px-4 text-xs font-normal text-[#64748b]">
+                          {req.solutionMaturity}
+                        </td>
+
+                        <td className="py-4.5 px-4 text-xs font-normal">
+                          <StatusChip
+                            label={req.status}
+                            status={getStatusCategory(req.status)}
+                            dot={false}
+                          />
+                        </td>
+
+                        <td className="py-4.5 px-4 text-xs font-normal text-[#64748b] whitespace-nowrap">
+                          {req.deadline || req.submittedOn}
+                        </td>
+
+                        <td className="py-4.5 px-4 text-xs font-normal text-[#64748b] whitespace-nowrap">
+                          {req.submittedOn}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-4.5 px-4">
+                          <DescriptionCell
+                            text={
+                              req.assessmentAreas?.productPlatformServiceDetails || req.solution
+                            }
+                          />
+                        </td>
+
+                        <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] whitespace-nowrap">
+                          {req.caseType ? (
+                            <span className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs">
+                              {req.caseType}
+                            </span>
+                          ) : (
+                            <span className="text-[#94a3b8]">Unassigned</span>
+                          )}
+                        </td>
+
+                        <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] whitespace-nowrap">
+                          {getStageLabel(req)}
+                        </td>
+
+                        <td className="py-4.5 px-4 text-xs font-normal text-[#64748b] whitespace-nowrap">
+                          {req.daysInStage} {req.daysInStage === 1 ? 'day' : 'days'}
+                        </td>
+
+                        <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] whitespace-nowrap">
+                          {req.owner}
+                        </td>
+
+                        <td className="py-4.5 px-4 text-xs font-normal">
+                          <StatusChip
+                            label={req.slaStatus}
+                            status={SLA_CATEGORY[req.slaStatus]}
+                            dot={false}
+                          />
+                        </td>
+                      </>
                     )}
-
-                    <td className="py-4.5 px-4 text-xs font-normal text-[#64748b]">
-                      <div className="flex flex-wrap gap-1.5 max-w-xs">
-                        {(req.assessmentAreas?.focusAreas &&
-                        req.assessmentAreas.focusAreas.length > 0
-                          ? req.assessmentAreas.focusAreas
-                          : req.tags && req.tags.length > 0
-                            ? req.tags
-                            : [req.focusArea]
-                        ).map((area, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-normal whitespace-nowrap"
-                          >
-                            {area}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-
-                    <td className="py-4.5 px-4 text-xs font-normal text-[#64748b]">
-                      {req.solutionMaturity}
-                    </td>
-
-                    {/* Chip without dot per requirement */}
-                    <td className="py-4.5 px-4 text-xs font-normal">
-                      <StatusChip
-                        label={req.status}
-                        status={getStatusCategory(req.status)}
-                        dot={false}
-                      />
-                    </td>
-
-                    <td className="py-4.5 px-4 text-xs font-normal text-[#64748b] whitespace-nowrap">
-                      {req.deadline || req.submittedOn}
-                    </td>
-
-                    <td className="py-4.5 px-4 text-xs font-normal text-[#64748b] whitespace-nowrap">
-                      {req.submittedOn}
-                    </td>
                   </tr>
                 ))
               )}

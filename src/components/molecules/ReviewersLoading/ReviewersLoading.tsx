@@ -14,16 +14,24 @@ import type { ReviewersLoadingProps } from './ReviewersLoading.types'
 const LINE_MS = 1000
 
 export const ReviewersLoading: React.FC<ReviewersLoadingProps> = ({
-  internalCount,
-  strategyCount,
+  team,
+  count,
   onComplete,
   className = '',
 }) => {
-  const lines = [
-    { running: 'Finding the Internal Interest team', done: `${internalCount} reviewers found` },
-    { running: 'Finding the Strategy team', done: `${strategyCount} reviewer found` },
-    { running: 'Mapping reviewers to this request', done: 'Matched on KPI and expertise' },
-  ]
+  const isInternal = team === 'internal'
+  const lines = isInternal
+    ? [
+        { running: 'Finding the Internal Interest team', done: `${count} reviewers found` },
+        {
+          running: 'Mapping reviewers to KPIs and expertise',
+          done: 'Matched on KPI and expertise',
+        },
+      ]
+    : [
+        { running: 'Finding the Strategy team', done: `${count} reviewer found` },
+        { running: 'Mapping the reviewer to this request', done: 'Matched on strategy focus' },
+      ]
   const [step, setStep] = useState(0)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
@@ -55,7 +63,9 @@ export const ReviewersLoading: React.FC<ReviewersLoadingProps> = ({
       </div>
 
       <div className="flex flex-col items-center gap-1 text-center">
-        <h2 className="text-base font-semibold text-[#0d212c]">Finding reviewers</h2>
+        <h2 className="text-base font-semibold text-[#0d212c]">
+          {isInternal ? 'Finding the Internal Interest team' : 'Finding the Strategy team'}
+        </h2>
         <p className="text-xs text-[#64748b]">
           The agent is choosing who should review this request
         </p>
