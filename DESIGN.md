@@ -101,40 +101,43 @@ _Single DOM element, zero component children._
 
 _2+ atoms composed together for a single focused purpose._
 
-| Name        | Path                               | Description                                                                            | Used in                                |
-| :---------- | :--------------------------------- | :------------------------------------------------------------------------------------- | :------------------------------------- |
-| `FormField` | `@/components/molecules/FormField` | Accessible form control pairing Label, Input/Textarea/Select, and validation messages. | SettingsPanel                          |
-| `SearchBar` | `@/components/molecules/SearchBar` | Search input pairing Input, search Icon, and quick action Button.                      | SiteHeader, DataTable, DashboardScreen |
-| `Toast`     | `@/components/molecules/Toast`     | Ephemeral notification banner pairing Badge, status Icon, and dismiss Button.          | AppShell, SettingsPanel, Page          |
-| `AppDialog` | `@/components/molecules/AppDialog` | Modal dialog combining Backdrop, title, content, close Button, and actions.            | SettingsPanel, Page                    |
-| `KPICard`   | `@/components/molecules/KPICard`   | Metric display card combining summary value, delta trend Icon, and status Badge.       | Page                                   |
+| Name               | Path                                      | Description                                                                            | Used in                                |
+| :----------------- | :---------------------------------------- | :------------------------------------------------------------------------------------- | :------------------------------------- |
+| `FormField`        | `@/components/molecules/FormField`        | Accessible form control pairing Label, Input/Textarea/Select, and validation messages. | SettingsPanel                          |
+| `SearchBar`        | `@/components/molecules/SearchBar`        | Search input pairing Input, search Icon, and quick action Button.                      | SiteHeader, DataTable, DashboardScreen |
+| `Toast`            | `@/components/molecules/Toast`            | Ephemeral notification banner pairing Badge, status Icon, and dismiss Button.          | AppShell, SettingsPanel, Page          |
+| `AppDialog`        | `@/components/molecules/AppDialog`        | Modal dialog combining Backdrop, title, content, close Button, and actions.            | SettingsPanel, Page                    |
+| `KPICard`          | `@/components/molecules/KPICard`          | Metric display card combining summary value, delta trend Icon, and status Badge.       | Page                                   |
+| `WorkflowStepper`  | `@/components/molecules/WorkflowStepper`  | Horizontal step tracker. Completed and current steps open; later steps stay locked.    | PartnershipDetail                      |
+| `ReviewersLoading` | `@/components/molecules/ReviewersLoading` | Short animated state while the agent finds and maps reviewers.                         | PartnershipDetail                      |
 
 ### Organisms
 
 _Distinct self-contained sections; orchestrates multiple molecules and atoms._
 
-| Name                  | Path                                         | Description                                                                                                                               | Used in             |
-| :-------------------- | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- | :------------------ |
-| `SiteHeader`          | `@/components/organisms/SiteHeader`          | Top navigation bar containing branding, search, nav links, ThemeToggle, and user Avatar.                                                  | AppShell, Page      |
-| `DataTable`           | `@/components/organisms/DataTable`           | Tabular data grid with client-side sorting, SearchBar filtering, and pagination controls.                                                 | Page, SettingsPanel |
-| `SettingsPanel`       | `@/components/organisms/SettingsPanel`       | Comprehensive configuration panel combining multiple FormFields, ThemeToggle, and save actions.                                           | AppShell, Page      |
-| `Sidebar`             | `@/components/organisms/Sidebar`             | Expandable dark left navigation sidebar with user profile, Director designation & logout modal.                                           | HomePage, AppShell  |
-| `PartnershipDetail`   | `@/components/organisms/PartnershipDetail`   | Request detail view: Overview, Internal Assessment Brief (Director), Internal Review, Questionnaire and Judgement tabs.                   | DashboardScreen     |
-| `AgentRecommendation` | `@/components/organisms/AgentRecommendation` | Agent verdict (proceed or reject), confidence, reasoning and the signals it weighed.                                                      | PartnershipDetail   |
-| `AgentActions`        | `@/components/organisms/AgentActions`        | Expandable timeline of agent steps: duplicate check, classification, maturity, KPI mapping, baseline, commodity test, assessment brief.   | PartnershipDetail   |
-| `VendorFormResponse`  | `@/components/organisms/VendorFormResponse`  | Large read-only dialog showing the vendor's original submission form.                                                                     | PartnershipDetail   |
-| `QuestionnaireForm`   | `@/components/organisms/QuestionnaireForm`   | Five-question internal interest questionnaire; same layout editable or view-only.                                                         | PartnershipDetail   |
-| `JudgementForm`       | `@/components/organisms/JudgementForm`       | Strategy judgement (7 agent pre-filled criteria, reasons required on edits) plus the final strategic-fit decision; editable or view-only. | PartnershipDetail   |
+| Name                 | Path                                        | Description                                                                                                                                                                                                                         | Used in             |
+| :------------------- | :------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------ |
+| `SiteHeader`         | `@/components/organisms/SiteHeader`         | Top navigation bar containing branding, search, nav links, ThemeToggle, and user Avatar.                                                                                                                                            | AppShell, Page      |
+| `DataTable`          | `@/components/organisms/DataTable`          | Tabular data grid with client-side sorting, SearchBar filtering, and pagination controls.                                                                                                                                           | Page, SettingsPanel |
+| `SettingsPanel`      | `@/components/organisms/SettingsPanel`      | Comprehensive configuration panel combining multiple FormFields, ThemeToggle, and save actions.                                                                                                                                     | AppShell, Page      |
+| `Sidebar`            | `@/components/organisms/Sidebar`            | Expandable dark left navigation sidebar with user profile, Director designation & logout modal.                                                                                                                                     | HomePage, AppShell  |
+| `PartnershipDetail`  | `@/components/organisms/PartnershipDetail`  | Request detail view. Overview tab plus a Review tab that runs as a locked step workflow (Director: Agent Actions, Brief, Internal Review, Approval; Internal and Strategy teams: Agent Actions, Brief, Questionnaire or Judgement). | DashboardScreen     |
+| `AgentActions`       | `@/components/organisms/AgentActions`       | Agent checklist for a request: animated step-by-step run, then an expandable list of the six checks (duplicate, classification, maturity, KPI mapping, commodity test, brief).                                                      | PartnershipDetail   |
+| `AssessmentBrief`    | `@/components/organisms/AssessmentBrief`    | Initial assessment brief written from the vendor form data, with the agent verdict and the three things that would change it.                                                                                                       | PartnershipDetail   |
+| `BriefDecision`      | `@/components/organisms/BriefDecision`      | Director's approve or reject decision with a mandatory rationale; locks once recorded.                                                                                                                                              | PartnershipDetail   |
+| `VendorFormResponse` | `@/components/organisms/VendorFormResponse` | Large read-only dialog showing the vendor's original submission form.                                                                                                                                                               | PartnershipDetail   |
+| `QuestionnaireForm`  | `@/components/organisms/QuestionnaireForm`  | Five-question internal interest questionnaire; same layout editable or view-only.                                                                                                                                                   | PartnershipDetail   |
+| `JudgementForm`      | `@/components/organisms/JudgementForm`      | Strategy judgement (7 agent pre-filled criteria, reasons required on edits) plus the final strategic-fit decision; editable or view-only.                                                                                           | PartnershipDetail   |
 
 ### Screens & Pages
 
 _Next.js route entries assembling templates, organisms, and views._
 
-| Name              | Path                                         | Description                                                                                                                        | Used in          |
-| :---------------- | :------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- | :--------------- |
-| `LoginScreen`     | `src/components/screens/LoginScreen.tsx`     | M42 SSO authentication screen with persona role selection (Director, Evaluator, etc.).                                             | HomePage (`/`)   |
-| `DashboardScreen` | `src/components/screens/DashboardScreen.tsx` | Vendor assessment dashboard with 4 role-specific KPI cards and the partnership requests table (Submitted Date is the last column). | HomePage (`/`)   |
-| `HomePage`        | `src/app/page.tsx`                           | Main application page integrating authentication state, Sidebar, and DashboardScreen.                                              | App Router (`/`) |
+| Name              | Path                                         | Description                                                                                                                            | Used in          |
+| :---------------- | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- | :--------------- |
+| `LoginScreen`     | `src/components/screens/LoginScreen.tsx`     | M42 SSO authentication screen with persona role selection (Director, Evaluator, etc.).                                                 | HomePage (`/`)   |
+| `DashboardScreen` | `src/components/screens/DashboardScreen.tsx` | Vendor assessment dashboard with 4 role-specific KPI cards and the partnership requests table (Request ID first, Submitted Date last). | HomePage (`/`)   |
+| `HomePage`        | `src/app/page.tsx`                           | Main application page integrating authentication state, Sidebar, and DashboardScreen.                                                  | App Router (`/`) |
 
 ---
 

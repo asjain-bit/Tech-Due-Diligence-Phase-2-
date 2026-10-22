@@ -1,101 +1,149 @@
 import type { PartnershipRequest } from '@/types/partnership.types'
 import type { AgentAction } from './AgentActions.types'
 
+/** What the agent reads before it starts checking */
+export const AGENT_CONTEXT_SOURCES = [
+  'Intake case record',
+  'Service line KPI baselines',
+  'Digital strategy focus areas',
+  'Solution and vendor estate',
+  '24 months of pipeline history',
+]
+
 interface RequestProfile {
+  route: string
+  selfDeclaredRoute: string
+  routeReason: string
   kpi: string
   kpiConfidence: number
   kpiWhy: string
   baseline: string
-  test: string
-  threshold: string
-  dataNeeded: string
+  coe: string
+  estate: string
   commodityVerdict: string
   commodityIsRisk: boolean
   comparables: string
   differentiator: string
-  solutionType: string
+  changeFactors: [string, string, string]
 }
 
 const PROFILES: Record<string, RequestProfile> = {
   'req-001': {
+    route: 'Partner',
+    selfDeclaredRoute: 'Buy (licence the platform)',
+    routeReason:
+      'The vendor also asks for a clinical sandbox and joint research, which is a partnership, not a licence.',
     kpi: 'Time from scan to diagnosis',
     kpiConfidence: 91,
     kpiWhy:
-      'The vendor claims earlier detection from imaging. Turnaround time is the KPI hospitals already track for radiology and oncology.',
-    baseline: 'Median scan-to-report time today is 26 hours across the pilot sites.',
-    test: 'Re-read three months of historical scans at two M42 hospitals and compare the AI result with the radiologist report.',
-    threshold: 'Sensitivity of at least 92% with no more than 10% false positives.',
-    dataNeeded: 'De-identified DICOM scans and final radiology reports for 3 months.',
-    commodityVerdict: 'Differentiated',
+      'The vendor claims earlier detection from imaging. Turnaround time is the KPI radiology and oncology already track.',
+    baseline:
+      'Median scan-to-report time is 26 hours today. We need three months of historical scans and reports at two sites to test the claim.',
+    coe: 'No. Multi-modal imaging models would take the CoE well beyond the same window.',
+    estate: 'No. The deployed estate has no pathology or imaging AI.',
+    commodityVerdict: 'Hard to replace',
     commodityIsRisk: false,
     comparables:
       'Two regional imaging-AI vendors found. Neither covers pathology slides or clinical telemetry.',
     differentiator: 'One multi-modal engine across imaging, pathology and telemetry.',
-    solutionType: 'AI software as a medical device (diagnostic support)',
+    changeFactors: [
+      'Clinical validation not reproduced on M42 patient data',
+      'Regulatory documents found to be out of date or incomplete',
+      'A reviewer finds an overlap with a planned roadmap item',
+    ],
   },
   'req-002': {
+    route: 'Partner',
+    selfDeclaredRoute: 'Buy (licence the platform)',
+    routeReason:
+      'Only one live customer so far. A joint validation partnership fits better than a straight purchase.',
     kpi: 'Time to heart-failure detection',
     kpiConfidence: 82,
     kpiWhy:
       'The proposal targets automated detection in primary care. Days from first ECG to specialist referral is the closest measurable KPI.',
-    baseline: 'Median 9 days from first ECG to specialist referral today.',
-    test: 'Run the model on 14,000 retrospective regional ECG records and compare with cardiologist labels.',
-    threshold: 'Accuracy of at least 94% and a 30% cut in false-positive referrals.',
-    dataNeeded: '12-lead ECG waveforms with confirmed diagnoses from two ambulatory clinics.',
-    commodityVerdict: 'Partly commodity',
+    baseline:
+      'Median 9 days from first ECG to specialist referral. We need 14,000 labelled ECG records to test the accuracy claim.',
+    coe: 'Partly. The CoE could build a basic ECG model in the same window, but not the echo Doppler support.',
+    estate: 'Partly. An ECG module in the deployed estate covers basic reads only.',
+    commodityVerdict: 'Partly replaceable',
     commodityIsRisk: true,
-    comparables:
-      'ECG interpretation AI is widely available from several vendors. Echo Doppler support is rarer.',
+    comparables: 'ECG interpretation AI is widely available. Echo Doppler support is rarer.',
     differentiator: 'Transformer-based waveform model with cross-lead attention.',
-    solutionType: 'AI software as a medical device (cardiology)',
+    changeFactors: [
+      'Regulatory status stays unconfirmed after the vendor is asked',
+      'Accuracy falls below 94% on M42 ECG data',
+      'The CoE shows it can match the model in the same window',
+    ],
   },
   'req-003': {
+    route: 'Buy',
+    selfDeclaredRoute: 'Buy (licence the platform)',
+    routeReason:
+      'Cleared product with a mature commercial offer. The claim holds up, so licensing is the right route.',
     kpi: 'Rate of unclassified variants',
     kpiConfidence: 93,
     kpiWhy:
-      'The product exists to resolve variants of unknown significance. That rate is the direct measure of value for rare-disease cases.',
-    baseline: '38% of variants in rare-disease cases are unclassified today.',
-    test: 'Re-analyse 500 closed rare-disease cases and count variants now classified.',
-    threshold: 'At least a 35% reduction in unclassified variants.',
-    dataNeeded: 'Whole-genome and exome files with clinical reports for 500 closed cases.',
-    commodityVerdict: 'Differentiated',
+      'The product exists to resolve variants of unknown significance. That rate directly measures its value in rare-disease cases.',
+    baseline:
+      '38% of variants are unclassified today. We need 500 closed rare-disease cases to test the claim.',
+    coe: 'No. A curated MENA variant database cannot be built inside the same window.',
+    estate: 'No. No variant interpretation tool is deployed today.',
+    commodityVerdict: 'Hard to replace',
     commodityIsRisk: false,
     comparables:
       'Several global variant tools exist. None hold a curated MENA-specific non-coding variant set.',
     differentiator: 'Largest curated MENA non-coding variant database.',
-    solutionType: 'Clinical bioinformatics platform (cleared device)',
+    changeFactors: [
+      'Unclassified variant reduction is under 35% on M42 cases',
+      'Patient data cannot stay in the UAE',
+      'The vendor cannot match the stated sequencing throughput',
+    ],
   },
   'req-004': {
+    route: 'Partner',
+    selfDeclaredRoute: 'Buy (licence the platform)',
+    routeReason:
+      'The vendor wants joint clinical pathways with M42 virtual health centres, which goes beyond a licence.',
     kpi: '30-day readmission rate',
     kpiConfidence: 89,
     kpiWhy:
       'Remote monitoring after discharge is meant to catch deterioration early. Readmission within 30 days is the standard outcome measure.',
-    baseline: '30-day readmission for chronic care patients is 14.2% today.',
-    test: 'Enrol 300 discharged chronic care patients, half on remote monitoring, and compare readmissions over 90 days.',
-    threshold: 'At least a 2-point drop in readmissions.',
-    dataNeeded: 'Discharge lists and 90-day readmission records for the pilot cohort.',
-    commodityVerdict: 'Commodity risk',
+    baseline:
+      '30-day readmission is 14.2% today. We need discharge lists and 90-day readmissions for a 300-patient cohort.',
+    coe: 'Partly. The CoE could build the escalation dashboard, but not the cellular hub.',
+    estate: 'Partly. The estate already has a remote monitoring module for a smaller cohort.',
+    commodityVerdict: 'Easy to replace',
     commodityIsRisk: true,
     comparables:
       'Remote monitoring hubs are offered by many vendors. Cellular zero-pairing is the main difference.',
     differentiator: 'Cellular hub that needs no smartphone or Wi-Fi at the patient home.',
-    solutionType: 'Connected devices plus clinical escalation dashboard',
+    changeFactors: [
+      'Readmissions drop by less than 2 points in the pilot',
+      'The existing remote monitoring module can be extended at lower cost',
+      'DoH licence or data security certification lapses',
+    ],
   },
 }
 
 const FALLBACK: RequestProfile = {
+  route: 'Partner',
+  selfDeclaredRoute: 'Buy (licence the platform)',
+  routeReason: 'The agent could not confirm the vendor claim, so it chose the safer route.',
   kpi: 'Primary clinical outcome KPI',
   kpiConfidence: 75,
-  kpiWhy: 'The agent matched the proposal to the closest outcome KPI that M42 already tracks.',
-  baseline: 'Baseline to be measured at the pilot site before the test starts.',
-  test: 'Run a retrospective comparison on historical records at one M42 site.',
-  threshold: 'Agreed with the sponsor before the pilot starts.',
-  dataNeeded: 'De-identified records for the test period.',
+  kpiWhy: 'The agent matched the proposal to the closest outcome KPI M42 already tracks.',
+  baseline: 'The baseline needs to be measured at the pilot site before the test starts.',
+  coe: 'Not assessed yet.',
+  estate: 'Not assessed yet.',
   commodityVerdict: 'Needs review',
   commodityIsRisk: true,
   comparables: 'Comparable offerings not yet confirmed.',
   differentiator: 'To be confirmed with the vendor.',
-  solutionType: 'Digital health solution',
+  changeFactors: [
+    'Vendor claims cannot be verified',
+    'A reviewer finds a duplicate or roadmap overlap',
+    'Baseline data cannot be obtained for the test',
+  ],
 }
 
 const PHASE_BY_MATURITY: Record<string, string> = {
@@ -104,10 +152,15 @@ const PHASE_BY_MATURITY: Record<string, string> = {
   Commercial: 'Phase 3: Ready to scale',
 }
 
+const profileFor = (request: PartnershipRequest) => PROFILES[request.id] ?? FALLBACK
+
 const confidenceLevel = (c: number) => (c >= 80 ? 'High' : c >= 50 ? 'Medium' : 'Low')
 
+export const getChangeFactors = (request: PartnershipRequest): [string, string, string] =>
+  profileFor(request).changeFactors
+
 export const buildAgentActions = (request: PartnershipRequest): AgentAction[] => {
-  const p = PROFILES[request.id] ?? FALLBACK
+  const p = profileFor(request)
   const rec = request.agentRecommendation
   const recWord = rec?.status === 'reject' ? 'Reject' : 'Proceed'
   const recConfidence = rec?.confidence ?? 90
@@ -115,66 +168,66 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
   const duplicateClear = cards.duplicateCheck.toLowerCase() === 'clear'
   const regulatoryUnclear = cards.regulatory.toLowerCase().includes('unclear')
   const phase = PHASE_BY_MATURITY[request.solutionMaturity] ?? 'Phase 2: Pilot-ready'
-  const tags = request.tags ?? [request.focusArea]
+  const info = request.companyInfo
   const people = request.internalInterests ?? []
-  const confidences = [
-    p.kpiConfidence + 2,
-    p.kpiConfidence - 4,
-    p.kpiConfidence - 9,
-    p.kpiConfidence - 14,
-    p.kpiConfidence - 18,
-  ]
+  const spread = [2, -4, -9, -14, -18]
 
   return [
     {
       id: 'duplicate',
-      title: 'Duplicate Check',
-      check: 'Is this vendor or solution already in the pipeline, or already exited?',
+      icon: 'duplicate',
+      title: 'Duplicate check',
+      check: 'Against live cases, the deployed estate and prior declines',
+      runningText: 'Comparing against live cases, the deployed estate and prior declines',
       status: duplicateClear ? 'passed' : 'attention',
       headline: duplicateClear
         ? 'No duplicate found'
         : 'Possible duplicate. Review before deciding',
       findings: [
-        { label: 'Active requests compared', value: '24' },
-        { label: 'Similar active requests', value: duplicateClear ? '0' : '1' },
-        { label: 'Previously exited requests compared', value: '12' },
-        { label: 'Vendor seen before', value: 'No' },
+        { label: 'Live cases compared', value: '24' },
+        { label: 'Deployed estate solutions compared', value: '38' },
+        { label: 'Prior declines compared', value: '12' },
+        { label: 'Matches found', value: duplicateClear ? 'None' : '1 possible match' },
       ],
       output: duplicateClear
-        ? `${request.companyName} and ${request.solution} do not match any active or exited request.`
-        : `${request.companyName} resembles an existing request. Confirm it is not the same offering.`,
+        ? `${request.companyName} and ${request.solution} do not match any live case, deployed solution or prior decline.`
+        : `${request.companyName} resembles an existing case. Confirm it is not the same offering.`,
     },
     {
       id: 'classification',
+      icon: 'classification',
       title: 'Classification',
-      check: 'Which focus area and solution type does this belong to?',
+      check: "Into one of four routes. The vendor's own label is treated as a claim",
+      runningText: "Placing the request on a route and testing the vendor's own label",
       status: 'complete',
-      headline: `${request.focusArea}`,
+      headline: `Route: ${p.route}`,
       findings: [
-        { label: 'Primary focus area', value: request.focusArea },
-        {
-          label: 'Secondary areas',
-          value: tags.filter((t) => t !== request.focusArea).join(', ') || 'None',
-        },
-        { label: 'Solution type', value: p.solutionType },
-        {
-          label: 'Fit with M42 priorities',
-          value: 'Aligned with transformation and innovation priorities',
-        },
+        { label: 'Routes considered', value: 'Buy, Partner, Build with the Agentic CoE, Decline' },
+        { label: 'Vendor self-declared', value: `${p.selfDeclaredRoute} (treated as a claim)` },
+        { label: 'Agent classification', value: p.route },
+        { label: 'Why', value: p.routeReason },
+        { label: 'Focus area', value: request.focusArea },
       ],
-      output: `Classified under ${request.focusArea}. This sets which internal reviewers and judgement criteria apply.`,
+      output: `Classified as ${p.route}. The vendor's label of "${p.selfDeclaredRoute}" was not accepted as given.`,
     },
     {
       id: 'maturity',
-      title: 'Maturity Research',
-      check: 'How mature is the solution, and which phase should it enter?',
+      icon: 'maturity',
+      title: 'Maturity research',
+      check: 'Evidence, deployment, regulatory, corporate, defensibility and duplication',
+      runningText: 'Researching evidence, deployment, regulatory and corporate standing',
       status: regulatoryUnclear ? 'attention' : 'complete',
-      headline: `${request.solutionMaturity}. Placed in ${phase}`,
+      headline: `${request.solutionMaturity}. ${phase}`,
       findings: [
-        { label: 'Maturity claimed by vendor', value: request.solutionMaturity },
-        { label: 'Evidence found', value: cards.evidence },
-        { label: 'Deployment found', value: cards.deployment },
-        { label: 'Regulatory status', value: cards.regulatory },
+        { label: 'Evidence', value: cards.evidence },
+        { label: 'Deployment', value: cards.deployment },
+        { label: 'Regulatory', value: cards.regulatory },
+        {
+          label: 'Corporate',
+          value: `Founded ${info.yearFounded}${info.location ? `, ${info.location}` : ''}`,
+        },
+        { label: 'Defensibility', value: p.differentiator },
+        { label: 'Duplication', value: duplicateClear ? 'No overlap found' : 'Possible overlap' },
         { label: 'Phase placement', value: phase },
       ],
       output: regulatoryUnclear
@@ -183,76 +236,61 @@ export const buildAgentActions = (request: PartnershipRequest): AgentAction[] =>
     },
     {
       id: 'kpi',
-      title: 'KPI Mapping',
-      check: 'Which KPI would this move, and who inside M42 should weigh in?',
+      icon: 'kpi',
+      title: 'KPI mapping',
+      check: 'Which service line KPIs the claim would move, and the baseline needed to test it',
+      runningText: 'Matching the claim to service line KPIs and baselines',
       status: 'complete',
       confidence: p.kpiConfidence,
-      headline: `${p.kpi}. Matched ${Math.min(people.length, 5)} reviewers`,
+      headline: `${p.kpi}`,
       findings: [
-        { label: 'Mapped KPI', value: p.kpi },
+        { label: 'KPI the claim would move', value: p.kpi },
+        { label: 'Confidence', value: `${p.kpiConfidence}% (${confidenceLevel(p.kpiConfidence)})` },
         { label: 'Why this KPI', value: p.kpiWhy },
+        { label: 'Baseline needed to test it', value: p.baseline },
       ],
       stakeholders: people.slice(0, 5).map((person, i) => ({
         name: person.name,
         role: person.role,
         reason: person.whySuggested ?? 'Relevant domain expertise.',
-        confidence: confidences[i] ?? 60,
+        confidence: Math.max(50, p.kpiConfidence + (spread[i] ?? -20)),
       })),
-      output: `Mapped to "${p.kpi}" with ${confidenceLevel(p.kpiConfidence).toLowerCase()} confidence. Reviewers below are suggested for the Internal Interest step.`,
-    },
-    {
-      id: 'baseline',
-      title: 'Baseline Needed to Test',
-      check: 'What must we measure first, and how would we test the claim?',
-      status: 'complete',
-      headline: p.baseline,
-      findings: [
-        { label: 'Baseline today', value: p.baseline },
-        { label: 'Proposed test', value: p.test },
-        { label: 'Data needed from M42', value: p.dataNeeded },
-        { label: 'Pass threshold', value: p.threshold },
-      ],
-      output: `Test plan ready: ${p.test}`,
+      output: `Mapped to "${p.kpi}" with ${confidenceLevel(p.kpiConfidence).toLowerCase()} confidence. The reviewers below are suggested for Internal Review.`,
     },
     {
       id: 'commodity',
-      title: 'Commodity Test',
-      check: 'Is this easy to get elsewhere, or does it offer something different?',
+      icon: 'commodity',
+      title: 'Commodity test',
+      check: 'Could the Agentic CoE or the existing estate deliver this inside the same window',
+      runningText: 'Testing whether the CoE or the estate could deliver this in the same window',
       status: p.commodityIsRisk ? 'attention' : 'passed',
       headline: p.commodityVerdict,
       findings: [
-        { label: 'Verdict', value: p.commodityVerdict },
+        { label: 'Could the Agentic CoE deliver it?', value: p.coe },
+        { label: 'Could the existing estate deliver it?', value: p.estate },
         { label: 'Comparable offerings', value: p.comparables },
         { label: 'What sets it apart', value: p.differentiator },
       ],
       output: p.commodityIsRisk
-        ? `Similar offerings exist. Value depends on: ${p.differentiator}`
-        : `Hard to replace. Key difference: ${p.differentiator}`,
+        ? `Partly replaceable. Value depends on: ${p.differentiator}`
+        : `Not replaceable in the same window. Key difference: ${p.differentiator}`,
     },
     {
       id: 'brief',
-      title: 'Assessment Brief',
-      check: 'Putting it all together, should this move forward?',
+      icon: 'brief',
+      title: 'Initial assessment brief',
+      check: 'Two pages, including the three things that would change its recommendation',
+      runningText: 'Drafting the brief and the three things that would change the recommendation',
       status: recWord === 'Proceed' ? 'passed' : 'attention',
       confidence: recConfidence,
       headline: `Recommends ${recWord}`,
       findings: [
         { label: 'Recommendation', value: recWord },
         { label: 'Confidence', value: `${recConfidence}% (${confidenceLevel(recConfidence)})` },
-        { label: 'Reasoning', value: rec?.rationale ?? 'See recommendation above.' },
-        {
-          label: 'Open points for you',
-          value:
-            [
-              regulatoryUnclear ? 'Regulatory status unconfirmed' : null,
-              p.commodityIsRisk ? 'Value depends on differentiation' : null,
-              !duplicateClear ? 'Possible duplicate' : null,
-            ]
-              .filter(Boolean)
-              .join('. ') || 'None',
-        },
+        { label: 'Reasoning', value: rec?.rationale ?? 'See the brief.' },
+        { label: 'Would change the recommendation', value: p.changeFactors.join('. ') },
       ],
-      output: `Brief complete. The agent recommends you ${recWord.toLowerCase()}. The decision is yours.`,
+      output: `Brief drafted. The agent recommends ${recWord.toLowerCase()}. The decision is yours.`,
     },
   ]
 }

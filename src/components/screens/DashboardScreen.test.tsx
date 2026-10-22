@@ -34,6 +34,7 @@ describe('DashboardScreen', () => {
 
     expect(screen.getByText('Partnership Requests')).toBeInTheDocument()
 
+    expect(screen.getByRole('columnheader', { name: 'Request ID' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Company name' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Vendor Name' })).toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: 'Referred by' })).not.toBeInTheDocument()
@@ -45,9 +46,12 @@ describe('DashboardScreen', () => {
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Deadline' })).toBeInTheDocument()
 
-    // Submitted Date is the last column
+    // Request ID leads, Submitted Date closes
     const headers = screen.getAllByRole('columnheader')
+    expect(headers[0]).toHaveTextContent('Request ID')
     expect(headers[headers.length - 1]).toHaveTextContent('Submitted Date')
+    expect(screen.getByText('PR-124')).toBeInTheDocument()
+    expect(screen.getByText('PR-121')).toBeInTheDocument()
   })
 
   it('filters records via search bar and filter chips', async () => {
@@ -74,19 +78,20 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
   })
 
-  it('opens detailed view and navigates back to list', async () => {
+  it('opens the detailed view on the agent run and navigates back to the list', async () => {
     const user = userEvent.setup()
     render(<DashboardScreen />)
 
-    const row = screen.getByText('MedTech Innovations')
-    await user.click(row)
+    await user.click(screen.getByText('MedTech Innovations'))
 
-    // Verify detailed view is open with single large white card containing Workflow Progress and Agent Recommendation chip
+    // Opens on the review workflow, with the agent run in progress
+    expect(screen.getByRole('heading', { name: 'Agent Actions' })).toBeInTheDocument()
+
+    // Overview tab keeps workflow progress and the agent recommendation chip
+    await user.click(screen.getByRole('tab', { name: 'Overview' }))
     expect(screen.getByText('Workflow Progress')).toBeInTheDocument()
-    expect(screen.getByText(/Proceed/i)).toBeInTheDocument()
     expect(screen.getByText(/High Confidence/i)).toBeInTheDocument()
 
-    // Back to table
     await user.click(screen.getByRole('button', { name: 'Back to Partnership Requests' }))
     expect(screen.getByText('Partnership Requests')).toBeInTheDocument()
     expect(screen.getByText('MedTech Innovations')).toBeInTheDocument()
@@ -157,7 +162,7 @@ describe('DashboardScreen', () => {
     expect(screen.queryByRole('columnheader', { name: 'Vendor Name' })).not.toBeInTheDocument()
   })
 
-  it('hides vendor details, referred by, and internal review tab in detailed view for internal/strategy team', async () => {
+  it('hides vendor details and the Director steps for the internal team', async () => {
     const user = userEvent.setup()
     const internalProfile = {
       id: 'evaluator',
@@ -168,22 +173,63 @@ describe('DashboardScreen', () => {
     }
     render(<DashboardScreen userProfile={internalProfile} />)
 
-    const row = screen.getByText('MedTech Innovations')
-    await user.click(row)
+    await user.click(screen.getByText('MedTech Innovations'))
 
-    // Should not show Referred by or Internal Review tab
     expect(screen.queryByText(/Referred by:/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: /Internal Review/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Internal Review/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Approval/i })).not.toBeInTheDocument()
 
-    // Should show Questionnaire tab for Internal Interest Team
-    expect(screen.getByRole('tab', { name: /Questionnaire/i })).toBeInTheDocument()
+    // Steps for this profile: Agent Actions, Brief, Questionnaire
+    const stepper = screen.getByRole('navigation', { name: 'Review progress' })
+    expect(stepper).toHaveTextContent('Agent Actions')
+    expect(stepper).toHaveTextContent('Initial Assessment Brief')
+    expect(stepper).toHaveTextContent('Questionnaire')
 
-    // Brief tab should not have Proceed or Reject buttons
-    const briefTab = screen.getByRole('tab', { name: /Partnership Brief/i })
-    await user.click(briefTab)
+    // The brief has no Proceed, Reject or decision form
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    expect(
+      await screen.findByRole('button', { name: /Continue to Questionnaire/i }, { timeout: 3000 })
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Proceed/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Reject/i })).not.toBeInTheDocument()
+  })
+
+  it('walks the strategy team through the agent run, brief and judgement', async () => {
+    const user = userEvent.setup()
+    const strategyProfile = {
+      id: 'strategy-fit',
+      name: 'Omar Al-Hashemi',
+      designation: 'Strategy Team',
+      email: 'omar.alhashemi@m42.ae',
+      roleTitle: 'Strategy Team',
+    }
+    render(<DashboardScreen userProfile={strategyProfile} />)
+
+    await user.click(screen.getByText('MedTech Innovations'))
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    await user.click(
+      await screen.findByRole('button', { name: /Continue to Judgement/i }, { timeout: 3000 })
+    )
+
+    expect(screen.getByRole('heading', { name: 'Your judgement' })).toBeInTheDocument()
+    expect(screen.getByText('Fit to current focus areas')).toBeInTheDocument()
+    expect(screen.getByText('Sovereignty and local content')).toBeInTheDocument()
+
+    expect(screen.queryByRole('button', { name: /^Save$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Cancel$/i })).not.toBeInTheDocument()
+    const submitBtn = screen.getByRole('button', { name: /Submit decision/i })
+    expect(submitBtn).toBeDisabled()
+
+    await user.click(screen.getByRole('radio', { name: /Yes, proceed/i }))
+    expect(submitBtn).toBeEnabled()
+    await user.click(submitBtn)
+
+    expect(screen.getByText('Submit Strategy Decision')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Confirm & Submit' }))
+
+    expect(screen.queryByText('Submit Strategy Decision')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Submit decision/i })).not.toBeInTheDocument()
+    screen.getAllByRole('combobox').forEach((c) => expect(c).toBeDisabled())
   })
 
   it('does not display Exited status or Exited filter chip to internal and strategy teams', () => {
@@ -198,49 +244,5 @@ describe('DashboardScreen', () => {
 
     // Exited filter chip should not be present
     expect(screen.queryByRole('button', { name: /^Exited/i })).not.toBeInTheDocument()
-  })
-
-  it('renders Judgement tab for strategy team with 7 criteria and a decision flow', async () => {
-    const user = userEvent.setup()
-    const strategyProfile = {
-      id: 'strategy-fit',
-      name: 'Omar Al-Hashemi',
-      designation: 'Strategy Team',
-      email: 'omar.alhashemi@m42.ae',
-      roleTitle: 'Strategy Team',
-    }
-    render(<DashboardScreen userProfile={strategyProfile} />)
-
-    await user.click(screen.getByText('MedTech Innovations'))
-
-    const judgementTab = screen.getByRole('tab', { name: /Judgement/i })
-    await user.click(judgementTab)
-
-    expect(screen.getByRole('heading', { name: 'Your judgement' })).toBeInTheDocument()
-    expect(screen.getByText('Fit to current focus areas')).toBeInTheDocument()
-    expect(screen.getByText('Duplication on the roadmap')).toBeInTheDocument()
-    expect(screen.getByText('Build, buy or partner')).toBeInTheDocument()
-    expect(screen.getByText('Architecture, hosting and data residency')).toBeInTheDocument()
-    expect(screen.getByText('Own versus rent')).toBeInTheDocument()
-    expect(screen.getByText('Scale across the network')).toBeInTheDocument()
-    expect(screen.getByText('Sovereignty and local content')).toBeInTheDocument()
-
-    // Save and Cancel are gone; Submit stays disabled until a decision is picked
-    expect(screen.queryByRole('button', { name: /^Save$/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^Cancel$/i })).not.toBeInTheDocument()
-    const submitBtn = screen.getByRole('button', { name: /Submit decision/i })
-    expect(submitBtn).toBeDisabled()
-
-    await user.click(screen.getByRole('radio', { name: /Yes, proceed/i }))
-    expect(submitBtn).toBeEnabled()
-    await user.click(submitBtn)
-
-    expect(screen.getByText('Submit Strategy Decision')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Confirm & Submit' }))
-
-    // Finalized: confirmation closes and the form is view-only
-    expect(screen.queryByText('Submit Strategy Decision')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Submit decision/i })).not.toBeInTheDocument()
-    screen.getAllByRole('combobox').forEach((c) => expect(c).toBeDisabled())
   })
 })

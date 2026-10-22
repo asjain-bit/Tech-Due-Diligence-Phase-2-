@@ -104,6 +104,8 @@ export interface AgentRecommendation {
 
 export interface PartnershipRequest {
   id: string
+  /** Human-readable request ID shown in tables, e.g. PR-124 */
+  requestCode: string
   companyName: string
   vendorName: string
   referredBy?: string | null
@@ -273,6 +275,7 @@ export const DEFAULT_STRATEGY_MEMBERS: InternalInterestStakeholder[] = [
 export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   {
     id: 'req-001',
+    requestCode: 'PR-124',
     companyName: 'MedTech Innovations',
     vendorName: 'Sarah Ahmed',
     referredBy: 'Dr. Noura Al Ghaithi',
@@ -374,6 +377,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   },
   {
     id: 'req-002',
+    requestCode: 'PR-123',
     companyName: 'AlphaHealth BioTech',
     vendorName: 'Dr. Tariq Mansoor',
     referredBy: 'Ahmed Al Hosani',
@@ -473,6 +477,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   },
   {
     id: 'req-003',
+    requestCode: 'PR-122',
     companyName: 'GenomicX MENA FZ-LLC',
     vendorName: 'Karim El-Sayed',
     referredBy: null,
@@ -566,6 +571,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
   },
   {
     id: 'req-004',
+    requestCode: 'PR-121',
     companyName: 'CarePulse Technologies',
     vendorName: 'Elena Rostova',
     referredBy: 'Sponsor Office',

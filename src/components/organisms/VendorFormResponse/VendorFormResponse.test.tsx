@@ -35,6 +35,15 @@ describe('VendorFormResponse', () => {
     expect(screen.getByText('MedTech_Innovations_Diagnostic_RFP.pdf')).toBeInTheDocument()
   })
 
+  it('hides the vendor contact details for reviewers', () => {
+    render(<VendorFormResponse request={request} onClose={vi.fn()} hideContact />)
+    expect(screen.queryByText('sarah@medtechinnovations.com')).not.toBeInTheDocument()
+    expect(screen.queryByText('+971 50 123 4567')).not.toBeInTheDocument()
+    expect(screen.queryByText('Email Address')).not.toBeInTheDocument()
+    expect(screen.getByText('Year Company Was Founded')).toBeInTheDocument()
+    expect(screen.getByText('Company')).toBeInTheDocument()
+  })
+
   it('closes from the buttons and the Escape key', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()

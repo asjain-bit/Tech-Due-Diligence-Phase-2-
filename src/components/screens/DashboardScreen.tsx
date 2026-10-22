@@ -150,6 +150,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
     if (!searchTerm.trim()) return true
     const q = searchTerm.toLowerCase()
     return (
+      req.requestCode.toLowerCase().includes(q) ||
       req.companyName.toLowerCase().includes(q) ||
       (!isNonDirector && req.vendorName.toLowerCase().includes(q)) ||
       req.solution.toLowerCase().includes(q) ||
@@ -480,6 +481,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
             <thead>
               {/* Column titles: font size text-[11px], font weight font-medium */}
               <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-[11px] font-medium uppercase tracking-wider">
+                <th className="py-4 px-4">Request ID</th>
                 <th className="py-4 px-4">Company name</th>
                 {!isNonDirector && <th className="py-4 px-4">Vendor Name</th>}
                 <th className="py-4 px-4">Focus Area</th>
@@ -492,7 +494,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
             <tbody className="divide-y divide-[#e2e8f0]/60">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={isNonDirector ? 6 : 7} className="py-16 text-center text-[#64748b]">
+                  <td colSpan={isNonDirector ? 7 : 8} className="py-16 text-center text-[#64748b]">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
                         <Inbox className="w-6 h-6 stroke-[1.5]" />
@@ -513,6 +515,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ userProfile })
                     onClick={() => setSelectedRequest(req)}
                     className="hover:bg-slate-50 transition-colors cursor-pointer group"
                   >
+                    <td className="py-4.5 px-4 text-xs font-medium text-[#64748b] whitespace-nowrap">
+                      {req.requestCode}
+                    </td>
+
                     {/* Increased row height via py-4.5 padding */}
                     <td className="py-4.5 px-4 text-xs font-medium text-[#0d212c] group-hover:text-[#36c0c9]">
                       {req.companyName}

@@ -57,7 +57,11 @@ const Chip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </span>
 )
 
-export const VendorFormResponse: React.FC<VendorFormResponseProps> = ({ request, onClose }) => {
+export const VendorFormResponse: React.FC<VendorFormResponseProps> = ({
+  request,
+  onClose,
+  hideContact = false,
+}) => {
   const { companyInfo: c, assessmentAreas: a } = request
 
   useEffect(() => {
@@ -108,21 +112,29 @@ export const VendorFormResponse: React.FC<VendorFormResponseProps> = ({ request,
           <section className="flex flex-col gap-4">
             <SectionTitle>Company Information</SectionTitle>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-              <Question label="Name" required>
-                <AnswerBox>{c.name}</AnswerBox>
-              </Question>
-              <Question label="Job Title" required>
-                <AnswerBox>{c.jobTitle}</AnswerBox>
-              </Question>
+              {!hideContact && (
+                <Question label="Name" required>
+                  <AnswerBox>{c.name}</AnswerBox>
+                </Question>
+              )}
+              {!hideContact && (
+                <Question label="Job Title" required>
+                  <AnswerBox>{c.jobTitle}</AnswerBox>
+                </Question>
+              )}
               <Question label="Company" required>
                 <AnswerBox>{c.company}</AnswerBox>
               </Question>
-              <Question label="Phone Number">
-                <AnswerBox>{c.phoneNumber || 'Not provided'}</AnswerBox>
-              </Question>
-              <Question label="Email Address" required>
-                <AnswerBox>{c.email}</AnswerBox>
-              </Question>
+              {!hideContact && (
+                <Question label="Phone Number">
+                  <AnswerBox>{c.phoneNumber || 'Not provided'}</AnswerBox>
+                </Question>
+              )}
+              {!hideContact && (
+                <Question label="Email Address" required>
+                  <AnswerBox>{c.email}</AnswerBox>
+                </Question>
+              )}
               <Question label="Year Company Was Founded" required>
                 <AnswerBox>{c.yearFounded}</AnswerBox>
               </Question>
