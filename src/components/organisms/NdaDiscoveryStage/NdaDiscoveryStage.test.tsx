@@ -68,8 +68,8 @@ describe('NdaDiscoveryStage: the Director signs the NDA', () => {
     expect(download).toHaveAttribute('download')
     expect(screen.queryByRole('heading', { name: 'NDA template' })).not.toBeInTheDocument()
     expect(
-      screen.getByText(/Download the NDA template, complete it with the vendor/)
-    ).toBeInTheDocument()
+      screen.queryByText(/Download the NDA template, complete it with the vendor/)
+    ).not.toBeInTheDocument()
   })
 
   it('fills the page height: the form scrolls on its own and the footer stays', () => {
@@ -124,17 +124,11 @@ describe('NdaDiscoveryStage: the Director signs the NDA', () => {
     expect(screen.getByRole('heading', { name: 'NDA Execution Form' })).toBeInTheDocument()
   })
 
-  it('allows a new version, which would become the next one', async () => {
+  it('offers no new version once the signed copy is uploaded', async () => {
     const user = userEvent.setup()
-    const onAction = vi.fn()
-    renderStage(signedRequest, 'director', { onAction })
+    renderStage(signedRequest, 'director')
     await user.click(screen.getByRole('button', { name: /Back to signed NDA/ }))
-    await user.click(screen.getByRole('button', { name: 'Upload new version' }))
-    const popup = screen.getByRole('dialog', { name: 'Upload signed NDA' })
-    expect(within(popup).getByText(/becomes version 4/)).toBeInTheDocument()
-    await user.upload(within(popup).getByLabelText('Signed NDA file'), file('nda_v4.docx'))
-    await user.click(within(popup).getByRole('button', { name: 'Upload' }))
-    expect(onAction).toHaveBeenCalledWith({ type: 'uploadNda', fileName: 'nda_v4.docx' })
+    expect(screen.queryByRole('button', { name: 'Upload new version' })).not.toBeInTheDocument()
   })
 
   it('plays the generating animation before the alignment pack, only the first time', async () => {
@@ -157,6 +151,7 @@ describe('NdaDiscoveryStage: the Director signs the NDA', () => {
 
     await user.click(screen.getByRole('button', { name: /Proceed/ }))
     expect(screen.getByText('GENERATING')).toBeInTheDocument()
+    expect(screen.getByText('NDA & Discovery').parentElement).toHaveClass('hidden')
     expect(screen.getByText(/Collecting the brief and the Director decision/)).toBeInTheDocument()
     for (let i = 0; i < 5; i++) act(() => vi.advanceTimersByTime(900))
     expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
@@ -182,19 +177,19 @@ describe('NdaDiscoveryStage: the alignment pack screen', () => {
     expect(screen.queryByRole('link', { name: /Download/ })).not.toBeInTheDocument()
   })
 
-  it('has the Director wait for the sponsor before Next to the last stage', async () => {
+  it('has the sponsor wait for the Director before Next to the last stage', async () => {
     const user = userEvent.setup()
     const onNext = vi.fn()
-    const { rerender } = renderStage(signedRequest, 'director', { onNext })
+    const { rerender } = renderStage(signedRequest, 'sponsor', { onNext })
     expect(screen.getByRole('button', { name: /Next/ })).toBeDisabled()
-    expect(screen.getByText(/Waiting for the sponsor to move this on/)).toBeInTheDocument()
+    expect(screen.getByText(/Waiting for the Director to hand this on/)).toBeInTheDocument()
     rerender(
       <NdaDiscoveryStage
         request={{
           ...signedRequest,
           discovery: { notes: [], recordings: [], proceededOn: '17 Oct 2026' },
         }}
-        role="director"
+        role="sponsor"
         onAction={vi.fn()}
         onNext={onNext}
       />
@@ -203,17 +198,16 @@ describe('NdaDiscoveryStage: the alignment pack screen', () => {
     expect(onNext).toHaveBeenCalled()
   })
 
-  it('lets the sponsor add optional context after Next, or skip it', async () => {
+  it('lets the Director add optional context after Next in one uploader, or skip it', async () => {
     const user = userEvent.setup()
     const onAction = vi.fn()
     const onNext = vi.fn()
-    renderStage(signedRequest, 'sponsor', { onAction, onNext })
+    renderStage(signedRequest, 'director', { onAction, onNext })
     await user.click(screen.getByRole('button', { name: /Next/ }))
-    expect(screen.getByRole('heading', { name: 'Add context' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
     expect(screen.queryByText(/optional/i)).not.toBeInTheDocument()
-    await user.upload(screen.getByLabelText('Upload meeting notes'), file('notes.docx'))
-    await user.upload(screen.getByLabelText('Upload transcript'), file('call.txt'))
-    await user.upload(screen.getByLabelText('Upload recording'), file('call.mp4'))
+    const picker = screen.getByLabelText('Upload meeting notes, transcript or recording')
+    await user.upload(picker, [file('notes.docx'), file('call.vtt'), file('call.mp4')])
     expect(onAction).toHaveBeenCalledWith({
       type: 'discoveryFile',
       kind: 'notes',
@@ -222,7 +216,7 @@ describe('NdaDiscoveryStage: the alignment pack screen', () => {
     expect(onAction).toHaveBeenCalledWith({
       type: 'discoveryFile',
       kind: 'transcripts',
-      name: 'call.txt',
+      name: 'call.vtt',
     })
     expect(onAction).toHaveBeenCalledWith({
       type: 'discoveryFile',
@@ -239,14 +233,14 @@ describe('NdaDiscoveryStage: the alignment pack screen', () => {
     const user = userEvent.setup()
     const onAction = vi.fn()
     const onNext = vi.fn()
-    renderStage(signedRequest, 'sponsor', { onAction, onNext })
+    renderStage(signedRequest, 'director', { onAction, onNext })
     await user.click(screen.getByRole('button', { name: /Next/ }))
     await user.click(screen.getByRole('button', { name: /Proceed/ }))
     expect(onAction).toHaveBeenCalledWith({ type: 'proceedToValue' })
     expect(onNext).toHaveBeenCalled()
   })
 
-  it('shows the uploaded context in the pack, view-only, once the sponsor has moved on', async () => {
+  it('shows the uploaded context in the pack, view-only, once the Director has moved on', async () => {
     const user = userEvent.setup()
     const onNext = vi.fn()
     renderStage(
@@ -266,7 +260,7 @@ describe('NdaDiscoveryStage: the alignment pack screen', () => {
     expect(screen.queryByLabelText('Upload meeting notes')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Next/ }))
     expect(onNext).toHaveBeenCalled()
-    expect(screen.queryByRole('heading', { name: 'Add context' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Upload meeting notes, transcript or recording')).toBeNull()
   })
 })
 

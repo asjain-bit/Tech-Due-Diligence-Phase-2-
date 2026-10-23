@@ -167,7 +167,10 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   const missing = useMemo(() => missingVendorFields(values), [values])
   const isMissing = (field: keyof VendorFormValues) => showErrors && missing.includes(field)
 
-  const openSuggestions = (suggestions ?? []).filter((s) => !ignored.includes(s.field))
+  // While the check runs, there are no Ignore buttons and no Run AI check button, only Submit
+  const openSuggestions = isChecking
+    ? []
+    : (suggestions ?? []).filter((s) => !ignored.includes(s.field))
   const suggestionFor = (field: keyof VendorFormValues) =>
     openSuggestions.find((s) => s.field === field)
   const ignore = (field: string) => setIgnored((prev) => [...prev, field])
@@ -581,27 +584,29 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
               Please fill in the required fields marked with *.
             </div>
           )}
-          <button
-            type="button"
-            onClick={handleRunCheck}
-            disabled={isChecking}
-            className="px-5 py-2.5 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 disabled:opacity-70 disabled:cursor-wait cursor-pointer transition flex items-center gap-2"
-          >
-            {isChecking ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[#36c0c9]" aria-hidden="true" />
-            ) : (
-              <Sparkles className="w-4 h-4 text-[#36c0c9]" aria-hidden="true" />
-            )}
-            {isChecking
-              ? 'Checking your answers…'
-              : suggestions
-                ? 'Run AI check again'
-                : 'Run AI check'}
-          </button>
+          {!isChecking && (
+            <button
+              type="button"
+              onClick={handleRunCheck}
+              disabled={isChecking}
+              className="px-5 py-2.5 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 disabled:opacity-70 disabled:cursor-wait cursor-pointer transition flex items-center gap-2"
+            >
+              {isChecking ? (
+                <Loader2 className="w-4 h-4 animate-spin text-[#36c0c9]" aria-hidden="true" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-[#36c0c9]" aria-hidden="true" />
+              )}
+              {isChecking
+                ? 'Checking your answers…'
+                : suggestions
+                  ? 'Run AI check again'
+                  : 'Run AI check'}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-6 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
+            className="ml-auto px-6 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
           >
             Submit request
             <Send className="w-4 h-4" aria-hidden="true" />

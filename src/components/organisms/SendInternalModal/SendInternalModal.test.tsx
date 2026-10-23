@@ -64,7 +64,7 @@ describe('SendInternalModal', () => {
     expect(screen.getByLabelText('Questionnaire')).toBeInTheDocument()
   })
 
-  it('sends only after a final confirmation, with the chosen reviewers and questions', async () => {
+  it('sends straight away with no extra confirmation, with the chosen reviewers and questions', async () => {
     const user = userEvent.setup()
     const { onSend } = renderModal()
     await user.selectOptions(screen.getByLabelText('Questionnaire'), 'technical')
@@ -74,11 +74,7 @@ describe('SendInternalModal', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Riza Sayeed' }))
 
     await user.click(screen.getByRole('button', { name: 'Send Request' }))
-    expect(onSend).not.toHaveBeenCalled()
-    const confirm = screen.getByRole('dialog', { name: 'Send to Internal Interest?' })
-    expect(confirm).toHaveTextContent('2 questions and 4 reviewers will be sent')
-    expect(confirm).toHaveTextContent('you will not be able to edit them')
-    await user.click(within(confirm).getByRole('button', { name: 'Send Request' }))
+    expect(screen.queryByRole('dialog', { name: 'Send to Internal Interest?' })).toBeNull()
 
     expect(onSend).toHaveBeenCalledTimes(1)
     const payload = onSend.mock.calls[0][0]
@@ -89,23 +85,6 @@ describe('SendInternalModal', () => {
     // Deleting a question saved a second version
     expect(payload.questionnaire.version).toBe(2)
     expect(payload.note).toBe('Hi team')
-  })
-
-  it('goes back from the confirmation without sending', async () => {
-    const user = userEvent.setup()
-    const { onSend } = renderModal()
-    await next(user)
-    await user.click(screen.getByRole('button', { name: 'Send Request' }))
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Send to Internal Interest?' })).getByRole(
-        'button',
-        { name: 'Cancel' }
-      )
-    )
-    expect(
-      screen.queryByRole('dialog', { name: 'Send to Internal Interest?' })
-    ).not.toBeInTheDocument()
-    expect(onSend).not.toHaveBeenCalled()
   })
 
   it('cannot move on without questions or send without reviewers', async () => {

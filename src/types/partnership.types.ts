@@ -234,13 +234,16 @@ export interface PartnershipRequest {
     notes: CaseFile[]
     transcripts?: CaseFile[]
     recordings: CaseFile[]
-    /** When the sponsor moved the case on to Value & Due Diligence */
+    /** When the Director handed the case to the sponsor for Value & Due Diligence */
     proceededOn?: string
   }
   value?: {
     callConfirmedOn?: string
     businessCase?: CaseFile
     decision?: { status: 'proceeded' | 'rejected'; reason?: string; date: string }
+    /** The technical due diligence report the sponsor uploaded */
+    tddReport?: CaseFile
+    /** Set when the report is uploaded; completes the stage */
     tddGeneratedOn?: string
   }
 }

@@ -4,13 +4,12 @@
  * SendInternalModal — Organism
  * Two-step popup for the Internal Interest request. Step 1 picks the questionnaire and
  * edits its questions; step 2 picks the reviewers and sends. The body scrolls inside the
- * popup, and sending asks for a final confirmation.
+ * popup, and Send Request sends it straight away.
  * Used in: PartnershipDetail
  */
 
 import React, { useEffect, useId, useState } from 'react'
 import { ArrowLeft, ArrowRight, Calendar, Check, Send, X } from 'lucide-react'
-import { ConfirmDialog } from '@/components/molecules/ConfirmDialog'
 import { QuestionnaireEditor } from '@/components/organisms/QuestionnaireEditor'
 import type { QuestionnaireVersion } from '@/components/organisms/QuestionnaireEditor/QuestionnaireEditor.types'
 import type { QuestionnaireQuestion } from '@/types/partnership.types'
@@ -41,18 +40,16 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
     setCurrentVersion(version)
   }
   const [note, setNote] = useState(defaultNote)
-  const [confirming, setConfirming] = useState(false)
   const [step, setStep] = useState<'questions' | 'reviewers'>('questions')
   const titleId = useId()
 
   useEffect(() => {
-    if (confirming) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose, confirming])
+  }, [onClose])
 
   const toggle = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -245,7 +242,17 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
               <button
                 type="button"
                 disabled={!canSend}
-                onClick={() => setConfirming(true)}
+                onClick={() =>
+                  onSend({
+                    memberIds: selected,
+                    note,
+                    questionnaire: {
+                      name: getQuestionnaire(questionnaireId).name,
+                      version: currentVersion,
+                      questions,
+                    },
+                  })
+                }
                 className="h-10 px-5 rounded-lg font-semibold text-sm transition bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
               >
                 Send Request
@@ -254,30 +261,6 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
           </div>
         </div>
       </div>
-
-      {confirming && (
-        <ConfirmDialog
-          title="Send to Internal Interest?"
-          description={`The ${questions.length} ${
-            questions.length === 1 ? 'question' : 'questions'
-          } and ${selected.length} ${
-            selected.length === 1 ? 'reviewer' : 'reviewers'
-          } will be sent. After this you will not be able to edit them.`}
-          confirmLabel="Send Request"
-          onCancel={() => setConfirming(false)}
-          onConfirm={() =>
-            onSend({
-              memberIds: selected,
-              note,
-              questionnaire: {
-                name: getQuestionnaire(questionnaireId).name,
-                version: currentVersion,
-                questions,
-              },
-            })
-          }
-        />
-      )}
     </div>
   )
 }

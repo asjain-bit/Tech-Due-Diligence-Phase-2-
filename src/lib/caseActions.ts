@@ -655,14 +655,14 @@ export const addDiscoveryFile = (
       ...r,
       discovery: {
         ...discovery,
-        [kind]: [...discovery[kind], { name, uploadedOn: todayLabel(), uploadedBy: SPONSOR_NAME }],
+        [kind]: [...discovery[kind], { name, uploadedOn: todayLabel(), uploadedBy: DIRECTOR_NAME }],
       },
     },
-    { title: DISCOVERY_AUDIT[kind], description: name, actor: SPONSOR_ACTOR, kind: 'user' }
+    { title: DISCOVERY_AUDIT[kind], description: name, actor: DIRECTOR_ACTOR, kind: 'user' }
   )
 }
 
-/** The sponsor moves on to Value & Due Diligence, with or without extra context uploaded */
+/** The Director hands the case to the sponsor for Value & Due Diligence, with or without extra context */
 export const proceedToValue = (r: PartnershipRequest): PartnershipRequest =>
   r.discovery?.proceededOn
     ? r
@@ -681,8 +681,9 @@ export const proceedToValue = (r: PartnershipRequest): PartnershipRequest =>
         },
         {
           title: 'Moved to Value & Due Diligence',
-          description: 'The sponsor reviewed the alignment pack and moved the case on.',
-          actor: SPONSOR_ACTOR,
+          description:
+            'The Director reviewed the alignment pack and handed the case to the sponsor.',
+          actor: DIRECTOR_ACTOR,
           kind: 'user',
         }
       )
@@ -747,20 +748,25 @@ export const decideValue = (
   )
 }
 
-export const generateTddReport = (r: PartnershipRequest): PartnershipRequest =>
+/** The sponsor uploads the technical due diligence report, which completes the stage */
+export const uploadTddReport = (r: PartnershipRequest, name: string): PartnershipRequest =>
   r.value?.tddGeneratedOn
     ? r
     : appendAudit(
         {
           ...r,
-          value: { ...r.value, tddGeneratedOn: todayLabel() },
+          value: {
+            ...r.value,
+            tddReport: { name, uploadedOn: todayLabel(), uploadedBy: SPONSOR_NAME },
+            tddGeneratedOn: todayLabel(),
+          },
           workflowStages: setStages(r.workflowStages, 6, 7),
         },
         {
-          title: 'TDD report generated',
-          description: 'Technical due diligence report ready for the Director and sponsors.',
-          actor: AGENT_ACTOR,
-          kind: 'agent',
+          title: 'TDD report uploaded',
+          description: name,
+          actor: SPONSOR_ACTOR,
+          kind: 'user',
         }
       )
 
@@ -775,7 +781,7 @@ export type CaseAction =
   | { type: 'confirmValueCall' }
   | { type: 'businessCase'; name: string }
   | { type: 'valueDecision'; status: 'proceeded' | 'rejected'; reason: string }
-  | { type: 'generateTdd' }
+  | { type: 'uploadTddReport'; name: string }
 
 export const applyCaseAction = (r: PartnershipRequest, action: CaseAction): PartnershipRequest => {
   switch (action.type) {
@@ -797,7 +803,7 @@ export const applyCaseAction = (r: PartnershipRequest, action: CaseAction): Part
       return uploadBusinessCase(r, action.name)
     case 'valueDecision':
       return decideValue(r, action.status, action.reason)
-    case 'generateTdd':
-      return generateTddReport(r)
+    case 'uploadTddReport':
+      return uploadTddReport(r, action.name)
   }
 }

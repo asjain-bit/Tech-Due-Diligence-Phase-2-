@@ -61,7 +61,7 @@ const CASE_ACTION_TOASTS: Partial<Record<CaseAction['type'], string>> = {
   confirmValueCall: 'Value assessment call confirmed.',
   businessCase: 'Business case uploaded.',
   valueDecision: 'Your decision has been recorded.',
-  generateTdd: 'The TDD report has been generated.',
+  uploadTddReport: 'The TDD report has been uploaded.',
 }
 
 const SLA_CATEGORY: Record<SlaStatus, 'success' | 'warning' | 'error'> = {
@@ -107,8 +107,8 @@ const DescriptionCell: React.FC<{ text: string }> = ({ text }) => {
 const sponsorActionNeeded = (r: PartnershipRequest) =>
   r.status !== 'Exited' &&
   r.status !== 'Closed' &&
-  ((Boolean(r.alignmentPackOn) && !r.discovery?.proceededOn) ||
-    (Boolean(r.discovery?.proceededOn) && !r.value?.decision))
+  Boolean(r.discovery?.proceededOn) &&
+  !r.value?.tddGeneratedOn
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   userProfile,

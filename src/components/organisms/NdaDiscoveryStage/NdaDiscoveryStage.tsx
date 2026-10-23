@@ -6,22 +6,13 @@
  * action bar stays fixed at the bottom. The Director sees the NDA template (download in the
  * title row, vendor-signed acknowledgement, upload the signed copy), then the signed NDA with its
  * versions, then the alignment pack. Everyone else never sees the template: they open on the
- * alignment pack, and Back shows the signed NDA. The sponsor adds optional context (notes,
- * transcripts, recordings) and moves the case on to Value & Due Diligence.
+ * alignment pack, and Back shows the signed NDA. The Director adds optional context (notes,
+ * transcripts, recordings) and hands the case to the sponsor for Value & Due Diligence.
  * Used in: PartnershipDetail
  */
 
 import React, { useState } from 'react'
-import {
-  ArrowLeft,
-  ArrowRight,
-  ChevronDown,
-  Download,
-  FileText,
-  Film,
-  Mic,
-  Upload,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronDown, Download, FileText, Film, Mic } from 'lucide-react'
 import { AlignmentPack } from '@/components/organisms/AlignmentPack'
 import { NdaExecutionForm } from '@/components/organisms/NdaExecutionForm'
 import { ThinkingMode } from '@/components/organisms/ThinkingMode'
@@ -40,6 +31,13 @@ const PACK_MESSAGES = [
   'Adding the Strategy assessment',
   'Listing the open questions',
 ]
+
+const contextKind = (name: string): 'notes' | 'transcripts' | 'recordings' => {
+  const ext = name.slice(name.lastIndexOf('.') + 1).toLowerCase()
+  if (['mp3', 'm4a', 'wav', 'mp4', 'mov'].includes(ext)) return 'recordings'
+  if (ext === 'vtt') return 'transcripts'
+  return 'notes'
+}
 
 type View = 'template' | 'signed' | 'generating' | 'pack' | 'context'
 
@@ -105,7 +103,6 @@ export const NdaDiscoveryStage: React.FC<NdaDiscoveryStageProps> = ({
   className = '',
 }) => {
   const isDirector = role === 'director'
-  const isSponsor = role === 'sponsor'
   const versions = request.nda?.versions ?? []
   const signed = versions.some((v) => v.signed)
   const latest = versions[versions.length - 1]
@@ -162,7 +159,11 @@ export const NdaDiscoveryStage: React.FC<NdaDiscoveryStageProps> = ({
 
   return (
     <div className={`flex flex-col gap-4 w-full h-full min-h-0 ${className}`.trim()}>
-      <div className="flex items-center justify-between gap-3 flex-wrap shrink-0">
+      <div
+        className={`items-center justify-between gap-3 flex-wrap shrink-0 ${
+          current === 'generating' ? 'hidden' : 'flex'
+        }`}
+      >
         <h2 className="text-xl font-semibold text-[#0d212c]">NDA & Discovery</h2>
         {current === 'template' && (
           <a
@@ -174,28 +175,14 @@ export const NdaDiscoveryStage: React.FC<NdaDiscoveryStageProps> = ({
             Download
           </a>
         )}
-        {current === 'signed' && isDirector && (
-          <button
-            type="button"
-            onClick={() => setUploading(true)}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
-          >
-            <Upload className="w-4 h-4" aria-hidden="true" />
-            Upload new version
-          </button>
-        )}
       </div>
 
       {current === 'template' && (
         <>
-          <p className="text-sm text-[#64748b] shrink-0 -mt-2">
-            Download the NDA template, complete it with the vendor, and upload the signed copy to
-            continue.
-          </p>
           <div
             tabIndex={0}
             aria-label="NDA execution form"
-            className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white p-5 sm:p-6"
+            className="relative flex-1 min-h-0 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white p-5 sm:p-6"
           >
             <NdaExecutionForm request={request} />
           </div>
@@ -245,7 +232,7 @@ export const NdaDiscoveryStage: React.FC<NdaDiscoveryStageProps> = ({
           <div
             tabIndex={0}
             aria-label="Signed NDA document"
-            className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white p-5 sm:p-6 flex flex-col gap-5"
+            className="relative flex-1 min-h-0 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white p-5 sm:p-6 flex flex-col gap-5"
           >
             <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-slate-50/60 px-4 py-3">
               <FileText className="w-5 h-5 text-red-500 shrink-0" aria-hidden="true" />
@@ -282,7 +269,7 @@ export const NdaDiscoveryStage: React.FC<NdaDiscoveryStageProps> = ({
       )}
 
       {current === 'generating' && (
-        <div className="flex-1 min-h-0 overflow-y-auto flex items-center">
+        <div className="relative flex-1 min-h-0 overflow-y-auto">
           <ThinkingMode
             inline
             eyebrow="GENERATING"
@@ -300,7 +287,7 @@ export const NdaDiscoveryStage: React.FC<NdaDiscoveryStageProps> = ({
       {current === 'pack' && (
         <>
           <BackLink onClick={() => setView('signed')}>Back to signed NDA</BackLink>
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+          <div className="relative flex-1 min-h-0 overflow-y-auto pr-1">
             <AlignmentPack
               request={request}
               extraSection={
@@ -315,7 +302,7 @@ export const NdaDiscoveryStage: React.FC<NdaDiscoveryStageProps> = ({
             />
           </div>
           <StageFooter compact>
-            {isSponsor && !proceeded ? (
+            {isDirector && !proceeded ? (
               <span className="text-xs text-[#64748b]">
                 Next lets you add meeting notes, transcripts or recordings.
               </span>
@@ -323,12 +310,12 @@ export const NdaDiscoveryStage: React.FC<NdaDiscoveryStageProps> = ({
               <span />
             ) : (
               <span className="text-xs text-[#64748b]">
-                Waiting for the sponsor to move this on to Value & Due Diligence.
+                Waiting for the Director to hand this on for Value & Due Diligence.
               </span>
             )}
             <PrimaryButton
-              disabled={!isSponsor && !proceeded}
-              onClick={() => (isSponsor && !proceeded ? setView('context') : onNext())}
+              disabled={!isDirector && !proceeded}
+              onClick={() => (isDirector && !proceeded ? setView('context') : onNext())}
             >
               Next
             </PrimaryButton>
@@ -339,47 +326,25 @@ export const NdaDiscoveryStage: React.FC<NdaDiscoveryStageProps> = ({
       {current === 'context' && (
         <>
           <BackLink onClick={() => setView('pack')}>Back to alignment pack</BackLink>
-          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 pr-1">
+          <div className="relative flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 pr-1">
             <div className="flex flex-col gap-1">
-              <h3 className="text-base font-semibold text-[#0d212c]">Add context</h3>
+              <h3 className="text-base font-semibold text-[#0d212c]">Alignment Pack</h3>
               <p className="text-sm text-[#64748b]">
-                Upload meeting notes, transcripts or recordings to give the team better context, or
-                skip this and go on.
+                Upload meeting notes, transcripts or recordings to give the sponsor better context,
+                or skip this and go on.
               </p>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <FilePicker
-                label="Upload meeting notes"
-                hint="Word, PDF or text"
-                accept=".doc,.docx,.pdf,.txt"
-                multiple
-                onPick={(names) =>
-                  names.forEach((name) => onAction({ type: 'discoveryFile', kind: 'notes', name }))
-                }
-              />
-              <FilePicker
-                label="Upload transcript"
-                hint="Word, PDF or text"
-                accept=".doc,.docx,.pdf,.txt,.vtt"
-                multiple
-                onPick={(names) =>
-                  names.forEach((name) =>
-                    onAction({ type: 'discoveryFile', kind: 'transcripts', name })
-                  )
-                }
-              />
-              <FilePicker
-                label="Upload recording"
-                hint="Audio or video"
-                accept=".mp3,.m4a,.wav,.mp4,.mov"
-                multiple
-                onPick={(names) =>
-                  names.forEach((name) =>
-                    onAction({ type: 'discoveryFile', kind: 'recordings', name })
-                  )
-                }
-              />
-            </div>
+            <FilePicker
+              label="Upload meeting notes, transcript or recording"
+              hint="Documents, audio or video"
+              accept=".doc,.docx,.pdf,.txt,.vtt,.mp3,.m4a,.wav,.mp4,.mov"
+              multiple
+              onPick={(names) =>
+                names.forEach((name) =>
+                  onAction({ type: 'discoveryFile', kind: contextKind(name), name })
+                )
+              }
+            />
             {contextLists}
           </div>
           <StageFooter compact>

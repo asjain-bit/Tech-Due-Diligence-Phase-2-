@@ -22,6 +22,7 @@ import {
   UserPlus,
   ArrowLeftRight,
   Clock,
+  Eye,
   Pencil,
 } from 'lucide-react'
 import { StatusChip } from '@/components/atoms/StatusChip'
@@ -203,6 +204,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const isDirector = !isNonDirector && !isAdmin && !isSponsor
   /** The Director and the sponsor both follow the whole flow; the sponsor only acts late on */
   const isDirectorView = isDirector || isSponsor
+  /** Everyone who follows the whole flow; the Admin sees every stage but cannot act in them */
+  const isFlowView = isDirectorView || isAdmin
 
   // Delete note state
   const [deleteNote, setDeleteNote] = useState('')
@@ -294,15 +297,13 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           { id: 'nda', label: 'NDA & Discovery' },
           { id: 'value', label: 'Value & Due Diligence' },
         ]
-      : isAdmin
-        ? [{ id: 'brief', label: 'Initial Assessment Brief' }]
-        : [
-            { id: 'brief', label: 'Initial Assessment Brief' },
-            { id: 'canvas', label: 'Internal Canvas' },
-            { id: 'alignment', label: 'Strategic Alignment' },
-            { id: 'nda', label: 'NDA & Discovery' },
-            { id: 'value', label: 'Value & Due Diligence' },
-          ]
+      : [
+          { id: 'brief', label: 'Initial Assessment Brief' },
+          { id: 'canvas', label: 'Internal Canvas' },
+          { id: 'alignment', label: 'Strategic Alignment' },
+          { id: 'nda', label: 'NDA & Discovery' },
+          { id: 'value', label: 'Value & Due Diligence' },
+        ]
 
   const [localDecision, setLocalDecision] = useState<{
     decision: 'approve' | 'reject'
@@ -311,15 +312,15 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [localSent, setLocalSent] = useState<{ internal?: boolean; strategy?: boolean }>({})
 
   // For the Director, progress comes from the case itself, so it survives switching profiles
-  const isClosedAfterBrief = isDirectorView && request.status === 'Closed'
+  const isClosedAfterBrief = isFlowView && request.status === 'Closed'
   const isRejected =
-    isDirectorView &&
+    isFlowView &&
     !isClosedAfterBrief &&
     (request.status === 'Exited' ||
       request.decision?.status === 'rejected' ||
       localDecision?.decision === 'reject')
   const briefApproved =
-    isDirectorView &&
+    isFlowView &&
     (request.decision?.status === 'proceeded' ||
       request.status === 'In Progress' ||
       request.status === 'At Risk' ||
@@ -373,7 +374,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
       return completedSteps.includes(id)
     }
-    if (!isDirectorView) return completedSteps.includes(id)
+    if (!isFlowView) return completedSteps.includes(id)
     if (id === 'brief') return briefApproved || isRejected
     if (id === 'canvas') return internalApproved
     if (id === 'alignment') return strategyApproved
@@ -415,23 +416,30 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
   const [activeStep, setActiveStep] = useState<StepId>(() => {
     // The Strategy lead's own work is the pre-read; later stages are theirs to view only
-    if (isStrategyTeam) return strategyDone ? 'preread' : 'brief'
+    if (isStrategyTeam || isAdmin) return 'brief'
     const open = stepDefs.find((d) => !isStepCompleted(d.id))
     return (open ?? stepDefs[stepDefs.length - 1]).id
   })
 
-  // Once the Strategy Team has approved, the Director moves straight on to the NDA stage
+  // Once the Strategy Team has approved, the Director acknowledges it and moves on to the NDA stage
+  const [strategyAckOpen, setStrategyAckOpen] = useState(false)
   const strategyApprovedBefore = React.useRef(strategyApproved)
   React.useEffect(() => {
     if (!strategyApprovedBefore.current && strategyApproved && activeStep === 'alignment') {
-      setActiveStep('nda')
+      setStrategyAckOpen(true)
     }
     strategyApprovedBefore.current = strategyApproved
   }, [strategyApproved, activeStep])
+  const acknowledgeStrategy = () => {
+    setStrategyAckOpen(false)
+    setActiveStep('nda')
+  }
 
   const goToStep = (id: string) => {
     const target = stepperSteps.find((st) => st.id === id)
-    if (!target || target.state === 'upcoming' || target.state === 'closed') return
+    if (!target) return
+    // The Admin can look at every stage; the others unlock one at a time
+    if (!isAdmin && (target.state === 'upcoming' || target.state === 'closed')) return
     setActiveStep(id as StepId)
   }
 
@@ -445,8 +453,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   // The agent thinks first, every time a case is opened for the first time in this view
   const [runDone, setRunDone] = useState(!animateAgentRun || wasSeen)
   const [readyTeams, setReadyTeams] = useState({
-    strategy: !animateAgentRun || strategySent || isSponsor,
-    internal: !animateAgentRun || internalSent || isSponsor || isStrategyTeam,
+    strategy: !animateAgentRun || strategySent || isSponsor || isAdmin,
+    internal: !animateAgentRun || internalSent || isSponsor || isStrategyTeam || isAdmin,
   })
 
   // While the agent finds the reviewers, the animation owns the page and only the tabs stay
@@ -540,19 +548,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     }
     onRoute?.(request.id, routing)
   }
-
-  const routingConsequence = (routing: AdminRouting) => {
-    const wasPartnership =
-      previousRouting?.action === 'proceed' && previousRouting.type === 'Partnership'
-    const isPartnership = routing.action === 'proceed' && routing.type === 'Partnership'
-    if (wasPartnership && !isPartnership)
-      return "This will remove the case from the Director's list."
-    if (!wasPartnership && isPartnership) return 'This will send the case to the Director.'
-    return 'This will change where the case is routed.'
-  }
-
-  const routingLabel = (routing: AdminRouting) =>
-    routing.action === 'reject' ? 'Rejected' : (routing.type ?? 'Partnership')
 
   // Status category mapper (matching external table: Pending, In Progress, At Risk, Exited)
   const getStatusCategory = (status: string) => {
@@ -834,6 +829,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     showNotReadyConfirm ||
     showSponsorAssign ||
     showSponsorReady ||
+    strategyAckOpen ||
     strategyModal ||
     pendingStrategy
   )
@@ -852,12 +848,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   if (!runDone) return <ThinkingMode onComplete={handleRunComplete} />
 
   // The vendor card tops the first step; later steps use the space for the workflow stages
-  const showHeaderCard = !(isDirectorView || isStrategyTeam) || activeStep === 'brief'
+  const showHeaderCard = !(isFlowView || isStrategyTeam) || activeStep === 'brief'
   // The NDA stage fills the page height so only its own content scrolls
   const fixedStage =
     activeTab === 'review' &&
     activeStep === 'nda' &&
-    (isDirectorView || isStrategyTeam) &&
+    (isFlowView || isStrategyTeam) &&
     !reviewersLoading
 
   const stageChip = (state: 'awaiting' | 'approved' | 'declined') => (
@@ -1464,16 +1460,26 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               </div>
             </div>
 
-            {adminCanChange && request.adminDecision && (
+            <div className="flex items-center gap-5 shrink-0">
               <button
                 type="button"
-                onClick={() => setAdminModal('reassign')}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition shrink-0"
+                onClick={() => setShowVendorForm(true)}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
               >
-                <Pencil className="w-4 h-4" aria-hidden="true" />
-                Edit
+                <Eye className="w-4 h-4" aria-hidden="true" />
+                View vendor response
               </button>
-            )}
+              {adminCanChange && request.adminDecision && (
+                <button
+                  type="button"
+                  onClick={() => setAdminModal('reassign')}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
+                >
+                  <Pencil className="w-4 h-4" aria-hidden="true" />
+                  Edit
+                </button>
+              )}
+            </div>
           </div>
         </>
       )}
@@ -1536,16 +1542,14 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               {activeStep === 'brief' && (
                 <AssessmentBrief
                   request={request}
-                  actions={analysisActions}
                   hideContact={isNonDirector}
                   showVerdict={isDirectorView || isAdmin}
-                  onViewVendorResponse={() => setShowVendorForm(true)}
                   onOpenAnalysis={() => setShowAnalysis(true)}
                 />
               )}
 
               {/* STEP: Internal Canvas (Director and sponsor) */}
-              {(isDirectorView || isStrategyTeam) &&
+              {(isFlowView || isStrategyTeam) &&
                 activeStep === 'canvas' &&
                 (!readyTeams.internal ? (
                   <ReviewersLoading
@@ -1613,7 +1617,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 ))}
 
               {/* STEP: Strategic Alignment (Director and sponsor) */}
-              {isDirectorView &&
+              {isFlowView &&
                 activeStep === 'alignment' &&
                 (!readyTeams.strategy ? (
                   <ReviewersLoading
@@ -1663,7 +1667,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 ))}
 
               {/* STEP: NDA & Discovery */}
-              {(isDirectorView || isStrategyTeam) && activeStep === 'nda' && (
+              {(isFlowView || isStrategyTeam) && activeStep === 'nda' && (
                 <NdaDiscoveryStage
                   request={request}
                   role={isSponsor ? 'sponsor' : isStrategyTeam ? 'viewer' : 'director'}
@@ -1673,7 +1677,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               )}
 
               {/* STEP: Value & Due Diligence */}
-              {(isDirectorView || isStrategyTeam) && activeStep === 'value' && (
+              {(isFlowView || isStrategyTeam) && activeStep === 'value' && (
                 <ValueDueDiligenceStage
                   request={request}
                   role={isSponsor ? 'sponsor' : isStrategyTeam ? 'viewer' : 'director'}
@@ -1815,29 +1819,17 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       {/* CONFIRM CHANGING AN EARLIER ROUTING (Partnership Admin) */}
       {pendingRouting && (
         <ConfirmDialog
-          title="Change how this case is routed?"
-          description={routingConsequence(pendingRouting)}
-          confirmLabel="Confirm change"
+          title="Are you sure you want to confirm?"
+          description="Your changes will be saved and the request will follow the updated routing. You can go back to review them first."
+          confirmLabel="Confirm"
+          cancelLabel="Go back"
           icon={ArrowLeftRight}
           onCancel={() => setPendingRouting(null)}
           onConfirm={() => {
             onRoute?.(request.id, pendingRouting)
             setPendingRouting(null)
           }}
-        >
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[#64748b]">From</span>
-              <span className="font-semibold text-[#0d212c]">
-                {previousRouting ? routingLabel(previousRouting) : '—'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[#64748b]">To</span>
-              <span className="font-semibold text-[#0d212c]">{routingLabel(pendingRouting)}</span>
-            </div>
-          </div>
-        </ConfirmDialog>
+        />
       )}
 
       {/* ADD RESPONDANT MODAL */}
@@ -2117,6 +2109,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           hideCancel
           onCancel={goToAlignment}
           onConfirm={goToAlignment}
+        />
+      )}
+      {strategyAckOpen && (
+        <ConfirmDialog
+          title="Strategy team has proceeded"
+          description="The Strategy team has reviewed the partnership and proceeded with the solution. Moving to the NDA stage."
+          confirmLabel="Proceed"
+          hideCancel
+          onCancel={acknowledgeStrategy}
+          onConfirm={acknowledgeStrategy}
         />
       )}
       {showSponsorAssign && (
@@ -2800,7 +2802,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         )}
 
       {/* PARTNERSHIP ADMIN: decision bar, always in view so the action is obvious */}
-      {isAdmin && activeTab !== 'audit' && !previousRouting && (
+      {isAdmin && activeStep === 'brief' && activeTab !== 'audit' && !previousRouting && (
         <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
           <span className="text-sm text-[#475569]">
             Action required: decide where this case goes.

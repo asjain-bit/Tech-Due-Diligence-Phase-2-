@@ -14,7 +14,6 @@ import {
   Building2,
   CheckSquare,
   ChevronRight,
-  Eye,
   HeartHandshake,
   Layers,
   Scale,
@@ -97,8 +96,6 @@ const Callout: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 
 export const AssessmentBrief: React.FC<AssessmentBriefProps> = ({
   request,
-  actions,
-  onViewVendorResponse,
   onOpenAnalysis,
   hideContact = false,
   showVerdict = false,
@@ -112,7 +109,6 @@ export const AssessmentBrief: React.FC<AssessmentBriefProps> = ({
   const baseNav = showVerdict ? NAV : NAV.filter((item) => item.id !== 'verdict')
   const nav = decision ? [...baseNav, DECISION_NAV] : baseNav
   const [active, setActive] = useState(nav[0].id)
-  const attention = actions.filter((x) => x.status === 'attention').length
   const populations = a.impactedPatientPopulations ?? []
   const milestones = a.milestones ?? []
 
@@ -146,7 +142,7 @@ export const AssessmentBrief: React.FC<AssessmentBriefProps> = ({
   return (
     <section
       aria-labelledby="assessment-brief-heading"
-      className={`flex flex-col gap-6 ${className}`.trim()}
+      className={`flex flex-col gap-5 ${className}`.trim()}
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -162,38 +158,17 @@ export const AssessmentBrief: React.FC<AssessmentBriefProps> = ({
             Triage Agent Analysis
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onViewVendorResponse}
-          className="inline-flex items-center gap-2 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
-        >
-          <Eye className="w-4 h-4" aria-hidden="true" />
-          View vendor response
-        </button>
-      </div>
-
-      {/* AI analysis banner */}
-      <div className="rounded-2xl border border-[#e2e8f0] bg-white px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-slate-50 text-[#36c0c9] flex items-center justify-center shrink-0">
-            <Sparkles className="w-5 h-5" aria-hidden="true" />
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold text-[#36c0c9]">AI analysis completed</span>
-            <span className="text-xs text-[#64748b]">
-              {actions.length} checks completed
-              {attention > 0 && ` · ${attention} ${attention === 1 ? 'risk' : 'risks'} identified`}
-            </span>
-          </div>
+        <div className="rounded-xl border border-[#e2e8f0] bg-white pl-3 pr-4 py-2 flex items-center gap-2.5 w-fit">
+          <Sparkles className="w-4 h-4 text-[#36c0c9]" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={onOpenAnalysis}
+            className="inline-flex items-center gap-1 text-sm font-semibold text-[#0d212c] hover:text-[#36c0c9] cursor-pointer transition"
+          >
+            Agent Actions
+            <ChevronRight className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onOpenAnalysis}
-          className="inline-flex items-center gap-1 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer transition"
-        >
-          Agent Actions
-          <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        </button>
       </div>
 
       {/* Side panel and sections */}

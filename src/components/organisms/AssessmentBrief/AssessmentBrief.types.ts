@@ -1,12 +1,8 @@
 import type { ReactNode } from 'react'
-import type { AgentAction } from '@/components/organisms/AgentActions'
 import type { PartnershipRequest } from '@/types/partnership.types'
 
 export interface AssessmentBriefProps {
   request: PartnershipRequest
-  /** The agent checks behind the brief, summarised in the AI analysis banner */
-  actions: AgentAction[]
-  onViewVendorResponse: () => void
   onOpenAnalysis: () => void
   /** Hide the vendor's personal contact details (Internal and Strategy reviewers) */
   hideContact?: boolean

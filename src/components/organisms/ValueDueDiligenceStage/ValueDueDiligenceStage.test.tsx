@@ -1,7 +1,7 @@
 import React from 'react'
-import { act, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { ValueDueDiligenceStage } from './ValueDueDiligenceStage'
 import { INITIAL_PARTNERSHIP_REQUESTS, type PartnershipRequest } from '@/types/partnership.types'
 
@@ -9,15 +9,15 @@ const base: PartnershipRequest = { ...INITIAL_PARTNERSHIP_REQUESTS[1], value: un
 const file = (name: string) => new File(['x'], name)
 
 describe('ValueDueDiligenceStage', () => {
-  afterEach(() => vi.useRealTimers())
-
   it('lets the sponsor confirm the value assessment call, which happens externally', async () => {
     const user = userEvent.setup()
     const onAction = vi.fn()
     render(<ValueDueDiligenceStage request={base} role="sponsor" onAction={onAction} />)
     expect(screen.queryByRole('heading', { name: 'Business case' })).not.toBeInTheDocument()
     await user.click(
-      screen.getByRole('button', { name: 'Confirm value assessment call completed' })
+      screen.getByRole('checkbox', {
+        name: 'I confirm the value assessment call has been completed',
+      })
     )
     expect(onAction).toHaveBeenCalledWith({ type: 'confirmValueCall' })
   })
@@ -25,7 +25,7 @@ describe('ValueDueDiligenceStage', () => {
   it('has the Director wait for the sponsor', () => {
     render(<ValueDueDiligenceStage request={base} role="director" onAction={vi.fn()} />)
     expect(screen.getByText('Waiting for the lead sponsor.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Confirm value/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
   it('then asks the sponsor to upload the business case', async () => {
@@ -45,7 +45,7 @@ describe('ValueDueDiligenceStage', () => {
     },
   }
 
-  it('fixes Reject and Proceed at the bottom for the sponsor, with a confirmation', async () => {
+  it('fixes Reject and Proceed at the bottom for the sponsor, with a single popup', async () => {
     const user = userEvent.setup()
     const onAction = vi.fn()
     render(<ValueDueDiligenceStage request={withCase} role="sponsor" onAction={onAction} />)
@@ -58,12 +58,7 @@ describe('ValueDueDiligenceStage', () => {
     expect(within(popup).getByRole('button', { name: 'Reject partnership' })).toBeDisabled()
     await user.type(within(popup).getByLabelText(/^Reason/), 'Weak case')
     await user.click(within(popup).getByRole('button', { name: 'Reject partnership' }))
-    expect(onAction).not.toHaveBeenCalled()
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Submit your decision?' })).getByRole('button', {
-        name: 'Submit',
-      })
-    )
+    expect(screen.queryByRole('dialog', { name: 'Submit your decision?' })).not.toBeInTheDocument()
     expect(onAction).toHaveBeenCalledWith({
       type: 'valueDecision',
       status: 'rejected',
@@ -82,11 +77,6 @@ describe('ValueDueDiligenceStage', () => {
         { name: 'Proceed' }
       )
     )
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Submit your decision?' })).getByRole('button', {
-        name: 'Submit',
-      })
-    )
     expect(onAction).toHaveBeenCalledWith({
       type: 'valueDecision',
       status: 'proceeded',
@@ -100,8 +90,8 @@ describe('ValueDueDiligenceStage', () => {
     expect(screen.getByText('Waiting for the lead sponsor to decide.')).toBeInTheDocument()
   })
 
-  it('generates the TDD report with the simple animation after a proceed', () => {
-    vi.useFakeTimers()
+  it('has the sponsor upload the TDD report after a proceed', async () => {
+    const user = userEvent.setup()
     const onAction = vi.fn()
     const request = {
       ...withCase,
@@ -111,13 +101,12 @@ describe('ValueDueDiligenceStage', () => {
       },
     }
     render(<ValueDueDiligenceStage request={request} role="sponsor" onAction={onAction} />)
-    expect(screen.getByText('GENERATING')).toBeInTheDocument()
-    expect(screen.getByText(/Collecting security documentation/)).toBeInTheDocument()
-    for (let i = 0; i < 5; i++) act(() => vi.advanceTimersByTime(1100))
-    expect(onAction).toHaveBeenCalledWith({ type: 'generateTdd' })
+    expect(screen.queryByText('GENERATING')).not.toBeInTheDocument()
+    await user.upload(screen.getByLabelText('Upload TDD report'), file('tdd.pdf'))
+    expect(onAction).toHaveBeenCalledWith({ type: 'uploadTddReport', name: 'tdd.pdf' })
   })
 
-  it('shows the finished TDD report, and a rejected case as closed', () => {
+  it('shows the uploaded TDD report, and a rejected case as closed', () => {
     const { unmount } = render(
       <ValueDueDiligenceStage
         request={{
@@ -125,6 +114,7 @@ describe('ValueDueDiligenceStage', () => {
           value: {
             ...withCase.value,
             decision: { status: 'proceeded', date: '21 Oct 2026' },
+            tddReport: { name: 'tdd.pdf', uploadedOn: '22 Oct 2026', uploadedBy: 'Rashid' },
             tddGeneratedOn: '22 Oct 2026',
           },
         }}
@@ -132,8 +122,8 @@ describe('ValueDueDiligenceStage', () => {
         onAction={vi.fn()}
       />
     )
-    expect(screen.getByText('TDD report generated on 22 Oct 2026')).toBeInTheDocument()
-    expect(screen.getByRole('list', { name: 'TDD report' })).toBeInTheDocument()
+    expect(screen.getByText('tdd.pdf')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Upload TDD report')).not.toBeInTheDocument()
     unmount()
     render(
       <ValueDueDiligenceStage

@@ -3,21 +3,12 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { AssessmentBrief } from './AssessmentBrief'
-import { buildAgentActions } from '@/components/organisms/AgentActions'
 import { INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
 
 const request = INITIAL_PARTNERSHIP_REQUESTS[0]
 
 const renderBrief = (props: Partial<React.ComponentProps<typeof AssessmentBrief>> = {}) =>
-  render(
-    <AssessmentBrief
-      request={request}
-      actions={buildAgentActions(request)}
-      onViewVendorResponse={vi.fn()}
-      onOpenAnalysis={vi.fn()}
-      {...props}
-    />
-  )
+  render(<AssessmentBrief request={request} onOpenAnalysis={vi.fn()} {...props} />)
 
 const nav = () => within(screen.getByRole('navigation', { name: 'Brief sections' }))
 
@@ -95,13 +86,7 @@ describe('AssessmentBrief', () => {
 
   it('shows the agent verdict as a Proceed or Reject chip with a confidence level, only when asked', () => {
     const { container, rerender } = render(
-      <AssessmentBrief
-        request={request}
-        actions={[]}
-        showVerdict
-        onViewVendorResponse={vi.fn()}
-        onOpenAnalysis={vi.fn()}
-      />
+      <AssessmentBrief request={request} showVerdict onOpenAnalysis={vi.fn()} />
     )
     expect(screen.getByRole('heading', { name: 'Agent Verdict' })).toBeInTheDocument()
     expect(screen.getByText('Proceed')).toBeInTheDocument()
@@ -120,59 +105,29 @@ describe('AssessmentBrief', () => {
           ...request,
           agentRecommendation: { ...request.agentRecommendation!, status: 'reject' },
         }}
-        actions={[]}
+
         showVerdict
-        onViewVendorResponse={vi.fn()}
         onOpenAnalysis={vi.fn()}
       />
     )
     expect(screen.getByText('Reject')).toBeInTheDocument()
 
-    rerender(
-      <AssessmentBrief
-        request={request}
-        actions={[]}
-        onViewVendorResponse={vi.fn()}
-        onOpenAnalysis={vi.fn()}
-      />
-    )
+    rerender(<AssessmentBrief request={request} onOpenAnalysis={vi.fn()} />)
     expect(screen.queryByRole('heading', { name: 'Agent Verdict' })).not.toBeInTheDocument()
     expect(nav().queryByRole('button', { name: 'Agent Verdict' })).not.toBeInTheDocument()
   })
 
-  it('summarises the AI analysis in plain primary text and opens Agent Actions', async () => {
+  it('shows only the Agent Actions button, in the title colour, and opens it', async () => {
     const user = userEvent.setup()
     const onOpenAnalysis = vi.fn()
     renderBrief({ onOpenAnalysis })
-    const title = screen.getByText('AI analysis completed')
-    expect(title.className).toContain('text-[#36c0c9]')
-    expect(title.closest('div[class*="border"]')?.className).toContain('border-[#e2e8f0]')
-    expect(screen.getByText('6 checks completed')).toBeInTheDocument()
+    expect(screen.queryByText('AI analysis completed')).not.toBeInTheDocument()
+    expect(screen.queryByText(/checks completed/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /View vendor response/i })).not.toBeInTheDocument()
     const button = screen.getByRole('button', { name: 'Agent Actions' })
-    // A text-only tertiary button: no fill, no stroke
-    expect(button.className).not.toMatch(/\bbg-|border/)
-    expect(
-      screen.queryByRole('button', { name: /View checks and findings/i })
-    ).not.toBeInTheDocument()
+    expect(button.className).toContain('text-[#0d212c]')
     await user.click(button)
     expect(onOpenAnalysis).toHaveBeenCalled()
-  })
-
-  it('counts risks from the checks that need attention', () => {
-    const second = INITIAL_PARTNERSHIP_REQUESTS[1]
-    renderBrief({ request: second, actions: buildAgentActions(second) })
-    expect(screen.getByText('6 checks completed · 2 risks identified')).toBeInTheDocument()
-  })
-
-  it('has the eye icon on the left of View vendor response and opens it', async () => {
-    const user = userEvent.setup()
-    const onView = vi.fn()
-    renderBrief({ onViewVendorResponse: onView })
-    const button = screen.getByRole('button', { name: /View vendor response/i })
-    expect(button.firstElementChild).toHaveClass('lucide-eye')
-    expect(button.lastElementChild).not.toHaveClass('lucide-external-link')
-    await user.click(button)
-    expect(onView).toHaveBeenCalled()
   })
 
   it('adds a decision section and a footer when given', () => {
@@ -200,7 +155,6 @@ describe('AssessmentBrief', () => {
           productPlatformServiceDetails: base.assessmentAreas.proposalOfCollaboration,
         },
       },
-      actions: [],
     })
     expect(screen.getByText('Not applicable')).toBeInTheDocument()
     expect(screen.getByText('Not specified')).toBeInTheDocument()

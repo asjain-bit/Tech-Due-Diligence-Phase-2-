@@ -263,13 +263,7 @@ describe('DashboardScreen', () => {
     const send = screen.getByRole('dialog', { name: 'Select questionnaire' })
     await user.click(within(send).getByRole('button', { name: 'Next' }))
     await user.click(within(send).getByRole('button', { name: 'Send Request' }))
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Send to Internal Interest?' })).getByRole(
-        'button',
-        { name: 'Send Request' }
-      )
-    )
-    // The popup closes and the tracking table is shown
+    // No extra confirmation: the popup closes and the tracking table is shown
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getAllByRole('columnheader', { name: 'Status' })).toHaveLength(1)
 
@@ -725,7 +719,13 @@ describe('Internal Interest outcomes', () => {
     expect(within(popup).getByText('Dr. Zainab')).toBeInTheDocument()
     expect(within(popup).queryByRole('checkbox')).not.toBeInTheDocument()
     await user.click(within(popup).getByRole('button', { name: 'Send Request' }))
-    // Approved: straight on to NDA & Discovery
+    // Approved: the Director acknowledges it, then NDA & Discovery follows
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Strategy team has proceeded' })).getByRole(
+        'button',
+        { name: 'Proceed' }
+      )
+    )
     expect(screen.getByRole('heading', { level: 2, name: 'NDA & Discovery' })).toBeInTheDocument()
     await user.click(
       within(screen.getByRole('navigation', { name: 'Review progress' })).getByRole('button', {
@@ -781,8 +781,12 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     expect(screen.getByText('GENERATING')).toBeInTheDocument()
     finishThinking()
     expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
-    // The Director waits for the sponsor to move the case on
-    expect(screen.getByRole('button', { name: /Next/ })).toBeDisabled()
+    // The Director adds context (or skips) and hands the case to the sponsor
+    await user.click(screen.getByRole('button', { name: /Next/ }))
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Value & Due Diligence' })
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'Audit Log' }))
     const titles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
     expect(titles).toEqual(
@@ -800,7 +804,7 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     expect(screen.getByText('In Due Diligence')).toBeInTheDocument()
   })
 
-  it('moves the Sponsor from the alignment pack to the value stage, which stays locked until then', async () => {
+  it('keeps the value stage locked for the Sponsor until the Director hands the case on', async () => {
     const user = setup()
     render(<Shared profile={sponsorProfile} initial={[...INITIAL_PARTNERSHIP_REQUESTS]} />)
     await user.click(screen.getByText('GenomicX MENA FZ-LLC'))
@@ -809,15 +813,12 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     expect(stepper.getByRole('button', { name: /Value & Due Diligence/ })).toBeDisabled()
     expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /Next/ }))
-    await user.click(screen.getByRole('button', { name: 'Skip' }))
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Value & Due Diligence' })
-    ).toBeInTheDocument()
-    expect(stepper.getByRole('button', { name: /NDA & Discovery/ })).toHaveTextContent('Completed')
+    expect(screen.getByRole('button', { name: /Next/ })).toBeDisabled()
+    expect(screen.getByText(/Waiting for the Director to hand this on/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Upload meeting notes, transcript or recording')).toBeNull()
   })
 
-  it('has the Sponsor decide on the business case, then generates the TDD report', async () => {
+  it('has the Sponsor decide on the business case, then upload the TDD report', async () => {
     const user = setup()
     const atValue = INITIAL_PARTNERSHIP_REQUESTS.map((r) =>
       r.id === 'req-003'
@@ -845,14 +846,10 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
         { name: 'Proceed' }
       )
     )
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Submit your decision?' })).getByRole('button', {
-        name: 'Submit',
-      })
-    )
-    expect(screen.getByText('GENERATING')).toBeInTheDocument()
-    finishThinking()
-    expect(screen.getByRole('list', { name: 'TDD report' })).toBeInTheDocument()
+    // One popup only: the decision is recorded and the TDD report upload follows
+    expect(screen.queryByRole('dialog', { name: 'Submit your decision?' })).toBeNull()
+    await user.upload(screen.getByLabelText('Upload TDD report'), new File(['x'], 'tdd.pdf'))
+    expect(screen.getByText('tdd.pdf')).toBeInTheDocument()
     expect(stepper.getByRole('button', { name: /Value & Due Diligence/ })).toHaveTextContent(
       'Completed'
     )

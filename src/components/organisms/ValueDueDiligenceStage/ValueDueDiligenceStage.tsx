@@ -3,26 +3,17 @@
 /**
  * ValueDueDiligenceStage — Organism
  * Stage 5: the value assessment call (confirmed by the sponsor), the business case upload, the
- * sponsor's Proceed or Reject decision, and then the generated TDD report.
+ * sponsor's Proceed or Reject decision, and then the TDD report the sponsor uploads.
  * Used in: PartnershipDetail
  */
 
 import React, { useState } from 'react'
 import { Check, CheckCircle2, FileText, X } from 'lucide-react'
-import { ConfirmDialog } from '@/components/molecules/ConfirmDialog'
+import { Checkbox } from '@/components/atoms/Checkbox'
 import { FilePicker } from '@/components/molecules/FilePicker'
 import { StageFooter } from '@/components/molecules/StageFooter'
 import { StrategyDecisionModal } from '@/components/organisms/StrategyDecisionModal'
-import { TddReport } from '@/components/organisms/TddReport'
-import { ThinkingMode } from '@/components/organisms/ThinkingMode'
 import type { ValueDueDiligenceStageProps } from './ValueDueDiligenceStage.types'
-
-const TDD_MESSAGES = [
-  'Collecting security documentation',
-  'Reviewing architecture and integration',
-  'Checking data residency',
-  'Preparing the report',
-]
 
 const Section: React.FC<{ title: string; subtitle?: string; children: React.ReactNode }> = ({
   title,
@@ -55,10 +46,6 @@ export const ValueDueDiligenceStage: React.FC<ValueDueDiligenceStageProps> = ({
   const value = request.value ?? {}
   const decision = value.decision
   const [modal, setModal] = useState<'proceed' | 'reject' | null>(null)
-  const [pending, setPending] = useState<{
-    status: 'proceeded' | 'rejected'
-    reason: string
-  } | null>(null)
 
   const needsDecision = Boolean(value.businessCase) && !decision
 
@@ -67,8 +54,8 @@ export const ValueDueDiligenceStage: React.FC<ValueDueDiligenceStageProps> = ({
       <div className="flex flex-col gap-1">
         <h2 className="text-xl font-semibold text-[#0d212c]">Value & Due Diligence</h2>
         <p className="text-xs text-[#64748b]">
-          The value assessment call and business case come first. If the sponsor proceeds, the
-          technical due diligence report is generated.
+          The value assessment call and business case come first. If the sponsor proceeds, they
+          upload the technical due diligence report.
         </p>
       </div>
 
@@ -79,13 +66,11 @@ export const ValueDueDiligenceStage: React.FC<ValueDueDiligenceStageProps> = ({
         {value.callConfirmedOn ? (
           <Done>Value assessment call completed on {value.callConfirmedOn}</Done>
         ) : isSponsor ? (
-          <button
-            type="button"
-            onClick={() => onAction({ type: 'confirmValueCall' })}
-            className="self-start h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition"
-          >
-            Confirm value assessment call completed
-          </button>
+          <Checkbox
+            checked={false}
+            onChange={() => onAction({ type: 'confirmValueCall' })}
+            label="I confirm the value assessment call has been completed"
+          />
         ) : (
           <span className="text-xs text-[#64748b]">Waiting for the lead sponsor.</span>
         )}
@@ -147,22 +132,27 @@ export const ValueDueDiligenceStage: React.FC<ValueDueDiligenceStageProps> = ({
 
       {decision?.status === 'proceeded' && (
         <Section title="Technical due diligence">
-          {value.tddGeneratedOn ? (
-            <>
-              <Done>TDD report generated on {value.tddGeneratedOn}</Done>
-              <div className="rounded-2xl border border-[#e2e8f0] bg-white p-5 sm:p-6">
-                <TddReport request={request} />
+          {value.tddReport ? (
+            <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white px-4 py-3">
+              <FileText className="w-5 h-5 text-[#2563eb] shrink-0" aria-hidden="true" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium text-[#0d212c] truncate">
+                  {value.tddReport.name}
+                </span>
+                <span className="text-xs text-[#64748b]">
+                  {value.tddReport.uploadedBy} · {value.tddReport.uploadedOn}
+                </span>
               </div>
-            </>
-          ) : (
-            <ThinkingMode
-              inline
-              eyebrow="GENERATING"
-              description="The agent is preparing the technical due diligence report."
-              messages={TDD_MESSAGES}
-              stepMs={1100}
-              onComplete={() => onAction({ type: 'generateTdd' })}
+            </div>
+          ) : isSponsor ? (
+            <FilePicker
+              label="Upload TDD report"
+              hint="PDF or Word"
+              accept=".pdf,.doc,.docx"
+              onPick={(names) => onAction({ type: 'uploadTddReport', name: names[0] })}
             />
+          ) : (
+            <span className="text-xs text-[#64748b]">Waiting for the sponsor to upload it.</span>
           )}
         </Section>
       )}
@@ -198,41 +188,14 @@ export const ValueDueDiligenceStage: React.FC<ValueDueDiligenceStageProps> = ({
           mode={modal}
           onClose={() => setModal(null)}
           onConfirm={(reason) => {
-            setPending({ status: modal === 'proceed' ? 'proceeded' : 'rejected', reason })
+            onAction({
+              type: 'valueDecision',
+              status: modal === 'proceed' ? 'proceeded' : 'rejected',
+              reason,
+            })
             setModal(null)
           }}
         />
-      )}
-      {pending && (
-        <ConfirmDialog
-          title="Submit your decision?"
-          description={
-            pending.status === 'proceeded'
-              ? 'The technical due diligence report will be generated.'
-              : 'The case will be closed.'
-          }
-          confirmLabel="Submit"
-          onCancel={() => setPending(null)}
-          onConfirm={() => {
-            onAction({ type: 'valueDecision', status: pending.status, reason: pending.reason })
-            setPending(null)
-          }}
-        >
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-[#64748b]">Your decision</span>
-              <span className="font-semibold text-[#0d212c]">
-                {pending.status === 'proceeded' ? 'Proceed' : 'Reject'}
-              </span>
-            </div>
-            {pending.reason && (
-              <div className="flex flex-col gap-1 pt-2 border-t border-slate-200">
-                <span className="text-[#64748b]">Reason</span>
-                <p className="text-[#0d212c]">{pending.reason}</p>
-              </div>
-            )}
-          </div>
-        </ConfirmDialog>
       )}
     </div>
   )
