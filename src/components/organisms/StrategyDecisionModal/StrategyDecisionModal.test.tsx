@@ -9,7 +9,9 @@ describe('StrategyDecisionModal', () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
     render(<StrategyDecisionModal mode="proceed" onConfirm={onConfirm} onClose={vi.fn()} />)
-    expect(screen.getByText('(optional)')).toBeInTheDocument()
+    // An optional reason is not labelled as optional
+    expect(screen.queryByText(/optional/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Reason')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Proceed' }))
     expect(onConfirm).toHaveBeenCalledWith('')
   })

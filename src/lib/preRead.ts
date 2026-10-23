@@ -22,9 +22,9 @@ export interface PreReadSection {
   documents?: PreReadDocument[]
 }
 
-export const KNOWLEDGE_BASE_ACCEPT = '.ppt,.pptx,.doc,.docx,.xls,.xlsx'
+export const KNOWLEDGE_BASE_ACCEPT = '.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx'
 
-const EXTENSIONS = ['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx']
+const EXTENSIONS = ['pdf', 'ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx']
 
 export const isSupportedKnowledgeFile = (name: string) =>
   EXTENSIONS.includes(name.split('.').pop()?.toLowerCase() ?? '')
@@ -41,13 +41,14 @@ export const buildPreRead = (
 ): PreReadSection[] => {
   const company = request.companyName
   const focus = request.focusArea || 'the stated focus area'
-  const roadmapDocs: PreReadDocument[] = [
+  const all: PreReadDocument[] = [
     { name: `${slug(company)}_Pitch_Deck.pptx`, source: 'Vendor' },
     { name: `${slug(company)}_Solution_Brief.docx`, source: 'Vendor' },
     { name: 'M42_Roadmap_Register.xlsx', source: 'M42' },
     { name: 'News_Trends_Agent_KB_Extract.docx', source: 'M42' },
     ...uploaded.map((name) => ({ name, source: 'Added by you' as const })),
   ]
+  const roadmapDocs = all.filter((doc, i) => all.findIndex((d) => d.name === doc.name) === i)
 
   return [
     {

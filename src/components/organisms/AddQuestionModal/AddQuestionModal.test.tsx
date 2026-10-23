@@ -21,7 +21,7 @@ describe('AddQuestionModal', () => {
     // Mandatory by default; can be made optional
     expect(screen.getByRole('checkbox', { name: 'Mandatory question' })).toBeChecked()
     await user.click(screen.getByRole('checkbox', { name: 'Mandatory question' }))
-    expect(screen.getByText(/leave this question blank/)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Mandatory question' })).not.toBeChecked()
     await user.click(save)
     expect(onSave).toHaveBeenCalledWith({
       text: 'Describe your access controls',

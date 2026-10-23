@@ -120,7 +120,7 @@ describe('LoginScreen', () => {
     vi.useRealTimers()
   })
 
-  it('ensures other role profiles are not clickable and do not trigger onLogin', async () => {
+  it('selects the Sponsor profile and triggers onLogin', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const handleLogin = vi.fn()
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -128,15 +128,21 @@ describe('LoginScreen', () => {
     renderWithTheme(<LoginScreen onLogin={handleLogin} />)
 
     await user.click(screen.getByText('Sign in with SSO'))
-    const sponsorRole = screen.getByText('Sponsor')
-    await user.click(sponsorRole)
+    await user.click(screen.getByText('Sponsor'))
 
     act(() => {
       vi.advanceTimersByTime(800)
     })
 
-    expect(handleLogin).not.toHaveBeenCalled()
+    expect(handleLogin).toHaveBeenCalledWith(profileById('sponsor'))
     vi.useRealTimers()
+  })
+
+  it('does not offer the Legal Team profile', async () => {
+    const user = userEvent.setup()
+    renderWithTheme(<LoginScreen onLogin={vi.fn()} />)
+    await user.click(screen.getByText('Sign in with SSO'))
+    expect(screen.queryByText('Legal Team')).not.toBeInTheDocument()
   })
 
   it('renders all profile icon branches correctly', async () => {

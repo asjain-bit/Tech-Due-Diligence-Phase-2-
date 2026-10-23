@@ -58,12 +58,7 @@ export const StrategyDecisionModal: React.FC<StrategyDecisionModalProps> = ({
             htmlFor="strategy-decision-reason"
             className="text-sm font-semibold text-[#0d212c]"
           >
-            Reason{' '}
-            {isProceed ? (
-              <span className="font-normal text-[#64748b]">(optional)</span>
-            ) : (
-              <span className="text-red-500">*</span>
-            )}
+            Reason{!isProceed && <span className="text-red-500"> *</span>}
           </label>
           <textarea
             id="strategy-decision-reason"

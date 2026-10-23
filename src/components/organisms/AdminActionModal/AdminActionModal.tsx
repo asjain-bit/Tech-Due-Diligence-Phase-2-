@@ -30,7 +30,8 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
   onConfirm,
   onClose,
 }) => {
-  const isProceed = mode === 'proceed'
+  const isReassign = mode === 'reassign'
+  const isProceed = mode === 'proceed' || isReassign
   const [type, setType] = useState<CaseType | null>(initialType ?? null)
   const [reason, setReason] = useState(initialReason)
   const [open, setOpen] = useState(false)
@@ -59,7 +60,11 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
       >
         <div className="flex items-center justify-between gap-3 pb-4 border-b border-[#e2e8f0]">
           <h3 id={titleId} className="text-xl font-semibold text-[#0d212c]">
-            {isProceed ? 'Proceed with this case' : 'Reject this case'}
+            {isReassign
+              ? 'Reassign request type'
+              : isProceed
+                ? 'Proceed with this case'
+                : 'Reject this case'}
           </h3>
           <button
             type="button"
@@ -138,28 +143,25 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
           </div>
         )}
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="admin-action-reason" className="text-sm font-semibold text-[#0d212c]">
-            Reason{' '}
-            {isProceed ? (
-              <span className="font-normal text-[#64748b]">(optional)</span>
-            ) : (
-              <span className="text-red-500">*</span>
-            )}
-          </label>
-          <textarea
-            id="admin-action-reason"
-            rows={4}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder={
-              isProceed
-                ? 'Add a note for the next team...'
-                : 'Explain why this case is being rejected...'
-            }
-            className={`${FIELD} p-3.5 resize-none leading-relaxed`}
-          />
-        </div>
+        {!isReassign && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="admin-action-reason" className="text-sm font-semibold text-[#0d212c]">
+              Reason{!isProceed && <span className="text-red-500"> *</span>}
+            </label>
+            <textarea
+              id="admin-action-reason"
+              rows={4}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={
+                isProceed
+                  ? 'Add a note for the next team...'
+                  : 'Explain why this case is being rejected...'
+              }
+              className={`${FIELD} p-3.5 resize-none leading-relaxed`}
+            />
+          </div>
+        )}
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e2e8f0]">
           <button
@@ -174,7 +176,7 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
             disabled={!canConfirm}
             onClick={() =>
               onConfirm({
-                action: mode,
+                action: isProceed ? 'proceed' : 'reject',
                 type: isProceed ? (type ?? undefined) : undefined,
                 reason: reason.trim(),
               })
@@ -183,7 +185,7 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
               isProceed ? 'bg-[#36c0c9] hover:bg-[#2fb0b9]' : 'bg-red-600 hover:bg-red-700'
             }`}
           >
-            {isProceed ? 'Proceed' : 'Reject request'}
+            {isReassign ? 'Reassign' : isProceed ? 'Proceed' : 'Reject request'}
           </button>
         </div>
       </div>

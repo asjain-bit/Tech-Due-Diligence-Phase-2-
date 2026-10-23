@@ -5,10 +5,10 @@ import type {
   QuestionnaireQuestion,
   StrategyMemberResponse,
 } from '@/types/partnership.types'
-import type { AdminRouting, AuditInput } from '@/lib/caseActions'
+import type { AdminRouting, AuditInput, CaseAction } from '@/lib/caseActions'
 import type { UserProfile } from '@/components/screens/LoginScreen'
 
-export type DetailTab = 'overview' | 'review' | 'audit'
+export type DetailTab = 'review' | 'audit'
 
 export interface PartnershipDetailProps {
   request: PartnershipRequest
@@ -41,6 +41,8 @@ export interface PartnershipDetailProps {
     team: 'internal' | 'strategy',
     payload: { answers?: QuestionAnswer[]; response?: StrategyMemberResponse }
   ) => void
+  /** Late-stage changes: Internal Interest outcome, sponsors, NDA, discovery, value and TDD */
+  onCaseAction?: (requestId: string, action: CaseAction) => void
   /** Play the agent run animation on first open. Turn off to start at the brief. */
   animateAgentRun?: boolean
   className?: string

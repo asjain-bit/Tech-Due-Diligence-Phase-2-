@@ -22,11 +22,12 @@ const renderModal = (props: Partial<React.ComponentProps<typeof AdminActionModal
 }
 
 describe('AdminActionModal (proceed)', () => {
-  it('picks the request type from a dropdown that shows the agent confidence, with an optional reason', async () => {
+  it('picks the request type from a dropdown that shows the agent confidence, and a reason that is not marked optional', async () => {
     const user = userEvent.setup()
     const { onConfirm } = renderModal()
     expect(screen.getByRole('dialog', { name: 'Proceed with this case' })).toBeInTheDocument()
-    expect(screen.getByText('(optional)')).toBeInTheDocument()
+    expect(screen.queryByText(/optional/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Reason')).toBeInTheDocument()
 
     const proceed = screen.getByRole('button', { name: 'Proceed' })
     expect(proceed).toBeDisabled()

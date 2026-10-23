@@ -7,12 +7,12 @@ export interface ThinkingModeProps {
    */
   stepMs?: number
   className?: string
-  /** Checks to run, in order. Defaults to the five Initial Assessment Brief checks */
-  checks?: string[]
+  /** Progress text, shown one at a time. Defaults to the Initial Assessment Brief checks */
+  messages?: string[]
   title?: string
   /** Small label above the title while running */
   eyebrow?: string
   description?: string
-  /** Smaller layout for use inside a page section instead of the full pane */
-  compact?: boolean
+  /** Sits inside a page section instead of taking the whole page */
+  inline?: boolean
 }

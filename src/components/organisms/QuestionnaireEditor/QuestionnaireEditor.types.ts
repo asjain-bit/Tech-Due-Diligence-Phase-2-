@@ -13,9 +13,11 @@ export interface QuestionnaireEditorProps {
   questions: QuestionnaireQuestion[]
   /** Called on every change with a short description used for the version history */
   onQuestionsChange: (questions: QuestionnaireQuestion[], label: string) => void
-  /** Saved versions, oldest first. The last one is the current version. */
+  /** Saved versions, oldest first. Only shown once the questionnaire has been edited. */
   versions?: QuestionnaireVersion[]
-  /** Makes an earlier version the current one again (saved as a new version) */
-  onRestore?: (version: number) => void
+  /** The version being shown */
+  currentVersion?: number
+  /** Switches to another saved version */
+  onSelectVersion?: (version: number) => void
   className?: string
 }

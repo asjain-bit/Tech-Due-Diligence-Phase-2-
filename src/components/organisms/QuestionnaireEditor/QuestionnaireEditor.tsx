@@ -2,20 +2,41 @@
 
 /**
  * QuestionnaireEditor — Organism
- * Pick a questionnaire, then reorder (drag), edit, delete or add questions before it is sent.
- * Every change saves a new version, and earlier versions can be restored from the history.
+ * Pick a questionnaire, then add questions or switch on Edit to reorder (drag), change or delete
+ * them before it is sent. Every change saves a new version, picked from a dropdown once the
+ * questionnaire has been edited.
  * Changes only apply to this request, never to the questionnaire library.
  * Used in: SendInternalModal
  */
 
 import React, { useState } from 'react'
-import { ChevronDown, GripVertical, History, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react'
 import { AddQuestionModal } from '@/components/organisms/AddQuestionModal'
 import { newQuestionId, QUESTIONNAIRE_LIBRARY } from '@/types/questionnaires'
+import type { QuestionnaireQuestion } from '@/types/partnership.types'
 import type { QuestionnaireEditorProps } from './QuestionnaireEditor.types'
 
 const FIELD =
   'w-full rounded-lg border border-[#e2e8f0] bg-[#fcfdfe] text-sm text-[#0d212c] placeholder:text-[#9aa8b5] transition hover:border-[#bcc7d3] focus:outline-none focus:border-[#a3b1c2]'
+
+const QuestionBody: React.FC<{ index: number; question: QuestionnaireQuestion }> = ({
+  index,
+  question,
+}) => (
+  <>
+    <h5 className="text-sm font-semibold text-[#0d212c] whitespace-nowrap">Question {index + 1}</h5>
+    <p className="text-sm text-[#0d212c] leading-relaxed">
+      {question.text}
+      {question.mandatory && (
+        <span className="text-red-500 font-semibold" aria-label="mandatory">
+          {' '}
+          *
+        </span>
+      )}
+    </p>
+    <p className="text-xs text-[#64748b] leading-relaxed">{question.cue}</p>
+  </>
+)
 
 export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
   questionnaireId,
@@ -23,14 +44,14 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
   questions,
   onQuestionsChange,
   versions,
-  onRestore,
+  currentVersion,
+  onSelectVersion,
   className = '',
 }) => {
   const [adding, setAdding] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [showHistory, setShowHistory] = useState(false)
-  const current = versions?.[versions.length - 1]?.version
+  const [editMode, setEditMode] = useState(false)
 
   const move = (from: number, to: number) => {
     if (to < 0 || to >= questions.length || from === to) return
@@ -69,78 +90,54 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
       </div>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <h4 className="text-sm font-semibold text-[#0d212c]">
             Questions{' '}
             <span className="font-normal text-[#64748b]">
               ({questions.length} {questions.length === 1 ? 'question' : 'questions'})
             </span>
           </h4>
-          {current !== undefined && (
-            <span
-              aria-label={`Version ${current}`}
-              className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#e6fffa] text-[#0f766e] border border-[#a7f3d0]"
-            >
-              v{current}
-            </span>
+          {versions && versions.length > 1 && (
+            <div className="relative">
+              <select
+                aria-label="Version"
+                value={currentVersion}
+                onChange={(e) => onSelectVersion?.(Number(e.target.value))}
+                className="h-8 appearance-none pl-3 pr-8 rounded-lg border border-[#e2e8f0] bg-white text-xs font-medium text-[#0d212c] hover:border-[#bcc7d3] focus:outline-none focus:border-[#a3b1c2] cursor-pointer"
+              >
+                {[...versions].reverse().map((v) => (
+                  <option key={v.version} value={v.version}>
+                    v{v.version} · {v.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              />
+            </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {versions && versions.length > 1 && (
-            <button
-              type="button"
-              aria-expanded={showHistory}
-              onClick={() => setShowHistory((o) => !o)}
-              className="h-9 px-3 rounded-lg text-sm font-medium text-[#475569] hover:bg-slate-100 cursor-pointer transition flex items-center gap-1.5"
-            >
-              <History className="w-4 h-4" aria-hidden="true" />
-              Version history
-            </button>
-          )}
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            aria-pressed={editMode}
+            onClick={() => setEditMode((m) => !m)}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
+          >
+            <Pencil className="w-4 h-4" aria-hidden="true" />
+            {editMode ? 'Done' : 'Edit'}
+          </button>
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="h-9 px-4 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-2"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
             Add question
           </button>
         </div>
       </div>
-
-      {showHistory && versions && (
-        <ul
-          aria-label="Version history"
-          className="rounded-xl border border-[#e2e8f0] divide-y divide-[#f1f5f9] bg-white"
-        >
-          {[...versions].reverse().map((v) => (
-            <li key={v.version} className="flex items-center justify-between gap-3 px-4 py-2.5">
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium text-[#0d212c]">
-                  v{v.version}
-                  {v.version === current && (
-                    <span className="ml-2 text-[11px] font-medium text-[#0f766e]">Current</span>
-                  )}
-                </span>
-                <span className="text-xs text-[#64748b] truncate">
-                  {v.label} · {v.questions.length}{' '}
-                  {v.questions.length === 1 ? 'question' : 'questions'}
-                </span>
-              </div>
-              {v.version !== current && onRestore && (
-                <button
-                  type="button"
-                  onClick={() => onRestore(v.version)}
-                  aria-label={`Restore version ${v.version}`}
-                  className="text-xs font-semibold text-[#36c0c9] hover:text-[#2fb0b9] cursor-pointer transition shrink-0"
-                >
-                  Restore
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
 
       {questions.length === 0 ? (
         <p className="text-sm text-[#64748b] text-center py-8 border border-dashed border-[#e2e8f0] rounded-xl">
@@ -159,48 +156,38 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                 if (dragIndex !== null) move(dragIndex, index)
                 setDragIndex(null)
               }}
-              className={`rounded-xl border bg-white px-4 py-3.5 flex items-start gap-3 transition ${
+              className={`rounded-xl border bg-white flex items-start gap-3 transition ${
                 dragIndex === index ? 'border-[#94a3b8] opacity-60' : 'border-[#e2e8f0]'
-              }`}
+              } ${editMode ? 'px-3 py-3 hover:border-[#bcc7d3]' : 'px-4 py-3.5'}`}
             >
-              <span
-                draggable
-                onDragStart={() => setDragIndex(index)}
-                onDragEnd={() => setDragIndex(null)}
-                aria-hidden="true"
-                className="text-slate-400 cursor-grab active:cursor-grabbing pt-0.5"
-              >
-                <GripVertical className="w-4 h-4" />
-              </span>
+              {editMode && (
+                <span
+                  draggable
+                  onDragStart={() => setDragIndex(index)}
+                  onDragEnd={() => setDragIndex(null)}
+                  aria-hidden="true"
+                  className="text-slate-400 cursor-grab active:cursor-grabbing pt-0.5"
+                >
+                  <GripVertical className="w-4 h-4" />
+                </span>
+              )}
 
-              <div className="flex-1 min-w-0 flex flex-col gap-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h5 className="text-sm font-semibold text-[#0d212c] whitespace-nowrap">
-                    Question {index + 1}
-                  </h5>
-                  <span
-                    className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border ${
-                      q.mandatory
-                        ? 'bg-[#e6fffa] text-[#0f766e] border-[#a7f3d0]'
-                        : 'bg-slate-50 text-slate-600 border-slate-200'
-                    }`}
-                  >
-                    {q.mandatory ? 'Mandatory' : 'Optional'}
-                  </span>
-                </div>
-                <p className="text-sm text-[#0d212c] leading-relaxed">{q.text}</p>
-                <p className="text-xs text-[#64748b] leading-relaxed">{q.cue}</p>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
+              {editMode ? (
                 <button
                   type="button"
                   onClick={() => setEditingIndex(index)}
                   aria-label={`Edit question ${index + 1}`}
-                  className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer transition"
+                  className="flex-1 min-w-0 flex flex-col gap-1 text-left cursor-pointer"
                 >
-                  <Pencil className="w-4 h-4" />
+                  <QuestionBody index={index} question={q} />
                 </button>
+              ) : (
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <QuestionBody index={index} question={q} />
+                </div>
+              )}
+
+              {editMode && (
                 <button
                   type="button"
                   onClick={() =>
@@ -210,11 +197,11 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                     )
                   }
                   aria-label={`Delete question ${index + 1}`}
-                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 cursor-pointer transition"
+                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 cursor-pointer transition shrink-0"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-              </div>
+              )}
             </li>
           ))}
         </ol>

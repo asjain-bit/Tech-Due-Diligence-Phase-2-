@@ -62,7 +62,8 @@ describe('ReviewQuestionnaire', () => {
         onSubmit={vi.fn()}
       />
     )
-    expect(screen.getByText('(optional)')).toBeInTheDocument()
+    expect(screen.queryByText(/optional/i)).not.toBeInTheDocument()
+    expect(screen.getAllByText('*')).toHaveLength(2)
     expect(screen.getByText('2 of 2 mandatory answered')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submit' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Submit' }))

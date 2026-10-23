@@ -4,6 +4,7 @@ import {
   type AuditEvent,
   type CaseType,
   type InternalInterestStakeholder,
+  type InternalScenario,
   type PartnershipRequest,
   type QuestionAnswer,
   type QuestionnaireQuestion,
@@ -18,6 +19,9 @@ const DIRECTOR_ACTOR = `${DIRECTOR_NAME} (Director)`
 const ADMIN_ACTOR = `${ADMIN_NAME} (Partnership Admin)`
 const INTERNAL_ACTOR = 'Mariam Al-Zaabi (Internal Interest)'
 const STRATEGY_ACTOR = 'Omar Al-Hashemi (Strategy Team)'
+const SPONSOR_NAME = 'Rashid Al-Nuaimi'
+const SPONSOR_ACTOR = `${SPONSOR_NAME} (Sponsor)`
+const AGENT_ACTOR = 'Triage Agent'
 
 export const CASE_TYPE_OWNER: Record<CaseType, string> = {
   Partnership: DIRECTOR_NAME,
@@ -305,6 +309,7 @@ export const submitReview = (
         internalInterests: people.map((m, i) =>
           i === 0 ? { ...m, status: 'Completed', decision: 'Proceed', answers } : m
         ),
+        sponsors: r.sponsors ?? { lead: people[0].name, co: [] },
         stageApprovals: {
           ...r.stageApprovals,
           internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Just now' },
@@ -337,6 +342,7 @@ export const submitReview = (
             }
           : m
       ),
+      workflowStages: declined ? r.workflowStages : setStages(r.workflowStages, 3, 4),
       stageApprovals: {
         ...r.stageApprovals,
         strategy: {
@@ -472,5 +478,271 @@ export const buildCaseFromForm = (
       requestedM42Resources: values.resources.trim(),
       impactedPatientPopulations: values.populations,
     },
+  }
+}
+
+/* ---------- Internal Interest outcome, sponsors and closing a case ---------- */
+
+export const READY_TO_SPONSOR = 'Ready to sponsor'
+export const NOT_READY_TO_SPONSOR = 'Not ready to sponsor'
+
+/** Closes a case that was already approved at the brief, with the reason recorded */
+export const closeRequest = (r: PartnershipRequest, reason: string): PartnershipRequest =>
+  appendAudit(
+    { ...r, status: 'Exited', daysInStage: 0, closedReason: reason },
+    { title: 'Case closed', description: reason, actor: DIRECTOR_ACTOR, kind: 'critical' }
+  )
+
+const approveInternal = (r: PartnershipRequest, sponsors: { lead: string; co: string[] }) =>
+  appendAudit(
+    {
+      ...r,
+      sponsors,
+      stageApprovals: {
+        ...r.stageApprovals,
+        internal: { status: 'approved', by: sponsors.lead, date: 'Just now' },
+      },
+    },
+    {
+      title: 'Internal Interest approved',
+      description:
+        sponsors.co.length > 0
+          ? `${sponsors.lead} is lead sponsor with ${sponsors.co.join(', ')} as co-sponsors.`
+          : `${sponsors.lead} is ready to sponsor.`,
+      actor: INTERNAL_ACTOR,
+      kind: 'approval',
+    }
+  )
+
+/**
+ * Prototype only: simulates how the Internal Interest team responded, so every outcome can be
+ * walked through. The real application would take this from the reviewers' answers.
+ */
+export const applyInternalScenario = (
+  r: PartnershipRequest,
+  scenario: InternalScenario
+): PartnershipRequest => {
+  const people = r.internalInterests?.length ? r.internalInterests : DEFAULT_INTERNAL_INTERESTS
+  const ready = scenario === 'single' ? 1 : scenario === 'multiple' ? 3 : 0
+  const answered = scenario === 'none' ? 0 : scenario === 'not-ready' ? 2 : ready + 1
+  const members = people.map((m, i) => ({
+    ...m,
+    status: i < answered ? 'Completed' : 'Pending',
+    decision: i < ready ? READY_TO_SPONSOR : i < answered ? NOT_READY_TO_SPONSOR : '-',
+  }))
+  const base: PartnershipRequest = {
+    ...r,
+    internalInterests: members,
+    internalOutcome: { scenario },
+    sponsors: undefined,
+    stageApprovals: { ...r.stageApprovals, internal: undefined },
+  }
+  if (scenario === 'none') {
+    return closeRequest(base, 'No one from the Internal Interest team responded.')
+  }
+  if (scenario === 'single') {
+    return approveInternal(base, { lead: members[0].name, co: [] })
+  }
+  return appendAudit(base, {
+    title: 'Internal Interest responded',
+    description:
+      scenario === 'not-ready'
+        ? '2 reviewers responded; none is ready to sponsor.'
+        : '3 reviewers are ready to sponsor.',
+    actor: INTERNAL_ACTOR,
+    kind: 'user',
+  })
+}
+
+export const assignSponsors = (
+  r: PartnershipRequest,
+  sponsors: { lead: string; co: string[] }
+): PartnershipRequest => approveInternal(r, sponsors)
+
+/* ---------- NDA & Discovery ---------- */
+
+/** Director uploads a signed NDA copy. The first one generates the alignment pack. */
+export const uploadSignedNda = (r: PartnershipRequest, fileName: string): PartnershipRequest => {
+  const versions = r.nda?.versions ?? []
+  const version = versions.length + 1
+  const withNda: PartnershipRequest = {
+    ...r,
+    nda: {
+      versions: [
+        ...versions,
+        { version, fileName, uploadedOn: todayLabel(), uploadedBy: DIRECTOR_NAME },
+      ],
+    },
+  }
+  const logged = appendAudit(withNda, {
+    title: version === 1 ? 'Signed NDA uploaded' : `NDA version ${version} uploaded`,
+    description: fileName,
+    actor: DIRECTOR_ACTOR,
+    kind: 'approval',
+  })
+  if (version > 1) return logged
+  return appendAudit(
+    { ...logged, alignmentPackOn: todayLabel() },
+    {
+      title: 'Alignment pack generated',
+      description:
+        'Brief, interest summary and strategy assessment merged with open questions. Sent to the Director, sponsors and the Strategy Team.',
+      actor: AGENT_ACTOR,
+      kind: 'agent',
+    }
+  )
+}
+
+export const addDiscoveryFile = (
+  r: PartnershipRequest,
+  kind: 'notes' | 'recordings',
+  name: string
+): PartnershipRequest => {
+  const discovery = r.discovery ?? { notes: [], recordings: [] }
+  return appendAudit(
+    {
+      ...r,
+      discovery: {
+        ...discovery,
+        [kind]: [...discovery[kind], { name, uploadedOn: todayLabel(), uploadedBy: SPONSOR_NAME }],
+      },
+    },
+    {
+      title: kind === 'notes' ? 'Discovery notes uploaded' : 'Discovery recording uploaded',
+      description: name,
+      actor: SPONSOR_ACTOR,
+      kind: 'user',
+    }
+  )
+}
+
+export const confirmDiscoveryCall = (r: PartnershipRequest): PartnershipRequest =>
+  appendAudit(
+    {
+      ...r,
+      daysInStage: 0,
+      discovery: { notes: [], recordings: [], ...r.discovery, confirmedOn: todayLabel() },
+      workflowStages: setStages(r.workflowStages, 4, 5),
+    },
+    {
+      title: 'Discovery call confirmed',
+      description: 'The discovery call has taken place.',
+      actor: SPONSOR_ACTOR,
+      kind: 'user',
+    }
+  )
+
+/* ---------- Value & Due Diligence ---------- */
+
+export const confirmValueCall = (r: PartnershipRequest): PartnershipRequest =>
+  appendAudit(
+    { ...r, value: { ...r.value, callConfirmedOn: todayLabel() } },
+    {
+      title: 'Value assessment call confirmed',
+      description: 'The value assessment call has taken place.',
+      actor: SPONSOR_ACTOR,
+      kind: 'user',
+    }
+  )
+
+export const uploadBusinessCase = (r: PartnershipRequest, name: string): PartnershipRequest =>
+  appendAudit(
+    {
+      ...r,
+      value: {
+        ...r.value,
+        businessCase: { name, uploadedOn: todayLabel(), uploadedBy: SPONSOR_NAME },
+      },
+    },
+    { title: 'Business case uploaded', description: name, actor: SPONSOR_ACTOR, kind: 'user' }
+  )
+
+/** The sponsor's call on the business case. Proceed moves to due diligence, reject closes the case. */
+export const decideValue = (
+  r: PartnershipRequest,
+  status: 'proceeded' | 'rejected',
+  reason: string
+): PartnershipRequest => {
+  const decision = { status, reason: reason || undefined, date: todayLabel() }
+  const next: PartnershipRequest = { ...r, value: { ...r.value, decision } }
+  if (status === 'rejected') {
+    return appendAudit(
+      {
+        ...next,
+        status: 'Exited',
+        daysInStage: 0,
+        closedReason: reason || 'Rejected by the sponsor.',
+      },
+      {
+        title: 'Business case rejected',
+        description: reason,
+        actor: SPONSOR_ACTOR,
+        kind: 'critical',
+      }
+    )
+  }
+  return appendAudit(
+    { ...next, daysInStage: 0, workflowStages: setStages(r.workflowStages, 5, 6) },
+    {
+      title: 'Business case approved',
+      description: reason || 'The sponsor chose to proceed to due diligence.',
+      actor: SPONSOR_ACTOR,
+      kind: 'approval',
+    }
+  )
+}
+
+export const generateTddReport = (r: PartnershipRequest): PartnershipRequest =>
+  r.value?.tddGeneratedOn
+    ? r
+    : appendAudit(
+        {
+          ...r,
+          value: { ...r.value, tddGeneratedOn: todayLabel() },
+          workflowStages: setStages(r.workflowStages, 6, 7),
+        },
+        {
+          title: 'TDD report generated',
+          description: 'Technical due diligence report ready for the Director and sponsors.',
+          actor: AGENT_ACTOR,
+          kind: 'agent',
+        }
+      )
+
+/** Every change the late stages and the Internal Interest outcome can make to a case */
+export type CaseAction =
+  | { type: 'internalScenario'; scenario: InternalScenario }
+  | { type: 'closeCase'; reason: string }
+  | { type: 'assignSponsors'; lead: string; co: string[] }
+  | { type: 'uploadNda'; fileName: string }
+  | { type: 'discoveryFile'; kind: 'notes' | 'recordings'; name: string }
+  | { type: 'confirmDiscovery' }
+  | { type: 'confirmValueCall' }
+  | { type: 'businessCase'; name: string }
+  | { type: 'valueDecision'; status: 'proceeded' | 'rejected'; reason: string }
+  | { type: 'generateTdd' }
+
+export const applyCaseAction = (r: PartnershipRequest, action: CaseAction): PartnershipRequest => {
+  switch (action.type) {
+    case 'internalScenario':
+      return applyInternalScenario(r, action.scenario)
+    case 'closeCase':
+      return closeRequest(r, action.reason)
+    case 'assignSponsors':
+      return assignSponsors(r, { lead: action.lead, co: action.co })
+    case 'uploadNda':
+      return uploadSignedNda(r, action.fileName)
+    case 'discoveryFile':
+      return addDiscoveryFile(r, action.kind, action.name)
+    case 'confirmDiscovery':
+      return confirmDiscoveryCall(r)
+    case 'confirmValueCall':
+      return confirmValueCall(r)
+    case 'businessCase':
+      return uploadBusinessCase(r, action.name)
+    case 'valueDecision':
+      return decideValue(r, action.status, action.reason)
+    case 'generateTdd':
+      return generateTddReport(r)
   }
 }

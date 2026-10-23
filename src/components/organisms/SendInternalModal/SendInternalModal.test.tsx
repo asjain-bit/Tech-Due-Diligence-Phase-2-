@@ -26,7 +26,7 @@ describe('SendInternalModal', () => {
   it('shows the questionnaire first, without the reviewers', () => {
     renderModal()
     expect(screen.getByRole('dialog', { name: 'Select questionnaire' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Version 1')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Version')).not.toBeInTheDocument()
     expect(screen.getByText(/Step 1 of 2/)).toBeInTheDocument()
     expect(screen.getByLabelText('Questionnaire')).toHaveValue('internal-evaluation')
     expect(
@@ -68,6 +68,7 @@ describe('SendInternalModal', () => {
     const user = userEvent.setup()
     const { onSend } = renderModal()
     await user.selectOptions(screen.getByLabelText('Questionnaire'), 'technical')
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
     await user.click(screen.getByRole('button', { name: 'Delete question 3' }))
     await next(user)
     await user.click(screen.getByRole('checkbox', { name: 'Riza Sayeed' }))
@@ -110,6 +111,7 @@ describe('SendInternalModal', () => {
   it('cannot move on without questions or send without reviewers', async () => {
     const user = userEvent.setup()
     renderModal()
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
     for (let i = 5; i >= 1; i--) {
       await user.click(screen.getByRole('button', { name: `Delete question ${i}` }))
     }

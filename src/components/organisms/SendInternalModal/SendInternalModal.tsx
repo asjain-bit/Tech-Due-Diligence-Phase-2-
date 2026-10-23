@@ -33,9 +33,13 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
       questions: cloneQuestions(getQuestionnaire(DEFAULT_QUESTIONNAIRE_ID).questions),
     },
   ])
-  const questions = versions[versions.length - 1].questions
-  const saveVersion = (next: QuestionnaireQuestion[], label: string) =>
-    setVersions((prev) => [...prev, { version: prev.length + 1, label, questions: next }])
+  const [currentVersion, setCurrentVersion] = useState(1)
+  const questions = (versions.find((v) => v.version === currentVersion) ?? versions[0]).questions
+  const saveVersion = (next: QuestionnaireQuestion[], label: string) => {
+    const version = Math.max(...versions.map((v) => v.version)) + 1
+    setVersions((prev) => [...prev, { version, label, questions: next }])
+    setCurrentVersion(version)
+  }
   const [note, setNote] = useState(defaultNote)
   const [confirming, setConfirming] = useState(false)
   const [step, setStep] = useState<'questions' | 'reviewers'>('questions')
@@ -115,14 +119,13 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
                     questions: cloneQuestions(getQuestionnaire(id).questions),
                   },
                 ])
+                setCurrentVersion(1)
               }}
               questions={questions}
               onQuestionsChange={saveVersion}
               versions={versions}
-              onRestore={(n) => {
-                const target = versions.find((v) => v.version === n)
-                if (target) saveVersion(cloneQuestions(target.questions), `Restored v${n}`)
-              }}
+              currentVersion={currentVersion}
+              onSelectVersion={setCurrentVersion}
             />
           ) : (
             <>
@@ -268,7 +271,7 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
               note,
               questionnaire: {
                 name: getQuestionnaire(questionnaireId).name,
-                version: versions[versions.length - 1].version,
+                version: currentVersion,
                 questions,
               },
             })

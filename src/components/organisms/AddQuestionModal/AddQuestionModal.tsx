@@ -82,11 +82,6 @@ export const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ initial, onS
         </div>
 
         <Checkbox checked={mandatory} onChange={setMandatory} label="Mandatory question" />
-        <p className="-mt-3 text-xs text-[#64748b]">
-          {mandatory
-            ? 'The reviewer must answer this question before they can submit.'
-            : 'Optional: the reviewer can leave this question blank.'}
-        </p>
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e2e8f0]">
           <button

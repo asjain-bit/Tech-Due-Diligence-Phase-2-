@@ -3,7 +3,8 @@ import type { CaseType } from '@/types/partnership.types'
 import type { AdminRouting } from '@/lib/caseActions'
 
 export interface AdminActionModalProps {
-  mode: 'proceed' | 'reject'
+  /** `reassign` only changes the request type of a case that was already decided */
+  mode: 'proceed' | 'reject' | 'reassign'
   /** Agent confidence for each request type, shown in the dropdown */
   typeConfidence: Record<CaseType, ConfidenceLevel>
   initialType?: CaseType

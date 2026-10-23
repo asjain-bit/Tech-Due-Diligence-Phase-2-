@@ -53,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'usage', label: 'Usage Insights', icon: BarChart3 },
+    { id: 'usage', label: 'Usage', icon: BarChart3 },
   ]
 
   const userInitials = userName

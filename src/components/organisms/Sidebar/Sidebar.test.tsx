@@ -39,7 +39,7 @@ describe('Sidebar', () => {
     expect(handleTabChange).toHaveBeenCalledWith('dashboard')
   })
 
-  it('has a Usage Insights item that opens its page', async () => {
+  it('has a Usage item that opens its page', async () => {
     const handleTabChange = vi.fn()
     const user = userEvent.setup()
     render(
@@ -50,7 +50,7 @@ describe('Sidebar', () => {
         onToggleCollapse={vi.fn()}
       />
     )
-    await user.click(screen.getByText('Usage Insights'))
+    await user.click(screen.getByText('Usage'))
     expect(handleTabChange).toHaveBeenCalledWith('usage')
   })
 

@@ -2,7 +2,7 @@
 
 /**
  * ReviewersLoading — Molecule
- * The agent thinking animation, using the full page, shown while the agent finds and maps the
+ * The simple agent animation, using the full page, shown while the agent finds and maps the
  * Internal Interest or Strategy reviewers, before the stage appears.
  * Used in: PartnershipDetail
  */
@@ -20,15 +20,14 @@ export const ReviewersLoading: React.FC<ReviewersLoadingProps> = ({
   const isInternal = team === 'internal'
   return (
     <ThinkingMode
-      eyebrow="MATCHING REVIEWERS"
-      stepMs={1000}
+      stepMs={1100}
       onComplete={onComplete}
       className={className}
-      title={isInternal ? 'Finding the Internal Interest team' : 'Finding the Strategy team'}
+      eyebrow="MATCHING REVIEWERS"
       description={`The agent is choosing who should review this request. ${count} ${
         count === 1 ? 'reviewer' : 'reviewers'
       } matched so far.`}
-      checks={
+      messages={
         isInternal
           ? ['Finding the Internal Interest team', 'Mapping reviewers to KPIs and expertise']
           : ['Finding the Strategy team', 'Mapping the reviewer to this request']

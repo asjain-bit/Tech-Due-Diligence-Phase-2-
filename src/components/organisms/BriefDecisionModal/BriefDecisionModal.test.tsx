@@ -13,7 +13,6 @@ const renderModal = (props: Partial<BriefDecisionModalProps> = {}) => {
   const onClose = vi.fn()
   render(
     <BriefDecisionModal
-      initialChoice="approve"
       email={email}
       onSubmit={onSubmit}
       onRequestInfo={onRequestInfo}
@@ -24,21 +23,38 @@ const renderModal = (props: Partial<BriefDecisionModalProps> = {}) => {
   return { onSubmit, onRequestInfo, onClose }
 }
 
+const choose = (user: ReturnType<typeof userEvent.setup>, option: string) =>
+  user.selectOptions(screen.getByLabelText(/^Decision/), option)
+
 describe('BriefDecisionModal', () => {
-  it('approves with an optional reason', async () => {
+  it('starts with a Decision dropdown offering Proceed, Reject and Request more info', () => {
+    renderModal()
+    const select = screen.getByLabelText(/^Decision/)
+    expect(select).toHaveValue('')
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent)
+    ).toEqual(['Select a decision', 'Proceed', 'Reject', 'Request more info'])
+    // Nothing else until a decision is chosen
+    expect(screen.queryByLabelText(/^Reason/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Proceed' })).toBeDisabled()
+  })
+
+  it('proceeds with a reason that is not marked optional and can be left blank', async () => {
     const user = userEvent.setup()
     const { onSubmit } = renderModal()
-    expect(
-      screen.getByRole('radio', { name: /Approve for internal review/, checked: true })
-    ).toBeInTheDocument()
-    expect(screen.getByLabelText('Reason (optional)')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    await choose(user, 'Proceed')
+    expect(screen.getByLabelText('Reason')).toBeInTheDocument()
+    expect(screen.queryByText(/optional/i)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Proceed' }))
     expect(onSubmit).toHaveBeenCalledWith('approve', '')
   })
 
   it('needs a reason to reject', async () => {
     const user = userEvent.setup()
-    const { onSubmit } = renderModal({ initialChoice: 'reject' })
+    const { onSubmit } = renderModal()
+    await choose(user, 'Reject')
     const reject = screen.getByRole('button', { name: 'Reject request' })
     expect(reject).toBeDisabled()
     await user.type(screen.getByLabelText(/^Reason/), 'Duplicate')
@@ -50,7 +66,7 @@ describe('BriefDecisionModal', () => {
     const user = userEvent.setup()
     const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
     const { onRequestInfo } = renderModal()
-    await user.click(screen.getByRole('radio', { name: /Request more info/ }))
+    await choose(user, 'Request more info')
     const group = within(screen.getByRole('group', { name: 'Email to the vendor' }))
     expect(group.getByText('sarah@vendor.com')).toBeInTheDocument()
     expect(group.getByLabelText('Subject')).toHaveValue('More info')
@@ -73,7 +89,8 @@ describe('BriefDecisionModal', () => {
 
   it('cannot send an empty email', async () => {
     const user = userEvent.setup()
-    renderModal({ initialChoice: 'request_info' })
+    renderModal()
+    await choose(user, 'Request more info')
     await user.clear(screen.getByLabelText('Message'))
     expect(screen.getByRole('button', { name: 'Mark information requested' })).toBeDisabled()
   })
@@ -81,7 +98,7 @@ describe('BriefDecisionModal', () => {
   it('hints the agent recommendation, scrolls its body and closes', async () => {
     const user = userEvent.setup()
     const { onClose } = renderModal({ agentRecommendation: 'reject' })
-    expect(screen.getByText('Agent recommends')).toBeInTheDocument()
+    expect(screen.getByText('Agent recommends: Reject')).toBeInTheDocument()
     expect(screen.getByRole('dialog').className).toContain('max-h-[90vh]')
     await user.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalled()

@@ -35,8 +35,17 @@ import { AuditLog } from '@/components/organisms/AuditLog'
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog'
 import { SendInternalModal } from '@/components/organisms/SendInternalModal'
 import { ThinkingMode } from '@/components/organisms/ThinkingMode'
+import { NdaDiscoveryStage } from '@/components/organisms/NdaDiscoveryStage'
+import { ValueDueDiligenceStage } from '@/components/organisms/ValueDueDiligenceStage'
+import { SponsorAssignModal } from '@/components/organisms/SponsorAssignModal'
+import { PrototypeScenarioSelect } from '@/components/molecules/PrototypeScenarioSelect'
 import { AnalysisDrawer } from '@/components/organisms/AnalysisDrawer'
-import { buildInfoEmail, hasDirectorDecided, type AdminRouting } from '@/lib/caseActions'
+import {
+  buildInfoEmail,
+  hasDirectorDecided,
+  READY_TO_SPONSOR,
+  type AdminRouting,
+} from '@/lib/caseActions'
 import { AssessmentBrief } from '@/components/organisms/AssessmentBrief'
 import { BriefDecisionModal } from '@/components/organisms/BriefDecisionModal'
 import { ReviewersLoading } from '@/components/molecules/ReviewersLoading'
@@ -159,6 +168,11 @@ const STRATEGY_CANDIDATE_DIRECTORY = [
   },
 ]
 
+const DEFAULT_KNOWLEDGE_BASE_FILES: KnowledgeBaseFile[] = [
+  { name: 'M42_Roadmap_Register.xlsx', size: 184320, source: 'M42 knowledge base' },
+  { name: 'News_Trends_Agent_KB_Extract.docx', size: 92160, source: 'M42 knowledge base' },
+]
+
 const PRE_READ_CHECKS = [
   'Reading the vendor submission',
   'Reviewing the knowledge base',
@@ -167,7 +181,7 @@ const PRE_READ_CHECKS = [
   'Preparing the pre-read summary',
 ]
 
-type StepId = 'brief' | 'canvas' | 'alignment' | 'questionnaire' | 'preread'
+type StepId = 'brief' | 'canvas' | 'alignment' | 'nda' | 'value' | 'questionnaire' | 'preread'
 
 export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   request,
@@ -182,6 +196,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   onLog,
   onSendReview,
   onSubmitReview,
+  onCaseAction,
   animateAgentRun = true,
   className = '',
 }) => {
@@ -191,7 +206,11 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     userProfile?.id === 'strategy-fit' || userProfile?.roleTitle === 'Strategy Team'
   const isNonDirector = isInternalTeam || isStrategyTeam
   const isAdmin = userProfile?.id === 'partnership-admin'
-  const isDirector = !isNonDirector && !isAdmin
+  const isSponsor = userProfile?.id === 'sponsor' || userProfile?.roleTitle === 'Sponsor'
+  /** The Director takes the decisions in the review flow */
+  const isDirector = !isNonDirector && !isAdmin && !isSponsor
+  /** The Director and the sponsor both follow the whole flow; the sponsor only acts late on */
+  const isDirectorView = isDirector || isSponsor
 
   // Delete note state
   const [deleteNote, setDeleteNote] = useState('')
@@ -225,7 +244,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   }
 
   // Strategy Team: knowledge base, generated pre-read and the decision
-  const [kbFiles, setKbFiles] = useState<KnowledgeBaseFile[]>([])
+  const [kbFiles, setKbFiles] = useState<KnowledgeBaseFile[]>(DEFAULT_KNOWLEDGE_BASE_FILES)
   const [strategyModal, setStrategyModal] = useState<'proceed' | 'reject' | null>(null)
   const [pendingStrategy, setPendingStrategy] = useState<{
     decision: StrategyDecision
@@ -266,8 +285,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       ]
     : isStrategyTeam
       ? [
-          { id: 'brief', label: 'Initial Assessment Brief' },
           { id: 'preread', label: 'Pre-read summary' },
+          { id: 'brief', label: 'Initial Assessment Brief' },
         ]
       : isAdmin
         ? [{ id: 'brief', label: 'Initial Assessment Brief' }]
@@ -275,6 +294,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             { id: 'brief', label: 'Initial Assessment Brief' },
             { id: 'canvas', label: 'Internal Canvas' },
             { id: 'alignment', label: 'Strategic Alignment' },
+            { id: 'nda', label: 'NDA & Discovery' },
+            { id: 'value', label: 'Value & Due Diligence' },
           ]
 
   const [localDecision, setLocalDecision] = useState<{
@@ -284,13 +305,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [localSent, setLocalSent] = useState<{ internal?: boolean; strategy?: boolean }>({})
 
   // For the Director, progress comes from the case itself, so it survives switching profiles
+  const isClosedAfterBrief =
+    isDirectorView && request.status === 'Exited' && request.decision?.status === 'proceeded'
   const isRejected =
-    isDirector &&
+    isDirectorView &&
+    !isClosedAfterBrief &&
     (request.status === 'Exited' ||
       request.decision?.status === 'rejected' ||
       localDecision?.decision === 'reject')
   const briefApproved =
-    isDirector &&
+    isDirectorView &&
     (request.decision?.status === 'proceeded' ||
       request.status === 'In Progress' ||
       request.status === 'At Risk' ||
@@ -300,16 +324,39 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const internalApproved = request.stageApprovals?.internal?.status === 'approved'
   const strategyApproved = request.stageApprovals?.strategy?.status === 'approved'
   const strategyDeclined = request.stageApprovals?.strategy?.status === 'declined'
+  const strategyConditions = (
+    request.strategyTeamMembers?.length ? request.strategyTeamMembers : DEFAULT_STRATEGY_MEMBERS
+  )[0]?.strategyResponse?.finalDecisionNote
+
+  // Prototype outcomes of the Internal Interest team that need the Director's input
+  const [scenarioPrompt, setScenarioPrompt] = useState<'open' | 'dismissed'>('open')
+  const internalScenario = request.internalOutcome?.scenario
+  const showNotReadyConfirm =
+    isDirector &&
+    internalScenario === 'not-ready' &&
+    !isClosedAfterBrief &&
+    scenarioPrompt === 'open'
+  const showSponsorAssign =
+    isDirector &&
+    internalScenario === 'multiple' &&
+    !request.sponsors &&
+    !isClosedAfterBrief &&
+    scenarioPrompt === 'open'
+  const sponsorCandidates = (request.internalInterests ?? []).filter(
+    (m) => m.decision === READY_TO_SPONSOR
+  )
 
   const [completedSteps, setCompletedSteps] = useState<StepId[]>([])
   const completeStep = (id: StepId) =>
     setCompletedSteps((prev) => (prev.includes(id) ? prev : [...prev, id]))
 
   const isStepCompleted = (id: StepId) => {
-    if (!isDirector) return completedSteps.includes(id)
+    if (!isDirectorView) return completedSteps.includes(id)
     if (id === 'brief') return briefApproved || isRejected
     if (id === 'canvas') return internalApproved
     if (id === 'alignment') return strategyApproved
+    if (id === 'nda') return Boolean(request.discovery?.confirmedOn)
+    if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
     return false
   }
 
@@ -318,13 +365,14 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     const completed = isStepCompleted(d.id)
     const state: WorkflowStep['state'] = completed
       ? 'completed'
-      : isRejected
+      : isRejected || isClosedAfterBrief
         ? 'closed'
         : i === firstOpenIndex
           ? 'current'
           : 'upcoming'
     let caption: string | undefined
     if (state === 'current' && d.id === 'brief') caption = 'To review'
+    if ((d.id === 'nda' || d.id === 'value') && completed) caption = 'Completed'
     if (d.id === 'canvas' || d.id === 'alignment') {
       const sent = d.id === 'canvas' ? internalSent : strategySent
       if (completed) caption = 'Approved'
@@ -349,24 +397,22 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     isRejected ||
     briefApproved ||
     request.status === 'Information Requested' ||
+    isSponsor ||
+    isStrategyTeam ||
     (isAdmin && Boolean(request.adminDecision))
   // The agent thinks first, every time a case is opened for the first time in this view
   const [runDone, setRunDone] = useState(!animateAgentRun || wasSeen)
   const [readyTeams, setReadyTeams] = useState({
-    strategy: !animateAgentRun || strategySent,
-    internal: !animateAgentRun || internalSent,
+    strategy: !animateAgentRun || strategySent || isSponsor,
+    internal: !animateAgentRun || internalSent || isSponsor,
   })
 
   // While the agent finds the reviewers, the animation owns the page and only the tabs stay
   const reviewersLoading =
-    (isDirector &&
-      activeTab === 'review' &&
-      ((activeStep === 'canvas' && briefApproved && !internalApproved && !readyTeams.internal) ||
-        (activeStep === 'alignment' && !readyTeams.strategy))) ||
-    (isStrategyTeam &&
-      activeTab === 'review' &&
-      activeStep === 'preread' &&
-      preReadStage === 'generating')
+    isDirector &&
+    activeTab === 'review' &&
+    ((activeStep === 'canvas' && briefApproved && !internalApproved && !readyTeams.internal) ||
+      (activeStep === 'alignment' && !readyTeams.strategy))
 
   const stepperRef = React.useRef<HTMLDivElement>(null)
   const isFirstStepRender = React.useRef(true)
@@ -414,10 +460,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
   // Director decision on the brief
   const [showAnalysis, setShowAnalysis] = useState(false)
-  const [briefModal, setBriefModal] = useState<'approve' | 'reject' | 'request_info' | null>(null)
+  const [briefModal, setBriefModal] = useState(false)
 
   const handleBriefDecision = (decision: 'approve' | 'reject', reason: string) => {
-    setBriefModal(null)
+    setBriefModal(false)
     setLocalDecision({ decision, reason })
     if (decision === 'approve') {
       onProceed?.(request.id, reason)
@@ -428,7 +474,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   }
 
   const handleSendInfo = (email: { to: string; subject: string; body: string }) => {
-    setBriefModal(null)
+    setBriefModal(false)
     onRequestInfo?.(request.id, email)
   }
 
@@ -436,16 +482,13 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     isDirector && (request.status === 'Information Requested' || briefApproved || isRejected)
 
   // Partnership Admin: decision popups, with a confirmation when it changes an earlier routing
-  const [adminModal, setAdminModal] = useState<'proceed' | 'reject' | null>(null)
+  const [adminModal, setAdminModal] = useState<'proceed' | 'reject' | 'reassign' | null>(null)
   const [pendingRouting, setPendingRouting] = useState<AdminRouting | null>(null)
   const previousRouting = request.adminDecision
   const adminCanChange = isAdmin && !hasDirectorDecided(request)
-  // A recorded decision is view-only until the admin chooses Edit
-  const [adminEditing, setAdminEditing] = useState(false)
 
   const handleAdminConfirm = (routing: AdminRouting) => {
     setAdminModal(null)
-    setAdminEditing(false)
     const changed =
       Boolean(previousRouting) &&
       (previousRouting?.action !== routing.action || previousRouting?.type !== routing.type)
@@ -611,8 +654,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   )
   const [reviewToast, setReviewToast] = useState<string | null>(null)
   // Reviewer tables: edit layout until that request is sent, tracking layout afterwards
-  const canEditStrategy = !strategySent
-  const canEditInternal = !internalSent
+  const canEditStrategy = isDirector && !strategySent
+  const canEditInternal = isDirector && !internalSent
   const internalRequestSent = internalSent
   const strategyRequestSent = strategySent
 
@@ -649,6 +692,20 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
           Conditional
+        </span>
+      )
+    }
+    if (dl === 'ready to sponsor') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Ready to sponsor
+        </span>
+      )
+    }
+    if (dl === 'not ready to sponsor') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
+          Not ready to sponsor
         </span>
       )
     }
@@ -766,6 +823,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     adminModal ||
     showQuestionnaireConfirmModal ||
     briefModal ||
+    showNotReadyConfirm ||
+    showSponsorAssign ||
     strategyModal ||
     pendingStrategy
   )
@@ -1356,24 +1415,28 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       </span>
                     </span>
                   )}
-                  <span className="flex items-center gap-1.5">
-                    <span className="text-slate-400">Submitted on:</span>
-                    <span className="font-medium text-[#0d212c]">{request.submittedOn}</span>
-                  </span>
                 </div>
               </div>
             </div>
 
-            {adminCanChange && request.adminDecision && !adminEditing && (
-              <button
-                type="button"
-                onClick={() => setAdminEditing(true)}
-                className="h-9 px-4 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-1.5 shrink-0"
-              >
-                <Pencil className="w-4 h-4" aria-hidden="true" />
-                Edit
-              </button>
-            )}
+            <div className="flex flex-col items-end justify-between gap-2 self-stretch shrink-0">
+              {adminCanChange && request.adminDecision ? (
+                <button
+                  type="button"
+                  onClick={() => setAdminModal('reassign')}
+                  className="h-9 px-4 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-1.5"
+                >
+                  <Pencil className="w-4 h-4" aria-hidden="true" />
+                  Edit
+                </button>
+              ) : (
+                <span />
+              )}
+              <span className="flex items-center gap-1.5 text-xs text-[#64748b]">
+                <span className="text-slate-400">Submitted on:</span>
+                <span className="font-medium text-[#0d212c]">{request.submittedOn}</span>
+              </span>
+            </div>
           </div>
         </>
       )}
@@ -1432,24 +1495,32 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   request={request}
                   actions={analysisActions}
                   hideContact={isNonDirector}
-                  showVerdict={isDirector || isAdmin}
+                  showVerdict={isDirectorView || isAdmin}
                   onViewVendorResponse={() => setShowVendorForm(true)}
                   onOpenAnalysis={() => setShowAnalysis(true)}
                   footer={
-                    isNonDirector ? (
+                    isInternalTeam ? (
                       <div className="flex items-center justify-end">
                         <button
                           type="button"
                           onClick={() => {
                             completeStep('brief')
-                            setActiveStep(isInternalTeam ? 'questionnaire' : 'preread')
+                            setActiveStep('questionnaire')
                           }}
                           className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
                         >
-                          {isInternalTeam
-                            ? 'Continue to Questionnaire'
-                            : 'Continue to Knowledge Base'}
+                          Continue to Questionnaire
                           <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                    ) : isStrategyTeam ? (
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setActiveStep('preread')}
+                          className="px-6 py-2.5 rounded-xl border border-[#cbd5e1] bg-white hover:bg-slate-50 text-[#0d212c] text-sm font-semibold cursor-pointer transition"
+                        >
+                          Back to pre-read summary
                         </button>
                       </div>
                     ) : undefined
@@ -1457,8 +1528,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 />
               )}
 
-              {/* STEP: Internal Canvas (Director) */}
-              {isDirector &&
+              {/* STEP: Internal Canvas (Director and sponsor) */}
+              {isDirectorView &&
                 activeStep === 'canvas' &&
                 (!readyTeams.internal ? (
                   <ReviewersLoading
@@ -1472,7 +1543,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       'Internal Canvas',
                       internalSent
                         ? 'Waiting for approval from the Internal Interest team. Follow each reviewer below.'
-                        : 'Choose the Internal Interest reviewers and the questions they will answer, then send the request.',
+                        : isDirector
+                          ? 'Choose the Internal Interest reviewers and the questions they will answer, then send the request.'
+                          : 'The Director has not sent this to the Internal Interest team yet.',
                       canEditInternal ? (
                         <button
                           type="button"
@@ -1483,16 +1556,45 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           <Send className="w-4 h-4" aria-hidden="true" />
                           <span>Send Request</span>
                         </button>
+                      ) : isClosedAfterBrief && !internalApproved ? (
+                        <StatusChip label="Closed" status="neutral" dot={false} />
                       ) : (
                         stageChip(internalApproved ? 'approved' : 'awaiting')
                       )
+                    )}
+                    {isClosedAfterBrief && request.closedReason && (
+                      <p className="text-sm text-[#475569] leading-relaxed -mt-2">
+                        This case was closed: {request.closedReason}
+                      </p>
+                    )}
+                    {request.sponsors && (
+                      <p className="text-sm text-[#0d212c] -mt-2">
+                        <span className="font-semibold">Lead sponsor:</span> {request.sponsors.lead}
+                        {request.sponsors.co.length > 0 && (
+                          <>
+                            <span className="mx-2 text-slate-300">|</span>
+                            <span className="font-semibold">Co-sponsors:</span>{' '}
+                            {request.sponsors.co.join(', ')}
+                          </>
+                        )}
+                      </p>
+                    )}
+                    {isDirector && internalSent && !internalApproved && !isClosedAfterBrief && (
+                      <PrototypeScenarioSelect
+                        value={request.internalOutcome?.scenario}
+                        onChange={(scenario) => {
+                          setScenarioPrompt('open')
+                          onCaseAction?.(request.id, { type: 'internalScenario', scenario })
+                          if (scenario === 'single') setActiveStep('alignment')
+                        }}
+                      />
                     )}
                     {internalSection}
                   </div>
                 ))}
 
-              {/* STEP: Strategic Alignment (Director) */}
-              {isDirector &&
+              {/* STEP: Strategic Alignment (Director and sponsor) */}
+              {isDirectorView &&
                 activeStep === 'alignment' &&
                 (!readyTeams.strategy ? (
                   <ReviewersLoading
@@ -1505,8 +1607,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     {stepHeader(
                       'Strategic Alignment',
                       strategySent
-                        ? 'Waiting for approval from the Strategy Team. Follow the reviewer below.'
-                        : 'Choose the Strategy Team reviewer, then send the request.',
+                        ? strategyApproved
+                          ? 'The Strategy Team has approved this partnership.'
+                          : 'Waiting for approval from the Strategy Team. Follow the reviewer below.'
+                        : isDirector
+                          ? 'Choose the Strategy Team reviewer, then send the request.'
+                          : 'The Director has not sent this to the Strategy Team yet.',
                       canEditStrategy ? (
                         <button
                           type="button"
@@ -1523,9 +1629,37 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         )
                       )
                     )}
+                    {strategyConditions && strategyApproved && (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex flex-col gap-1 -mt-2">
+                        <span className="text-sm font-semibold text-emerald-800">
+                          Approval: Proceed
+                        </span>
+                        <p className="text-sm text-emerald-900 leading-relaxed">
+                          Conditions: {strategyConditions}
+                        </p>
+                      </div>
+                    )}
                     {strategySection}
                   </div>
                 ))}
+
+              {/* STEP: NDA & Discovery */}
+              {isDirectorView && activeStep === 'nda' && (
+                <NdaDiscoveryStage
+                  request={request}
+                  role={isSponsor ? 'sponsor' : 'director'}
+                  onAction={(action) => onCaseAction?.(request.id, action)}
+                />
+              )}
+
+              {/* STEP: Value & Due Diligence */}
+              {isDirectorView && activeStep === 'value' && (
+                <ValueDueDiligenceStage
+                  request={request}
+                  role={isSponsor ? 'sponsor' : 'director'}
+                  onAction={(action) => onCaseAction?.(request.id, action)}
+                />
+              )}
 
               {/* STEP: Questionnaire (Internal Interest Team) */}
               {isInternalTeam && activeStep === 'questionnaire' && (
@@ -1558,14 +1692,15 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       files={kbFiles}
                       onFilesChange={setKbFiles}
                       onGenerate={() => setPreReadStage('generating')}
+                      onViewBrief={() => setActiveStep('brief')}
                     />
                   )}
                   {preReadStage === 'generating' && (
                     <ThinkingMode
-                      title="Pre-read summary"
+                      inline
                       eyebrow="GENERATING"
-                      description="The agent is reading the vendor submission and your knowledge base files to prepare the pre-read."
-                      checks={PRE_READ_CHECKS}
+                      description="The agent is comparing the vendor submission with the selected documents to prepare the pre-read summary."
+                      messages={PRE_READ_CHECKS}
                       stepMs={1100}
                       onComplete={() => setPreReadStage('ready')}
                     />
@@ -1576,19 +1711,33 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         <div className="flex flex-col gap-1">
                           <h2 className="text-xl font-semibold text-[#0d212c]">Pre-read summary</h2>
                           <p className="text-xs text-[#64748b]">
-                            Generated by the agent from the vendor submission
-                            {kbFiles.length > 0 ? ' and your knowledge base files' : ''}.
+                            Generated by the agent from the vendor submission and the selected
+                            documents.
                           </p>
                         </div>
-                        {strategyDone && (
-                          <StatusChip
-                            label={strategyOutcome === 'Reject' ? 'Rejected' : 'Proceeded'}
-                            status={strategyOutcome === 'Reject' ? 'error' : 'success'}
-                            dot={false}
-                          />
-                        )}
+                        <div className="flex items-center gap-4">
+                          <button
+                            type="button"
+                            onClick={() => setActiveStep('brief')}
+                            className="text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
+                          >
+                            View initial assessment brief
+                          </button>
+                          {strategyDone && (
+                            <StatusChip
+                              label={strategyOutcome === 'Reject' ? 'Rejected' : 'Proceeded'}
+                              status={strategyOutcome === 'Reject' ? 'error' : 'success'}
+                              dot={false}
+                            />
+                          )}
+                        </div>
                       </div>
-                      <PreReadSummary request={request} documents={kbFiles.map((f) => f.name)} />
+                      <PreReadSummary
+                        request={request}
+                        documents={(strategyMine?.documents ?? kbFiles.map((f) => f.name)).filter(
+                          Boolean
+                        )}
+                      />
                     </>
                   )}
                 </div>
@@ -1618,12 +1767,11 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       {/* DIRECTOR DECISION ON THE BRIEF */}
       {briefModal && (
         <BriefDecisionModal
-          initialChoice={briefModal}
           agentRecommendation={request.agentRecommendation?.status}
           email={buildInfoEmail(request, userProfile?.name ?? 'Director')}
           onSubmit={handleBriefDecision}
           onRequestInfo={handleSendInfo}
-          onClose={() => setBriefModal(null)}
+          onClose={() => setBriefModal(false)}
         />
       )}
 
@@ -1633,12 +1781,18 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           mode={adminModal}
           typeConfidence={getTypeConfidence(request)}
           initialType={
-            adminModal === 'proceed' && previousRouting?.action === 'proceed'
+            adminModal !== 'reject' && previousRouting?.action === 'proceed'
               ? previousRouting.type
               : undefined
           }
           initialReason={previousRouting?.action === adminModal ? previousRouting.reason : ''}
-          onConfirm={handleAdminConfirm}
+          onConfirm={(routing) =>
+            handleAdminConfirm(
+              adminModal === 'reassign'
+                ? { ...routing, reason: previousRouting?.reason ?? '' }
+                : routing
+            )
+          }
           onClose={() => setAdminModal(null)}
         />
       )}
@@ -1923,6 +2077,32 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* INTERNAL INTEREST OUTCOMES: close the case, or assign the lead sponsor and co-sponsors */}
+      {showNotReadyConfirm && (
+        <ConfirmDialog
+          title="Close this case?"
+          description="No one from the Internal Interest team is ready to sponsor this request. Do you want to close this case? After your approval the case will be closed."
+          confirmLabel="Close case"
+          onCancel={() => setScenarioPrompt('dismissed')}
+          onConfirm={() =>
+            onCaseAction?.(request.id, {
+              type: 'closeCase',
+              reason: 'No one from the Internal Interest team is ready to sponsor this request.',
+            })
+          }
+        />
+      )}
+      {showSponsorAssign && (
+        <SponsorAssignModal
+          candidates={sponsorCandidates}
+          onClose={() => setScenarioPrompt('dismissed')}
+          onConfirm={({ lead, co }) => {
+            onCaseAction?.(request.id, { type: 'assignSponsors', lead, co })
+            setActiveStep('alignment')
+          }}
+        />
       )}
 
       {/* SEND TO INTERNAL INTEREST: reviewers and questions */}
@@ -2556,7 +2736,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setBriefModal('approve')}
+              onClick={() => setBriefModal(true)}
               className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
             >
               Next
@@ -2598,23 +2778,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         )}
 
       {/* PARTNERSHIP ADMIN: decision bar, always in view so the action is obvious */}
-      {isAdmin && activeTab !== 'audit' && (!previousRouting || adminEditing) && (
+      {isAdmin && activeTab !== 'audit' && !previousRouting && (
         <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
           <span className="text-sm text-[#475569]">
-            {!previousRouting
-              ? 'Action required: decide where this case goes.'
-              : `Editing the decision (currently ${routingLabel(previousRouting)}). Choose a new action.`}
+            Action required: decide where this case goes.
           </span>
           <div className="flex items-center gap-3">
-            {adminEditing && (
-              <button
-                type="button"
-                onClick={() => setAdminEditing(false)}
-                className="h-10 px-5 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition"
-              >
-                Cancel
-              </button>
-            )}
             <button
               type="button"
               onClick={() => setAdminModal('reject')}

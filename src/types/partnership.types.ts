@@ -39,6 +39,27 @@ export interface QuestionAnswer {
   answer: string
 }
 
+/** What the Internal Interest team did, as simulated in the prototype */
+export type InternalScenario = 'none' | 'not-ready' | 'single' | 'multiple'
+
+export interface SponsorAssignment {
+  lead: string
+  co: string[]
+}
+
+export interface NdaVersion {
+  version: number
+  fileName: string
+  uploadedOn: string
+  uploadedBy: string
+}
+
+export interface CaseFile {
+  name: string
+  uploadedOn: string
+  uploadedBy: string
+}
+
 export interface StageApproval {
   status: 'approved' | 'declined'
   by: string
@@ -193,6 +214,27 @@ export interface PartnershipRequest {
   stageApprovals?: { internal?: StageApproval; strategy?: StageApproval }
   /** The questionnaire the Director sent to the Internal Interest team */
   sentQuestionnaire?: { name: string; version?: number; questions: QuestionnaireQuestion[] }
+  /** Set once the Internal Interest outcome is known (or simulated) */
+  internalOutcome?: { scenario: InternalScenario }
+  /** Who sponsors the partnership internally; set when the Internal Canvas stage ends */
+  sponsors?: SponsorAssignment
+  /** Why the case was closed after the brief was approved */
+  closedReason?: string
+  /** Signed NDA copies, oldest first */
+  nda?: { versions: NdaVersion[] }
+  /** Generated when the first signed NDA is uploaded */
+  alignmentPackOn?: string
+  discovery?: {
+    notes: CaseFile[]
+    recordings: CaseFile[]
+    confirmedOn?: string
+  }
+  value?: {
+    callConfirmedOn?: string
+    businessCase?: CaseFile
+    decision?: { status: 'proceeded' | 'rejected'; reason?: string; date: string }
+    tddGeneratedOn?: string
+  }
 }
 
 export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
@@ -550,6 +592,8 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
         timestamp: '13 Oct 2026, 04:30 PM',
       },
     ],
+    sponsors: { lead: 'Riza Sayeed', co: [] },
+    internalOutcome: { scenario: 'single' },
     sent: { internal: true, strategy: true },
     stageApprovals: {
       internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Done' },
@@ -578,8 +622,8 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     workflowStages: [
       { id: 1, title: 'Submission', subheading: '10 Oct 2026', status: 'completed' },
       { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: 'Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
-      { id: 4, title: 'NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
+      { id: 3, title: 'Screening & Fit', subheading: 'Completed', status: 'completed' },
+      { id: 4, title: 'NDA & Discovery', subheading: 'In Progress', status: 'in_progress' },
       { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
       { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
       { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
@@ -734,6 +778,44 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
         timestamp: '06 Oct 2026, 03:10 PM',
       },
     ],
+    sponsors: { lead: 'Parag Agarwal', co: ['Najla Al Mansoori'] },
+    internalOutcome: { scenario: 'multiple' },
+    nda: {
+      versions: [
+        {
+          version: 1,
+          fileName: 'GenomicX_Signed_NDA_v1.pdf',
+          uploadedOn: '14 Oct 2026',
+          uploadedBy: 'Zaid Al Ali',
+        },
+      ],
+    },
+    alignmentPackOn: '14 Oct 2026',
+    discovery: {
+      notes: [
+        {
+          name: 'Discovery_Call_Notes.docx',
+          uploadedOn: '16 Oct 2026',
+          uploadedBy: 'Parag Agarwal',
+        },
+      ],
+      recordings: [
+        {
+          name: 'Discovery_Call_Recording.mp4',
+          uploadedOn: '16 Oct 2026',
+          uploadedBy: 'Parag Agarwal',
+        },
+      ],
+      confirmedOn: '16 Oct 2026',
+    },
+    value: {
+      callConfirmedOn: '19 Oct 2026',
+      businessCase: {
+        name: 'GenomicX_Business_Case.pdf',
+        uploadedOn: '20 Oct 2026',
+        uploadedBy: 'Parag Agarwal',
+      },
+    },
     sent: { internal: true, strategy: true },
     stageApprovals: {
       internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Done' },
@@ -763,8 +845,8 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
       { id: 1, title: 'Submission', subheading: '01 Oct 2026', status: 'completed' },
       { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
       { id: 3, title: 'Screening & Fit', subheading: 'Completed', status: 'completed' },
-      { id: 4, title: 'NDA & Discovery', subheading: 'In Progress', status: 'in_progress' },
-      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
+      { id: 4, title: 'NDA & Discovery', subheading: 'Completed', status: 'completed' },
+      { id: 5, title: 'Value Assessment', subheading: 'In Progress', status: 'in_progress' },
       { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
       { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
     ],

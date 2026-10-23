@@ -16,9 +16,13 @@ const Harness = ({ initial = 'technical' }: { initial?: string }) => {
       questions: cloneQuestions(getQuestionnaire(initial).questions),
     },
   ])
-  const questions = versions[versions.length - 1].questions
-  const save = (next: QuestionnaireQuestion[], label: string) =>
-    setVersions((v) => [...v, { version: v.length + 1, label, questions: next }])
+  const [current, setCurrent] = useState(1)
+  const questions = (versions.find((v) => v.version === current) ?? versions[0]).questions
+  const save = (next: QuestionnaireQuestion[], label: string) => {
+    const version = Math.max(...versions.map((v) => v.version)) + 1
+    setVersions((v) => [...v, { version, label, questions: next }])
+    setCurrent(version)
+  }
   return (
     <QuestionnaireEditor
       questionnaireId={id}
@@ -31,58 +35,60 @@ const Harness = ({ initial = 'technical' }: { initial?: string }) => {
             questions: cloneQuestions(getQuestionnaire(next).questions),
           },
         ])
+        setCurrent(1)
       }}
       questions={questions}
       onQuestionsChange={save}
       versions={versions}
-      onRestore={(n) =>
-        save(cloneQuestions(versions.find((v) => v.version === n)!.questions), `Restored v${n}`)
-      }
+      currentVersion={current}
+      onSelectVersion={setCurrent}
     />
   )
 }
 
+const startEditing = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole('button', { name: 'Edit' }))
+
 describe('QuestionnaireEditor', () => {
-  it('shows the questionnaire full width with read-only question cards', () => {
+  it('shows the questionnaire full width with plain question cards and no versions yet', () => {
     render(<Harness />)
     expect(screen.getByLabelText('Questionnaire')).toHaveValue('technical')
     expect(
       screen.getByLabelText('Questionnaire').parentElement?.parentElement?.className
     ).toContain('w-full')
-    expect(within(screen.getByTestId('question-1')).getByText('Mandatory')).toBeInTheDocument()
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    // Mandatory shows as a red asterisk, not a chip
+    const card = screen.getByTestId('question-1')
+    expect(within(card).getByLabelText('mandatory')).toHaveClass('text-red-500')
+    expect(screen.queryByText('Mandatory')).not.toBeInTheDocument()
+    expect(screen.queryByText('Optional')).not.toBeInTheDocument()
     expect(screen.queryByText(/Research needed|Attachment required/)).not.toBeInTheDocument()
-    // no up/down arrows, only the drag handle
-    expect(screen.queryByRole('button', { name: /Move question/ })).not.toBeInTheDocument()
+    // Until it has been edited there are no versions to show
+    expect(screen.queryByLabelText('Version')).not.toBeInTheDocument()
+    // Not editable until Edit is switched on
+    expect(document.querySelectorAll('[draggable="true"]')).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: /Delete question/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Edit question/ })).not.toBeInTheDocument()
+  })
+
+  it('has Edit and Add question as text-only buttons, and Edit makes every question editable', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+    const edit = screen.getByRole('button', { name: 'Edit' })
+    expect(edit.className).not.toMatch(/\bborder\b|bg-white/)
+    expect(screen.getByRole('button', { name: 'Add question' }).className).not.toMatch(/\bborder\b/)
+    await user.click(edit)
+    expect(screen.getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
     expect(document.querySelectorAll('[draggable="true"]')).toHaveLength(3)
-    expect(screen.getByLabelText('Version 1')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Delete question/ })).toHaveLength(3)
+    expect(screen.getAllByRole('button', { name: /Edit question/ })).toHaveLength(3)
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+    expect(document.querySelectorAll('[draggable="true"]')).toHaveLength(0)
   })
 
-  it('switches questionnaire and starts again at v1', async () => {
+  it('opens the question popup, prefilled, from the question itself and saves a version', async () => {
     const user = userEvent.setup()
     render(<Harness />)
-    await user.click(screen.getByRole('button', { name: 'Delete question 3' }))
-    expect(screen.getByLabelText('Version 2')).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText('Questionnaire'), 'internal-evaluation')
-    expect(screen.getByLabelText('Version 1')).toBeInTheDocument()
-    expect(screen.getAllByTestId(/^question-/)).toHaveLength(5)
-  })
-
-  it('reorders questions by dragging and saves a version', () => {
-    render(<Harness />)
-    const handles = document.querySelectorAll('[draggable="true"]')
-    const third = screen.getByTestId('question-3')
-    fireEvent.dragStart(handles[0])
-    fireEvent.dragOver(third)
-    fireEvent.drop(third)
-    expect(screen.getByLabelText('Version 2')).toBeInTheDocument()
-    fireEvent.drop(screen.getByTestId('question-1')) // nothing is being dragged
-    expect(screen.getByLabelText('Version 2')).toBeInTheDocument()
-  })
-
-  it('edits a question in the popup, prefilled, and saves a version', async () => {
-    const user = userEvent.setup()
-    render(<Harness />)
+    await startEditing(user)
     await user.click(screen.getByRole('button', { name: 'Edit question 2' }))
     const dialog = screen.getByRole('dialog', { name: 'Edit question' })
     expect(within(dialog).getByLabelText(/Question text/)).toHaveValue(
@@ -94,32 +100,58 @@ describe('QuestionnaireEditor', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     const card = screen.getByTestId('question-2')
-    expect(within(card).getByText('Is it certified?')).toBeInTheDocument()
-    expect(within(card).getByText('Optional')).toBeInTheDocument()
-    expect(screen.getByLabelText('Version 2')).toBeInTheDocument()
+    expect(within(card).getByText(/Is it certified\?/)).toBeInTheDocument()
+    expect(within(card).queryByLabelText('mandatory')).not.toBeInTheDocument()
+    // The first edit makes the version dropdown appear
+    expect(screen.getByLabelText('Version')).toHaveValue('2')
   })
 
-  it('lists the versions and restores an earlier one as a new version', async () => {
+  it('switches questionnaire and goes back to no versions', async () => {
     const user = userEvent.setup()
     render(<Harness />)
-    expect(screen.queryByRole('button', { name: 'Version history' })).not.toBeInTheDocument()
+    await startEditing(user)
+    await user.click(screen.getByRole('button', { name: 'Delete question 3' }))
+    expect(screen.getByLabelText('Version')).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Questionnaire'), 'internal-evaluation')
+    expect(screen.queryByLabelText('Version')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId(/^question-/)).toHaveLength(5)
+  })
+
+  it('reorders questions by dragging and saves a version', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+    await startEditing(user)
+    const handles = document.querySelectorAll('[draggable="true"]')
+    const third = screen.getByTestId('question-3')
+    fireEvent.dragStart(handles[0])
+    fireEvent.dragOver(third)
+    fireEvent.drop(third)
+    expect(screen.getByLabelText('Version')).toHaveValue('2')
+    fireEvent.drop(screen.getByTestId('question-1')) // nothing is being dragged
+    expect(screen.getByLabelText('Version')).toHaveValue('2')
+  })
+
+  it('lists the versions in the dropdown and switches back to an earlier one', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+    await startEditing(user)
     await user.click(screen.getByRole('button', { name: 'Delete question 1' }))
     expect(screen.getAllByTestId(/^question-/)).toHaveLength(2)
-    await user.click(screen.getByRole('button', { name: /Version history/ }))
-    const history = screen.getByRole('list', { name: 'Version history' })
-    expect(within(history).getAllByRole('listitem')).toHaveLength(2)
-    expect(within(history).getByText('Current')).toBeInTheDocument()
-    await user.click(within(history).getByRole('button', { name: 'Restore version 1' }))
-    expect(screen.getAllByTestId(/^question-/)).toHaveLength(3)
-    expect(screen.getByLabelText('Version 3')).toBeInTheDocument()
+    const versions = screen.getByLabelText('Version')
     expect(
-      within(screen.getByRole('list', { name: 'Version history' })).getByText(/Restored v1/)
-    ).toBeInTheDocument()
+      within(versions)
+        .getAllByRole('option')
+        .map((o) => o.textContent)
+    ).toEqual(['v2 · Deleted question 1', 'v1 · Original'])
+    await user.selectOptions(versions, '1')
+    expect(screen.getAllByTestId(/^question-/)).toHaveLength(3)
+    expect(versions).toHaveValue('1')
   })
 
   it('deletes a question and says so when none are left', async () => {
     const user = userEvent.setup()
     render(<Harness initial="clinical-safety" />)
+    await startEditing(user)
     await user.click(screen.getByRole('button', { name: 'Delete question 1' }))
     expect(screen.getAllByTestId(/^question-/)).toHaveLength(1)
     await user.click(screen.getByRole('button', { name: 'Delete question 1' }))
@@ -138,7 +170,9 @@ describe('QuestionnaireEditor', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save question' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getAllByTestId(/^question-/)).toHaveLength(4)
-    expect(within(screen.getByTestId('question-4')).getByText('Optional')).toBeInTheDocument()
+    expect(
+      within(screen.getByTestId('question-4')).queryByLabelText('mandatory')
+    ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Add question' }))
     await user.click(

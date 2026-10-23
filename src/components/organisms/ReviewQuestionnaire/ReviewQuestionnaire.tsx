@@ -31,9 +31,7 @@ export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
     >
       {!readOnly && (
         <div className="flex items-center justify-between gap-3 pb-6 mb-2 border-b border-[#f1f5f9]">
-          <span className="text-xs text-[#64748b]">
-            Questions marked * are mandatory. Optional questions can be left blank.
-          </span>
+          <span className="text-xs text-[#64748b]">Questions marked * are mandatory.</span>
           <span className="text-xs font-medium text-[#475569]">
             {done} of {mandatory.length} mandatory answered
           </span>
@@ -55,12 +53,9 @@ export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
                     className="text-sm font-medium text-[#0d212c] leading-relaxed"
                   >
                     {q.text}
-                    {!readOnly &&
-                      (q.mandatory ? (
-                        <span className="text-red-500 font-semibold"> *</span>
-                      ) : (
-                        <span className="text-xs font-normal text-[#94a3b8]"> (optional)</span>
-                      ))}
+                    {!readOnly && q.mandatory && (
+                      <span className="text-red-500 font-semibold"> *</span>
+                    )}
                   </label>
                   <p className="text-xs text-[#64748b] leading-relaxed">{q.cue}</p>
                 </div>

@@ -22,6 +22,7 @@ import {
 } from '@/types/partnership.types'
 import {
   appendAudit,
+  applyCaseAction,
   getStageLabel,
   holdRequest,
   proceedRequest,
@@ -32,6 +33,7 @@ import {
   submitReview,
   type AdminRouting,
   type AuditInput,
+  type CaseAction,
 } from '@/lib/caseActions'
 import { type UserProfile } from './LoginScreen'
 
@@ -40,6 +42,26 @@ export interface DashboardScreenProps {
   /** Shared cases. When omitted the screen keeps its own copy of the seed data. */
   requests?: PartnershipRequest[]
   onRequestsChange?: React.Dispatch<React.SetStateAction<PartnershipRequest[]>>
+}
+
+/** Prototype stand-in for the Strategy Team's answer once a request is sent to them */
+const SIMULATED_STRATEGY_RESPONSE = {
+  documents: ['M42_Roadmap_Register.xlsx', 'News_Trends_Agent_KB_Extract.docx'],
+  finalDecision: 'Proceed' as const,
+  finalDecisionNote:
+    'Proceed on the condition that the vendor commits to UAE data hosting and registers a local entity.',
+  submittedAt: 'Just now',
+}
+
+const CASE_ACTION_TOASTS: Partial<Record<CaseAction['type'], string>> = {
+  closeCase: 'The case has been closed.',
+  assignSponsors: 'Sponsors assigned. Strategic Alignment is next.',
+  uploadNda: 'Signed NDA uploaded. The alignment pack has been generated.',
+  confirmDiscovery: 'Discovery call confirmed.',
+  confirmValueCall: 'Value assessment call confirmed.',
+  businessCase: 'Business case uploaded.',
+  valueDecision: 'Your decision has been recorded.',
+  generateTdd: 'The TDD report has been generated.',
 }
 
 const SLA_CATEGORY: Record<SlaStatus, 'success' | 'warning' | 'error'> = {
@@ -81,6 +103,12 @@ const DescriptionCell: React.FC<{ text: string }> = ({ text }) => {
   )
 }
 
+/** The sponsor still has something to do on this case */
+const sponsorActionNeeded = (r: PartnershipRequest) =>
+  r.status !== 'Exited' &&
+  ((Boolean(r.alignmentPackOn) && !r.discovery?.confirmedOn) ||
+    (Boolean(r.discovery?.confirmedOn) && !r.value?.decision))
+
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   userProfile,
   requests: sharedRequests,
@@ -92,6 +120,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     userProfile?.id === 'strategy-fit' || userProfile?.roleTitle === 'Strategy Team'
   const isNonDirector = isInternalTeam || isStrategyTeam
   const isAdmin = userProfile?.id === 'partnership-admin'
+  const isSponsor = userProfile?.id === 'sponsor' || userProfile?.roleTitle === 'Sponsor'
   const [localRequests, setLocalRequests] = useState<PartnershipRequest[]>(
     INITIAL_PARTNERSHIP_REQUESTS
   )
@@ -167,11 +196,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     team,
     payload
   ) => {
-    updateRequest(requestId, (r) => sendReview(r, team, payload))
+    updateRequest(requestId, (r) => {
+      const sent = sendReview(r, team, payload)
+      // Prototype: the Strategy Team's approval, with its conditions, shows up straight away
+      return team === 'strategy'
+        ? submitReview(sent, 'strategy', { response: SIMULATED_STRATEGY_RESPONSE })
+        : sent
+    })
     notify(
       team === 'internal'
         ? 'Request sent to the Internal Interest team. Waiting for their approval.'
-        : 'Request sent to the Strategy Team. Waiting for their approval.'
+        : 'Request sent to the Strategy Team. The Strategy Team has approved with conditions.'
     )
   }
 
@@ -181,6 +216,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     team,
     payload
   ) => updateRequest(requestId, (r) => submitReview(r, team, payload))
+
+  // Internal Interest outcome, sponsors, NDA, discovery, value and TDD
+  const handleCaseAction = (requestId: string, action: CaseAction) => {
+    updateRequest(requestId, (r) => applyCaseAction(r, action))
+    const message = CASE_ACTION_TOASTS[action.type]
+    if (message) notify(message)
+  }
 
   // Partnership Admin routes the case
   const handleRoute = (requestId: string, routing: AdminRouting) => {
@@ -203,7 +245,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         (r) =>
           r.queue === 'director' &&
           (!isInternalTeam || r.sent?.internal) &&
-          (!isStrategyTeam || r.sent?.strategy)
+          (!isStrategyTeam || r.sent?.strategy) &&
+          (!isSponsor || Boolean(r.sponsors))
       )
 
   const filteredRequests = scopedRequests.filter((req) => {
@@ -292,6 +335,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           onLog={handleLog}
           onSendReview={handleSendReview}
           onSubmitReview={handleSubmitReview}
+          onCaseAction={handleCaseAction}
           userProfile={userProfile}
         />
       </div>
@@ -376,6 +420,53 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <div className="h-[1px] bg-slate-100 w-full" />
               <div className="text-xs font-medium text-[#64748b]">Reviews past their deadline</div>
             </div>
+          </>
+        ) : isSponsor ? (
+          <>
+            {[
+              {
+                title: 'Sponsored Cases',
+                value: scopedRequests.length,
+                caption: 'Partnerships you sponsor',
+                icon: <Briefcase className="w-5 h-5 text-[#0284c7] stroke-[2]" />,
+              },
+              {
+                title: 'Awaiting My Action',
+                value: scopedRequests.filter(sponsorActionNeeded).length,
+                caption: 'Calls, business case or decision',
+                icon: <ClipboardList className="w-5 h-5 text-[#d97706] stroke-[2]" />,
+              },
+              {
+                title: 'In Due Diligence',
+                value: scopedRequests.filter((r) => r.value?.decision?.status === 'proceeded')
+                  .length,
+                caption: 'Business case approved',
+                icon: <CheckCircle2 className="w-5 h-5 text-[#16a34a] stroke-[2]" />,
+              },
+              {
+                title: 'Closed',
+                value: scopedRequests.filter((r) => r.status === 'Exited').length,
+                caption: 'No longer progressing',
+                icon: <GitFork className="w-5 h-5 text-[#ef4444] stroke-[2]" />,
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
+                    {card.title}
+                  </span>
+                  <div className="flex items-center justify-center shrink-0">{card.icon}</div>
+                </div>
+                <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">
+                  {card.value}
+                </div>
+                <div className="h-[1px] bg-slate-100 w-full" />
+                <div className="text-xs font-medium text-[#64748b]">{card.caption}</div>
+              </div>
+            ))}
           </>
         ) : isStrategyTeam ? (
           <>

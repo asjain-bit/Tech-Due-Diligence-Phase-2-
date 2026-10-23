@@ -7,8 +7,6 @@ export interface InfoEmail {
 }
 
 export interface BriefDecisionModalProps {
-  /** Option selected when the popup opens */
-  initialChoice: BriefDecisionChoice
   /** What the agent recommended, used to hint the choice */
   agentRecommendation?: 'proceed' | 'reject'
   /** Template shown when more information is requested */

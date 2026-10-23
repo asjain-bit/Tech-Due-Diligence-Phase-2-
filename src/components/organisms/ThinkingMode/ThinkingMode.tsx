@@ -2,13 +2,14 @@
 
 /**
  * ThinkingMode — Organism
- * "Agent is thinking" screen: an animated brief illustration and a check-by-check progress list
- * with a spinner on the running step. `compact` is the smaller variant used inside a page section.
- * Used in: PartnershipDetail
+ * Simple "agent is working" state: an animated brief illustration, a short description and one
+ * line of progress text that moves on every moment, like "Reading vendor form details".
+ * `inline` sits inside a page section instead of taking the whole page.
+ * Used in: PartnershipDetail, ReviewersLoading
  */
 
 import React, { useEffect, useRef, useState } from 'react'
-import { Check, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import type { ThinkingModeProps } from './ThinkingMode.types'
 
 export const THINKING_CHECKS = [
@@ -26,30 +27,27 @@ const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** Prototype stand-in for real agent status: advances one check at a time */
+/** Prototype stand-in for real agent status: moves to the next message on a timer */
 const useMockAgentProgress = (total: number, stepMs: number, onComplete: () => void) => {
   const [step, setStep] = useState(0)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
 
   useEffect(() => {
-    if (step > total) return
-    const timer = setTimeout(
-      () => {
-        if (step === total) onCompleteRef.current()
-        setStep((s) => s + 1)
-      },
-      step === total ? 900 : stepMs
-    )
+    if (step >= total) return
+    const timer = setTimeout(() => {
+      if (step === total - 1) onCompleteRef.current()
+      setStep((s) => s + 1)
+    }, stepMs)
     return () => clearTimeout(timer)
   }, [step, total, stepMs])
 
   return step
 }
 
-const Illustration: React.FC<{ reduced: boolean; compact: boolean }> = ({ reduced, compact }) => (
+const Illustration: React.FC<{ reduced: boolean; inline: boolean }> = ({ reduced, inline }) => (
   <div
-    className={`relative ${compact ? 'w-28 h-28' : 'w-40 h-40 sm:w-48 sm:h-48'}`}
+    className={`relative ${inline ? 'w-28 h-28' : 'w-40 h-40 sm:w-48 sm:h-48'}`}
     role="img"
     aria-label="An assessment brief being prepared"
   >
@@ -116,116 +114,47 @@ export const ThinkingMode: React.FC<ThinkingModeProps> = ({
   onComplete,
   stepMs = 1400,
   className = '',
-  checks = THINKING_CHECKS,
-  title = 'Initial Assessment Brief',
+  messages = THINKING_CHECKS,
+  title,
   description = 'Our AI agent is analyzing the vendor submission and running multiple checks to create the assessment brief.',
-  compact = false,
+  inline = false,
   eyebrow = 'ANALYZING',
 }) => {
-  const total = checks.length
-  const step = useMockAgentProgress(total, stepMs, onComplete)
-  const finished = step >= total
+  const step = useMockAgentProgress(messages.length, stepMs, onComplete)
   const [reduced] = useState(prefersReducedMotion)
+  const message = messages[Math.min(step, messages.length - 1)]
 
   return (
     <div
       role="status"
       aria-live="polite"
       className={`w-full flex items-center justify-center animate-in fade-in duration-300 ${
-        compact ? 'py-6' : 'min-h-[calc(100vh-9rem)] py-8'
+        inline ? 'py-12' : 'min-h-[calc(100vh-9rem)] py-8'
       } ${className}`.trim()}
     >
-      <div
-        className={`w-full flex flex-col items-center ${compact ? 'max-w-lg gap-5' : 'max-w-2xl gap-8'}`}
-      >
-        <Illustration reduced={reduced} compact={compact} />
+      <div className="w-full max-w-xl flex flex-col items-center gap-6">
+        <Illustration reduced={reduced} inline={inline} />
 
         <div className="flex flex-col items-center gap-2 text-center px-2">
           <span className="text-xs font-semibold tracking-[0.18em]" style={{ color: TEAL }}>
-            {finished ? (compact ? 'COMPLETE' : 'ANALYSIS COMPLETE') : eyebrow}
+            {eyebrow}
           </span>
-          {compact ? (
+          {title && (
             <h2 className="text-lg font-semibold tracking-tight text-[#0d212c]">{title}</h2>
-          ) : (
-            <h1 className="text-xl sm:text-3xl font-semibold tracking-tight text-[#0d212c]">
-              {title}
-            </h1>
           )}
           <p className="text-sm text-[#64748b] leading-relaxed max-w-lg">{description}</p>
         </div>
 
-        <ol className="relative w-full rounded-2xl bg-white border border-[#e2e8f0] shadow-sm">
-          <span
+        <p className="flex items-center gap-2 text-sm text-[#475569] min-h-5">
+          <Loader2
+            className={`w-4 h-4 shrink-0 ${reduced ? '' : 'animate-spin'}`}
+            style={{ color: TEAL }}
             aria-hidden="true"
-            className="absolute left-[39px] top-8 bottom-8 border-l border-dashed"
-            style={{ borderColor: `${TEAL}55` }}
           />
-          {checks.map((label, i) => {
-            const state = step > i ? 'done' : step === i ? 'active' : 'pending'
-            return (
-              <li
-                key={label}
-                data-state={state}
-                className={`relative flex items-center gap-3 sm:gap-4 pl-4 sm:pl-5 pr-4 sm:pr-5 ${
-                  compact ? 'min-h-14' : 'min-h-16'
-                }`}
-              >
-                <span className="relative z-10 w-9 h-9 flex items-center justify-center shrink-0">
-                  {state === 'done' ? (
-                    <span className="w-7 h-7 rounded-full bg-[#16a34a] text-white flex items-center justify-center animate-in zoom-in-50 duration-300">
-                      <Check className="w-4 h-4 stroke-[3]" aria-hidden="true" />
-                    </span>
-                  ) : state === 'active' ? (
-                    <span
-                      className="w-9 h-9 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${TEAL}26`, color: TEAL }}
-                    >
-                      <Loader2
-                        className={`w-4 h-4 ${reduced ? '' : 'animate-spin'}`}
-                        aria-hidden="true"
-                      />
-                    </span>
-                  ) : (
-                    <span className="w-7 h-7 rounded-full border border-slate-300 bg-white" />
-                  )}
-                </span>
-
-                <div
-                  className={`flex-1 min-w-0 flex flex-col gap-0.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
-                    i > 0 ? 'border-t border-[#f1f5f9]' : ''
-                  }`}
-                >
-                  <span
-                    className={`text-sm ${state === 'pending' ? 'text-[#64748b]' : 'text-[#0d212c]'}`}
-                  >
-                    {label}
-                  </span>
-
-                  {state === 'done' && (
-                    <span className="text-sm font-medium text-[#16a34a] shrink-0">Completed</span>
-                  )}
-                  {state === 'active' && (
-                    <span className="flex flex-wrap items-center gap-x-2 text-sm text-[#64748b] sm:shrink-0">
-                      Analyzing...
-                      <span className="flex items-center gap-1" aria-hidden="true">
-                        {[0, 1, 2].map((n) => (
-                          <span
-                            key={n}
-                            className={`w-1.5 h-1.5 rounded-full ${reduced ? '' : 'animate-pulse'}`}
-                            style={{ backgroundColor: TEAL, animationDelay: `${n * 200}ms` }}
-                          />
-                        ))}
-                      </span>
-                    </span>
-                  )}
-                  {state === 'pending' && (
-                    <span className="text-sm text-[#94a3b8] shrink-0">Pending</span>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ol>
+          <span key={message} className="animate-in fade-in duration-300">
+            {message}…
+          </span>
+        </p>
       </div>
     </div>
   )

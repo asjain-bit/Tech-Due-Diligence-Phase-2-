@@ -272,7 +272,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     profile.id === 'partnership-admin' ||
                     profile.id === 'director' ||
                     profile.id === 'evaluator' ||
-                    profile.id === 'strategy-fit'
+                    profile.id === 'strategy-fit' ||
+                    profile.id === 'sponsor'
 
                   if (isAccessible) {
                     return (
