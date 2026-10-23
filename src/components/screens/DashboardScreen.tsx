@@ -10,7 +10,6 @@ import {
   ClipboardList,
   CheckCircle2,
   Briefcase,
-  CalendarClock,
 } from 'lucide-react'
 import { SearchBar } from '@/components/molecules/SearchBar'
 import { StatusChip } from '@/components/atoms/StatusChip'
@@ -35,6 +34,7 @@ import {
   type AuditInput,
   type CaseAction,
 } from '@/lib/caseActions'
+import { internalInterestKpis, sponsorKpis, strategyLeadKpis } from '@/lib/roleKpis'
 import { type UserProfile } from './LoginScreen'
 
 export interface DashboardScreenProps {
@@ -103,12 +103,13 @@ const DescriptionCell: React.FC<{ text: string }> = ({ text }) => {
   )
 }
 
-/** The sponsor still has something to do on this case */
-const sponsorActionNeeded = (r: PartnershipRequest) =>
-  r.status !== 'Exited' &&
-  r.status !== 'Closed' &&
-  Boolean(r.discovery?.proceededOn) &&
-  !r.value?.tddGeneratedOn
+/** Icons of the four role KPI cards, in order */
+const KPI_ICONS = [
+  <Briefcase key="a" className="w-5 h-5 text-[#0284c7] stroke-[2]" />,
+  <ClipboardList key="b" className="w-5 h-5 text-[#d97706] stroke-[2]" />,
+  <CheckCircle2 key="c" className="w-5 h-5 text-[#16a34a] stroke-[2]" />,
+  <GitFork key="d" className="w-5 h-5 text-[#ef4444] stroke-[2]" />,
+]
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   userProfile,
@@ -363,102 +364,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
       {/* 4 KPI Cards — Exact same design as director flow, role-tailored metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        {isInternalTeam ? (
+        {isInternalTeam || isStrategyTeam || isSponsor ? (
           <>
-            {/* KPI Card 1: Assigned to Me */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Assigned to Me
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <Inbox className="w-5 h-5 text-[#0284c7] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">8</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">
-                Partnerships requiring my review
-              </div>
-            </div>
-
-            {/* KPI Card 2: Pending Review */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Pending Review
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <ClipboardList className="w-5 h-5 text-[#d97706] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">4</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">Questionnaire not submitted</div>
-            </div>
-
-            {/* KPI Card 3: Completed Reviews */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Completed Reviews
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-5 h-5 text-[#16a34a] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">3</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">
-                Verdicts submitted this month
-              </div>
-            </div>
-
-            {/* KPI Card 4: Overdue */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Overdue
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <Clock className="w-5 h-5 text-[#ef4444] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">1</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">Reviews past their deadline</div>
-            </div>
-          </>
-        ) : isSponsor ? (
-          <>
-            {[
-              {
-                title: 'Sponsored Cases',
-                value: scopedRequests.length,
-                caption: 'Partnerships you sponsor',
-                icon: <Briefcase className="w-5 h-5 text-[#0284c7] stroke-[2]" />,
-              },
-              {
-                title: 'Awaiting My Action',
-                value: scopedRequests.filter(sponsorActionNeeded).length,
-                caption: 'Calls, business case or decision',
-                icon: <ClipboardList className="w-5 h-5 text-[#d97706] stroke-[2]" />,
-              },
-              {
-                title: 'In Due Diligence',
-                value: scopedRequests.filter((r) => r.value?.decision?.status === 'proceeded')
-                  .length,
-                caption: 'Business case approved',
-                icon: <CheckCircle2 className="w-5 h-5 text-[#16a34a] stroke-[2]" />,
-              },
-              {
-                title: 'Closed',
-                value: scopedRequests.filter((r) => r.status === 'Exited' || r.status === 'Closed')
-                  .length,
-                caption: 'No longer progressing',
-                icon: <GitFork className="w-5 h-5 text-[#ef4444] stroke-[2]" />,
-              },
-            ].map((card) => (
+            {(isInternalTeam
+              ? internalInterestKpis(scopedRequests)
+              : isStrategyTeam
+                ? strategyLeadKpis(scopedRequests)
+                : sponsorKpis(scopedRequests)
+            ).map((card, i) => (
               <div
                 key={card.title}
                 className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3"
@@ -467,7 +380,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
                     {card.title}
                   </span>
-                  <div className="flex items-center justify-center shrink-0">{card.icon}</div>
+                  <div className="flex items-center justify-center shrink-0">{KPI_ICONS[i]}</div>
                 </div>
                 <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">
                   {card.value}
@@ -476,74 +389,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 <div className="text-xs font-medium text-[#64748b]">{card.caption}</div>
               </div>
             ))}
-          </>
-        ) : isStrategyTeam ? (
-          <>
-            {/* KPI Card 1: Assigned Evaluations */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Assigned Evaluations
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <Briefcase className="w-5 h-5 text-[#0284c7] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">5</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">Requests assigned to me</div>
-            </div>
-
-            {/* KPI Card 2: Pending Evaluation */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Pending Evaluation
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <ClipboardList className="w-5 h-5 text-[#d97706] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">3</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">
-                Pre-reads awaiting a decision
-              </div>
-            </div>
-
-            {/* KPI Card 3: Verdicts Submitted */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Verdicts Submitted
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-5 h-5 text-[#16a34a] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">6</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">
-                Completed evaluations this month
-              </div>
-            </div>
-
-            {/* KPI Card 4: Due Soon */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Due Soon
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <CalendarClock className="w-5 h-5 text-[#ef4444] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">1</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">
-                Evaluation approaching deadline
-              </div>
-            </div>
           </>
         ) : (
           <>

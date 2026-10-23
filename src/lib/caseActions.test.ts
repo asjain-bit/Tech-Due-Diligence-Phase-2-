@@ -51,11 +51,11 @@ describe('case codes', () => {
 
 describe('getStageLabel', () => {
   it('describes where a case is', () => {
-    expect(getStageLabel(adminCase)).toBe('Admin review')
-    expect(getStageLabel(pending)).toBe('Screening & Fit')
+    expect(getStageLabel(adminCase)).toBe('Initial Assessment Brief')
+    expect(getStageLabel(pending)).toBe('Initial Assessment Brief')
     expect(getStageLabel(exited)).toBe('Exited')
     expect(getStageLabel({ ...pending, status: 'Information Requested' })).toBe(
-      'Information requested'
+      'Initial Assessment Brief'
     )
     expect(getStageLabel({ ...pending, queue: 'routed', caseType: 'Procure' })).toBe(
       'Routed to Procurement'
@@ -63,12 +63,23 @@ describe('getStageLabel', () => {
     expect(getStageLabel({ ...pending, queue: 'routed', caseType: 'M&A' })).toBe(
       'Routed to Corporate Development'
     )
+    // Later stages follow the same names as the case page
+    const approved = { status: 'approved' as const, by: 'x', date: 'y' }
+    const inProgress = { ...pending, status: 'In Progress' as const }
+    expect(getStageLabel(inProgress)).toBe('Internal Canvas')
+    const afterInternal = { ...inProgress, stageApprovals: { internal: approved } }
+    expect(getStageLabel(afterInternal)).toBe('Strategic Alignment')
+    const afterStrategy = {
+      ...afterInternal,
+      stageApprovals: { internal: approved, strategy: approved },
+    }
+    expect(getStageLabel(afterStrategy)).toBe('NDA & Discovery')
     expect(
       getStageLabel({
-        ...pending,
-        workflowStages: pending.workflowStages.map((s) => ({ ...s, status: 'completed' as const })),
+        ...afterStrategy,
+        discovery: { notes: [], recordings: [], proceededOn: 'today' },
       })
-    ).toBe('Submitted')
+    ).toBe('Value & Due Diligence')
   })
 })
 

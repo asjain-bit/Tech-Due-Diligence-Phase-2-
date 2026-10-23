@@ -365,48 +365,50 @@ export const UsageInsightsScreen: React.FC = () => {
                 labels={USAGE_WEEKS.map((w) => w.short)}
               />
             ) : (
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-8 py-4">
-                <div className="flex flex-col gap-1">
-                  <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
-                    Manual cost
-                    <Info className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-                  </dt>
-                  <dd className="text-3xl font-semibold text-[#0d212c]">{formatUsd(manual)}</dd>
-                  <span className="text-xs text-[#64748b]">
-                    Total hours {week.calls * assumptions.hoursPerAssessment} | Cost per hour{' '}
-                    {formatUsd(assumptions.costPerHour)}
-                  </span>
+              <dl className="flex flex-col border-t border-[#e2e8f0]/70">
+                <div className="grid grid-cols-2 py-8">
+                  <div className="flex flex-col gap-2 pr-6">
+                    <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
+                      Manual cost
+                      <Info className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+                    </dt>
+                    <dd className="text-3xl font-semibold text-[#0d212c]">{formatUsd(manual)}</dd>
+                    <span className="text-xs text-[#64748b]">
+                      Total hours {week.calls * assumptions.hoursPerAssessment} | Cost per hour{' '}
+                      {formatUsd(assumptions.costPerHour)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2 pl-6 border-l border-[#e2e8f0]/70">
+                    <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
+                      AI cost
+                      <Info className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+                    </dt>
+                    <dd className="text-3xl font-semibold text-[#0d212c]">{formatUsd(ai)}</dd>
+                    <span className="text-xs text-[#64748b]">
+                      Total tokens {week.tokensM.toFixed(1)}M · Text & Voice
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
-                    AI cost
-                    <Info className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-                  </dt>
-                  <dd className="text-3xl font-semibold" style={{ color: TEAL }}>
-                    {formatUsd(ai)}
-                  </dd>
-                  <span className="text-xs text-[#64748b]">
-                    Total tokens {week.tokensM.toFixed(1)}M · Text & Voice
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
-                    Estimated ROI
-                    <Info className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-                  </dt>
-                  <dd className="text-3xl font-semibold" style={{ color: TEAL }}>
-                    {Math.round(roi)}x
-                  </dd>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
-                    Estimated savings
-                    <Info className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-                  </dt>
-                  <dd className="text-3xl font-semibold" style={{ color: TEAL }}>
-                    {formatUsd(manual - ai)}
-                    <span className="ml-2 text-sm font-normal text-[#64748b]">this week</span>
-                  </dd>
+                <div className="grid grid-cols-2 py-8 border-t border-[#e2e8f0]/70">
+                  <div className="flex flex-col gap-2 pr-6">
+                    <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
+                      Estimated ROI
+                      <Info className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+                    </dt>
+                    <dd className="text-3xl font-semibold" style={{ color: TEAL }}>
+                      {Math.round(roi)}x
+                    </dd>
+                  </div>
+                  <div className="flex flex-col gap-2 pl-6 border-l border-[#e2e8f0]/70">
+                    <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
+                      Estimated savings
+                      <Info className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+                    </dt>
+                    <dd className="text-3xl font-semibold" style={{ color: TEAL }}>
+                      {formatUsd(manual - ai)}
+                    </dd>
+                    <span className="text-xs text-[#64748b]">{week.full}</span>
+                  </div>
                 </div>
               </dl>
             )}

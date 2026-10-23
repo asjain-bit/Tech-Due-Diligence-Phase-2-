@@ -50,16 +50,23 @@ export const appendAudit = (r: PartnershipRequest, event: AuditInput): Partnersh
   return { ...r, auditLog: [...log, { ...rest, id, timestamp: formatTimestamp() }] }
 }
 
-/** Where the case is right now, in one short label */
+/**
+ * Where the case is right now, named after the workflow stages on the case page. Closed, Exited
+ * and routed cases have left the workflow, so they keep their outcome as the label.
+ */
 export const getStageLabel = (r: PartnershipRequest): string => {
-  if (r.queue === 'admin') return 'Admin review'
-  if (r.status === 'Information Requested') return 'Information requested'
   if (r.status === 'Closed') return 'Closed'
   if (r.queue === 'closed' || r.status === 'Exited') return 'Exited'
   if (r.queue === 'routed') {
     return r.caseType === 'Procure' ? 'Routed to Procurement' : 'Routed to Corporate Development'
   }
-  return r.workflowStages.find((s) => s.status === 'in_progress')?.title ?? 'Submitted'
+  const briefApproved =
+    r.decision?.status === 'proceeded' || r.status === 'In Progress' || r.status === 'At Risk'
+  if (r.queue === 'admin' || !briefApproved) return 'Initial Assessment Brief'
+  if (r.stageApprovals?.internal?.status !== 'approved') return 'Internal Canvas'
+  if (r.stageApprovals?.strategy?.status !== 'approved') return 'Strategic Alignment'
+  if (!r.discovery?.proceededOn) return 'NDA & Discovery'
+  return 'Value & Due Diligence'
 }
 
 /** Director has made a decision, so the Partnership Admin can no longer change the type */

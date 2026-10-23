@@ -50,6 +50,18 @@ const setup = () => {
   return userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 }
 
+/** The four KPI cards, in order, each with its label and supporting text */
+const expectKpis = (cards: [string, string][]) => {
+  const titles = cards.map(([title]) => screen.getByText(title))
+  titles.forEach((el, i) => {
+    const card = el.closest('.rounded-2xl') as HTMLElement
+    expect(within(card).getByText(cards[i][1])).toBeInTheDocument()
+    expect(card.querySelector('.text-4xl')).toHaveTextContent(/^\d+$/)
+  })
+  const order = titles.map((t) => t.compareDocumentPosition(titles[(titles.indexOf(t) + 1) % 4]))
+  expect(order.slice(0, 3).every((o) => o & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+}
+
 describe('DashboardScreen', () => {
   afterEach(() => vi.useRealTimers())
 
@@ -96,7 +108,7 @@ describe('DashboardScreen', () => {
 
     expect(screen.getByText('PR-124')).toBeInTheDocument()
     const row = screen.getByText('MedTech Innovations').closest('tr')!
-    expect(row).toHaveTextContent('Screening & Fit')
+    expect(row).toHaveTextContent('Initial Assessment Brief')
     expect(row).toHaveTextContent('3 days')
     expect(row).toHaveTextContent('Zaid Al Ali')
     expect(row).toHaveTextContent('On track')
@@ -133,7 +145,7 @@ describe('DashboardScreen', () => {
     const row = screen.getByText('NeuroLink Diagnostics').closest('tr')!
     expect(row).toHaveTextContent('PR-125')
     expect(row).toHaveTextContent('Unassigned')
-    expect(row).toHaveTextContent('Admin review')
+    expect(row).toHaveTextContent('Initial Assessment Brief')
     expect(row).toHaveTextContent('Nadia Al-Farsi')
     expect(screen.getByRole('button', { name: /All requests/ })).toHaveTextContent('5')
   })
@@ -334,22 +346,13 @@ describe('DashboardScreen', () => {
     }
     render(<DashboardScreen userProfile={internalProfile} />)
 
-    // 4 KPI Cards for Internal Interest Team (Image 1)
-    expect(screen.getByText('Assigned to Me')).toBeInTheDocument()
-    expect(screen.getByText('8')).toBeInTheDocument()
-    expect(screen.getByText('Partnerships requiring my review')).toBeInTheDocument()
-
-    expect(screen.getByText('Pending Review')).toBeInTheDocument()
-    expect(screen.getByText('4')).toBeInTheDocument()
-    expect(screen.getByText('Questionnaire not submitted')).toBeInTheDocument()
-
-    expect(screen.getByText('Completed Reviews')).toBeInTheDocument()
-    expect(screen.getAllByText('3').length).toBeGreaterThan(0)
-    expect(screen.getByText('Verdicts submitted this month')).toBeInTheDocument()
-
-    expect(screen.getByText('Overdue')).toBeInTheDocument()
-    expect(screen.getAllByText('1').length).toBeGreaterThan(0)
-    expect(screen.getByText('Reviews past their deadline')).toBeInTheDocument()
+    // Four KPI cards, scoped to the reviewer's own questionnaires
+    expectKpis([
+      ['Pending Responses', 'Assigned questionnaires awaiting submission.'],
+      ['Submitted', 'Questionnaires submitted by you.'],
+      ['Proceed Recommendations', 'Your submitted proceed verdicts.'],
+      ['Reject Recommendations', 'Your submitted reject verdicts.'],
+    ])
 
     // Vendor Name column should NOT be rendered in outside table
     expect(screen.queryByRole('columnheader', { name: 'Vendor Name' })).not.toBeInTheDocument()
@@ -368,22 +371,12 @@ describe('DashboardScreen', () => {
     }
     render(<DashboardScreen userProfile={strategyProfile} />)
 
-    // 4 KPI Cards for Strategy Team (Image 2)
-    expect(screen.getByText('Assigned Evaluations')).toBeInTheDocument()
-    expect(screen.getByText('5')).toBeInTheDocument()
-    expect(screen.getByText('Requests assigned to me')).toBeInTheDocument()
-
-    expect(screen.getByText('Pending Evaluation')).toBeInTheDocument()
-    expect(screen.getAllByText('3').length).toBeGreaterThan(0)
-    expect(screen.getByText('Pre-reads awaiting a decision')).toBeInTheDocument()
-
-    expect(screen.getByText('Verdicts Submitted')).toBeInTheDocument()
-    expect(screen.getByText('6')).toBeInTheDocument()
-    expect(screen.getByText('Completed evaluations this month')).toBeInTheDocument()
-
-    expect(screen.getByText('Due Soon')).toBeInTheDocument()
-    expect(screen.getAllByText('1').length).toBeGreaterThan(0)
-    expect(screen.getByText('Evaluation approaching deadline')).toBeInTheDocument()
+    expectKpis([
+      ['Pending Reviews', 'Strategic assessments awaiting your verdict.'],
+      ['Verdicts Submitted', 'Strategic assessments completed by you.'],
+      ['Proceed Recommendations', 'Your submitted proceed verdicts.'],
+      ['Reject Recommendations', 'Your submitted reject verdicts.'],
+    ])
 
     // Vendor Name column should NOT be rendered in outside table
     expect(screen.queryByRole('columnheader', { name: 'Vendor Name' })).not.toBeInTheDocument()
@@ -799,9 +792,12 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     expect(screen.getByText('AlphaHealth BioTech')).toBeInTheDocument()
     expect(screen.getByText('GenomicX MENA FZ-LLC')).toBeInTheDocument()
     expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
-    expect(screen.getByText('Sponsored Cases')).toBeInTheDocument()
-    expect(screen.getByText('Awaiting My Action')).toBeInTheDocument()
-    expect(screen.getByText('In Due Diligence')).toBeInTheDocument()
+    expectKpis([
+      ['Assigned Requests', 'Requests assigned to your ownership.'],
+      ['Due Diligence Pending', 'Assigned requests not yet completed.'],
+      ['Completed', 'Due diligence completed by you.'],
+      ['Overdue', 'Assigned tasks past their deadline.'],
+    ])
   })
 
   it('keeps the value stage locked for the Sponsor until the Director hands the case on', async () => {
