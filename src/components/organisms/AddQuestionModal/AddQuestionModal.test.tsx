@@ -18,22 +18,42 @@ describe('AddQuestionModal', () => {
     await user.type(screen.getByLabelText(/Response cue/), 'Name the standards followed.')
     expect(save).toBeEnabled()
 
-    await user.click(screen.getByRole('checkbox', { name: 'Research needed' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Attachment required' }))
+    // Mandatory by default; can be made optional
+    expect(screen.getByRole('checkbox', { name: 'Mandatory question' })).toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: 'Mandatory question' }))
+    expect(screen.getByText(/leave this question blank/)).toBeInTheDocument()
     await user.click(save)
     expect(onSave).toHaveBeenCalledWith({
       text: 'Describe your access controls',
       cue: 'Name the standards followed.',
-      researchNeeded: true,
-      attachmentRequired: true,
+      mandatory: false,
     })
+  })
+
+  it('edits an existing question in the same popup, prefilled', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(
+      <AddQuestionModal
+        initial={{ text: 'Old text', cue: 'Old cue', mandatory: false }}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('dialog', { name: 'Edit question' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/Question text/)).toHaveValue('Old text')
+    expect(screen.getByRole('checkbox', { name: 'Mandatory question' })).not.toBeChecked()
+    await user.clear(screen.getByLabelText(/Question text/))
+    await user.type(screen.getByLabelText(/Question text/), 'New text')
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    expect(onSave).toHaveBeenCalledWith({ text: 'New text', cue: 'Old cue', mandatory: false })
   })
 
   it('closes from the X, Cancel and Escape', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
     render(<AddQuestionModal onSave={vi.fn()} onClose={onClose} />)
-    await user.click(screen.getByRole('button', { name: 'Close add question' }))
+    await user.click(screen.getByRole('button', { name: 'Close question dialog' }))
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     await user.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalledTimes(3)

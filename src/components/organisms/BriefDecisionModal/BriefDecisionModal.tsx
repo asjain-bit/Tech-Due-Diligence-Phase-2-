@@ -4,14 +4,14 @@
  * BriefDecisionModal — Organism
  * Popup where the Director records a decision on the initial assessment brief. Approving
  * makes the reason optional, rejecting makes it mandatory, and requesting more information
- * continues to the email template. The body scrolls inside the popup.
+ * shows the email template in the same popup, with a copy button on each field. The body scrolls inside the popup.
  * Used in: PartnershipDetail
  */
 
 import React, { useEffect, useId, useState } from 'react'
 import { X } from 'lucide-react'
-import type { BriefDecisionChoice } from '@/components/organisms/BriefDecision'
-import type { BriefDecisionModalProps } from './BriefDecisionModal.types'
+import { CopyButton } from '@/components/molecules/CopyButton'
+import type { BriefDecisionChoice, BriefDecisionModalProps } from './BriefDecisionModal.types'
 
 const MAX = 500
 
@@ -42,25 +42,32 @@ const OPTIONS: {
   {
     value: 'request_info',
     title: 'Request more info',
-    hint: 'Email the vendor and put the case on hold.',
-    label: 'Information needed (optional)',
-    placeholder: 'What information do you need from the vendor?',
-    action: 'Continue to email',
+    hint: 'Email the vendor and mark the case Information Requested.',
+    label: '',
+    placeholder: '',
+    action: 'Mark information requested',
   },
 ]
 
 export const BriefDecisionModal: React.FC<BriefDecisionModalProps> = ({
   initialChoice,
   agentRecommendation,
+  email,
   onSubmit,
+  onRequestInfo,
   onClose,
 }) => {
   const [choice, setChoice] = useState(initialChoice)
   const [reason, setReason] = useState('')
+  const [subject, setSubject] = useState(email.subject)
+  const [body, setBody] = useState(email.body)
   const titleId = useId()
   const current = OPTIONS.find((o) => o.value === choice) ?? OPTIONS[0]
   const reasonRequired = choice === 'reject'
-  const canSubmit = !reasonRequired || reason.trim().length > 0
+  const isInfo = choice === 'request_info'
+  const canSubmit = isInfo
+    ? subject.trim().length > 0 && body.trim().length > 0
+    : !reasonRequired || reason.trim().length > 0
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -133,24 +140,70 @@ export const BriefDecisionModal: React.FC<BriefDecisionModalProps> = ({
             })}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="brief-decision-reason" className="text-xs font-semibold text-[#475569]">
-              {current.label}
-              {reasonRequired && <span className="text-red-500 font-semibold"> *</span>}
-            </label>
-            <textarea
-              id="brief-decision-reason"
-              rows={4}
-              maxLength={MAX}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={current.placeholder}
-              className="w-full p-3.5 rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] placeholder:text-[#9aa8b5] leading-relaxed resize-none shadow-2xs transition focus:outline-none hover:border-[#bcc7d3] focus:border-[#a3b1c2] focus:ring-0"
-            />
-            <span className="text-[11px] text-[#94a3b8] self-end">
-              {reason.length} / {MAX}
-            </span>
-          </div>
+          {isInfo ? (
+            <div className="flex flex-col gap-4" aria-label="Email to the vendor" role="group">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#475569]">To</span>
+                  <CopyButton text={email.to} label="recipient" />
+                </div>
+                <div className="px-3.5 py-2.5 rounded-xl border border-[#e2e8f0] bg-slate-50 text-sm text-[#0d212c]">
+                  {email.to}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="info-subject" className="text-xs font-semibold text-[#475569]">
+                    Subject
+                  </label>
+                  <CopyButton text={subject} label="subject" />
+                </div>
+                <input
+                  id="info-subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="w-full h-11 px-3.5 rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] shadow-2xs transition focus:outline-none hover:border-[#bcc7d3] focus:border-[#a3b1c2] focus:ring-0"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="info-body" className="text-xs font-semibold text-[#475569]">
+                    Message
+                  </label>
+                  <CopyButton text={body} label="message" />
+                </div>
+                <textarea
+                  id="info-body"
+                  rows={10}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  className="w-full p-3.5 rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] leading-relaxed resize-none shadow-2xs transition focus:outline-none hover:border-[#bcc7d3] focus:border-[#a3b1c2] focus:ring-0"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="brief-decision-reason"
+                className="text-xs font-semibold text-[#475569]"
+              >
+                {current.label}
+                {reasonRequired && <span className="text-red-500 font-semibold"> *</span>}
+              </label>
+              <textarea
+                id="brief-decision-reason"
+                rows={4}
+                maxLength={MAX}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={current.placeholder}
+                className="w-full p-3.5 rounded-xl border border-[#d6dee6] bg-white text-sm text-[#0d212c] placeholder:text-[#9aa8b5] leading-relaxed resize-none shadow-2xs transition focus:outline-none hover:border-[#bcc7d3] focus:border-[#a3b1c2] focus:ring-0"
+              />
+              <span className="text-[11px] text-[#94a3b8] self-end">
+                {reason.length} / {MAX}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-[#e2e8f0] shrink-0">
@@ -164,7 +217,11 @@ export const BriefDecisionModal: React.FC<BriefDecisionModalProps> = ({
           <button
             type="button"
             disabled={!canSubmit}
-            onClick={() => onSubmit(choice, reason.trim())}
+            onClick={() =>
+              choice === 'request_info'
+                ? onRequestInfo({ to: email.to, subject: subject.trim(), body })
+                : onSubmit(choice, reason.trim())
+            }
             className={`h-10 px-5 rounded-lg text-sm font-semibold text-white shadow-xs transition disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer ${
               choice === 'reject'
                 ? 'bg-red-600 hover:bg-red-700'

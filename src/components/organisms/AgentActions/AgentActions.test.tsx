@@ -41,7 +41,7 @@ describe('AgentActions', () => {
 
   it('shows no confidence score on any step', () => {
     const { container } = render(<AgentActions request={request} />)
-    expect(screen.queryByText(/confidence/i)).not.toBeInTheDocument()
+    expect(container.querySelector('[aria-label*="confidence" i]')).toBeNull()
     expect(container.textContent).not.toMatch(/\d+%/)
   })
 
@@ -51,23 +51,23 @@ describe('AgentActions', () => {
     expect(screen.queryByText('Commodity test')).not.toBeInTheDocument()
   })
 
-  it('opens a check to plain findings and output, then closes it', async () => {
+  it('starts with every check expanded, then collapses and reopens one', async () => {
     const user = userEvent.setup()
     render(<AgentActions request={request} />)
-    await user.click(screen.getByRole('button', { name: /Duplicate check/i }))
+    screen.getAllByRole('button').forEach((b) => expect(b).toHaveAttribute('aria-expanded', 'true'))
     expect(screen.getByText('Live cases compared')).toBeInTheDocument()
-    const output = screen.getByText('Output')
+    const output = screen.getAllByText('Output')[0]
     // Output is plain text like the other findings: same label style, no fill or stroke
     expect(output.className).toBe(screen.getByText('Live cases compared').className)
     expect(output.closest('div')?.className).not.toMatch(/bg-|border/)
     await user.click(screen.getByRole('button', { name: /Duplicate check/i }))
     expect(screen.queryByText('Live cases compared')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Duplicate check/i }))
+    expect(screen.getByText('Live cases compared')).toBeInTheDocument()
   })
 
-  it('shows reviewers for KPI mapping with their match level', async () => {
-    const user = userEvent.setup()
+  it('shows reviewers for KPI mapping with their match level', () => {
     render(<AgentActions request={request} />)
-    await user.click(screen.getByRole('button', { name: /KPI mapping/i }))
     expect(screen.getByText('Baseline needed to test it')).toBeInTheDocument()
     expect(screen.getByText('Suggested reviewers')).toBeInTheDocument()
     expect(screen.getByText('Riza Sayeed')).toBeInTheDocument()

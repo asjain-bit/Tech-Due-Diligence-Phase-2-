@@ -8,17 +8,10 @@
  */
 
 import React from 'react'
-import { Check, Paperclip, X } from 'lucide-react'
+import { Check } from 'lucide-react'
 import type { ReviewQuestionnaireProps } from './ReviewQuestionnaire.types'
 
 const MAX = 600
-
-const attachmentName = (question: string) =>
-  `${question
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .slice(0, 28)
-    .replace(/-$/, '')}.pdf`
 
 export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
   questions,
@@ -28,10 +21,9 @@ export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
   onSubmit,
   className = '',
 }) => {
-  const isDone = (id: string, attachmentRequired: boolean) =>
-    Boolean(answers[id]?.answer.trim()) && (!attachmentRequired || Boolean(answers[id]?.attachment))
-  const done = questions.filter((q) => isDone(q.id, q.attachmentRequired)).length
-  const canSubmit = questions.length > 0 && done === questions.length
+  const mandatory = questions.filter((q) => q.mandatory)
+  const done = mandatory.filter((q) => Boolean(answers[q.id]?.answer.trim())).length
+  const canSubmit = questions.length > 0 && done === mandatory.length
 
   return (
     <div
@@ -40,10 +32,10 @@ export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
       {!readOnly && (
         <div className="flex items-center justify-between gap-3 pb-6 mb-2 border-b border-[#f1f5f9]">
           <span className="text-xs text-[#64748b]">
-            Every question needs an answer. Attachments are marked where they are required.
+            Questions marked * are mandatory. Optional questions can be left blank.
           </span>
           <span className="text-xs font-medium text-[#475569]">
-            {done} of {questions.length} answered
+            {done} of {mandatory.length} mandatory answered
           </span>
         </div>
       )}
@@ -63,7 +55,12 @@ export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
                     className="text-sm font-medium text-[#0d212c] leading-relaxed"
                   >
                     {q.text}
-                    {!readOnly && <span className="text-red-500 font-semibold"> *</span>}
+                    {!readOnly &&
+                      (q.mandatory ? (
+                        <span className="text-red-500 font-semibold"> *</span>
+                      ) : (
+                        <span className="text-xs font-normal text-[#94a3b8]"> (optional)</span>
+                      ))}
                   </label>
                   <p className="text-xs text-[#64748b] leading-relaxed">{q.cue}</p>
                 </div>
@@ -87,39 +84,6 @@ export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
                     </span>
                   )}
                 </div>
-
-                {q.attachmentRequired && (
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {value.attachment ? (
-                      <span className="inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg border border-[#e2e8f0] bg-slate-50 text-xs text-[#0d212c]">
-                        <Paperclip className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
-                        {value.attachment}
-                        {!readOnly && (
-                          <button
-                            type="button"
-                            onClick={() => onChange?.(q.id, { attachment: undefined })}
-                            aria-label={`Remove attachment from question ${i + 1}`}
-                            className="p-0.5 rounded text-slate-400 hover:text-[#0d212c] cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </span>
-                    ) : (
-                      !readOnly && (
-                        <button
-                          type="button"
-                          onClick={() => onChange?.(q.id, { attachment: attachmentName(q.text) })}
-                          className="h-9 px-3.5 rounded-lg border border-[#cbd5e1] bg-white text-xs font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition inline-flex items-center gap-2"
-                        >
-                          <Paperclip className="w-3.5 h-3.5" aria-hidden="true" />
-                          Attach file
-                        </button>
-                      )
-                    )}
-                    <span className="text-[11px] text-[#64748b]">Attachment required</span>
-                  </div>
-                )}
               </div>
             </li>
           )

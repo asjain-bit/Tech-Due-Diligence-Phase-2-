@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { LayoutDashboard, PanelLeftClose, LogOut, X } from 'lucide-react'
+import { BarChart3, LayoutDashboard, PanelLeftClose, LogOut, X } from 'lucide-react'
 import { Avatar } from '@/components/atoms/Avatar'
 import type { SidebarProps } from './Sidebar.types'
 
@@ -51,8 +51,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [showLogoutConfirm])
 
-  // Only Dashboard kept per specification: "In the left nav do not keep any other pages as of now."
-  const navItems = [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }]
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'usage', label: 'Usage Insights', icon: BarChart3 },
+  ]
 
   const userInitials = userName
     .split(' ')

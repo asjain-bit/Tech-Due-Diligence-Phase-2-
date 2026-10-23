@@ -19,13 +19,13 @@ describe('questionnaire library', () => {
     })
   })
 
-  it('includes the technical questionnaire with its research and attachment flags', () => {
+  it('includes the technical questionnaire, every question mandatory, with no research or attachment flags', () => {
     const technical = getQuestionnaire('technical')
     expect(technical.name).toBe('Technical Questionnaire')
-    expect(technical.questions[0]).toMatchObject({ researchNeeded: true, attachmentRequired: true })
-    expect(technical.questions[1]).toMatchObject({
-      researchNeeded: false,
-      attachmentRequired: true,
+    technical.questions.forEach((q) => {
+      expect(q.mandatory).toBe(true)
+      expect(q).not.toHaveProperty('researchNeeded')
+      expect(q).not.toHaveProperty('attachmentRequired')
     })
   })
 

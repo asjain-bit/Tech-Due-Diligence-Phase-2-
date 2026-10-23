@@ -2,7 +2,7 @@
 
 /**
  * ReviewersLoading — Molecule
- * Compact version of the agent thinking animation, shown while the agent finds and maps the
+ * The agent thinking animation, using the full page, shown while the agent finds and maps the
  * Internal Interest or Strategy reviewers, before the stage appears.
  * Used in: PartnershipDetail
  */
@@ -20,7 +20,6 @@ export const ReviewersLoading: React.FC<ReviewersLoadingProps> = ({
   const isInternal = team === 'internal'
   return (
     <ThinkingMode
-      compact
       eyebrow="MATCHING REVIEWERS"
       stepMs={1000}
       onComplete={onComplete}

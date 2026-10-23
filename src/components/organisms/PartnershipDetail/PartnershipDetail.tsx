@@ -7,16 +7,9 @@ import {
   Check,
   X,
   User,
-  Mail,
-  Phone,
   Calendar,
   MapPin,
-  Target,
-  BarChart2,
-  ShieldCheck,
   Users,
-  Stethoscope,
-  Link2,
   Building2,
   Sparkles,
   AlertCircle,
@@ -29,7 +22,6 @@ import {
   UserPlus,
   ArrowLeftRight,
   Clock,
-  Eye,
   Pencil,
 } from 'lucide-react'
 import { StatusChip } from '@/components/atoms/StatusChip'
@@ -44,34 +36,29 @@ import { ConfirmDialog } from '@/components/molecules/ConfirmDialog'
 import { SendInternalModal } from '@/components/organisms/SendInternalModal'
 import { ThinkingMode } from '@/components/organisms/ThinkingMode'
 import { AnalysisDrawer } from '@/components/organisms/AnalysisDrawer'
-import { RequestInfoModal } from '@/components/organisms/RequestInfoModal'
-import { hasDirectorDecided, type AdminRouting } from '@/lib/caseActions'
+import { buildInfoEmail, hasDirectorDecided, type AdminRouting } from '@/lib/caseActions'
 import { AssessmentBrief } from '@/components/organisms/AssessmentBrief'
-import { BriefDecision, type BriefDecisionChoice } from '@/components/organisms/BriefDecision'
 import { BriefDecisionModal } from '@/components/organisms/BriefDecisionModal'
 import { ReviewersLoading } from '@/components/molecules/ReviewersLoading'
 import { WorkflowStepper, type WorkflowStep } from '@/components/molecules/WorkflowStepper'
-import { JudgementForm } from '@/components/organisms/JudgementForm'
+import {
+  KnowledgeBaseUpload,
+  type KnowledgeBaseFile,
+} from '@/components/organisms/KnowledgeBaseUpload'
+import { PreReadSummary } from '@/components/organisms/PreReadSummary'
+import { StrategyDecisionModal } from '@/components/organisms/StrategyDecisionModal'
 import {
   ReviewQuestionnaire,
   type QuestionAnswerValue,
 } from '@/components/organisms/ReviewQuestionnaire'
 import { VendorFormResponse } from '@/components/organisms/VendorFormResponse'
-import {
-  buildInitialJudgementEntries,
-  buildStrategyDecisionDraft,
-  isJudgementEdited,
-  JUDGEMENT_CRITERIA,
-  type JudgementEntries,
-  type JudgementEntry,
-  type StrategyDecision,
-} from '@/types/judgementCriteria'
 import { DEFAULT_QUESTIONNAIRE_ID, getQuestionnaire } from '@/types/questionnaires'
 import type { PartnershipDetailProps, DetailTab } from './PartnershipDetail.types'
 import {
   DEFAULT_INTERNAL_INTERESTS,
   DEFAULT_STRATEGY_MEMBERS,
   type InternalInterestStakeholder,
+  type StrategyDecision,
   type QuestionAnswer,
   type StrategyMemberResponse,
 } from '@/types/partnership.types'
@@ -172,15 +159,15 @@ const STRATEGY_CANDIDATE_DIRECTORY = [
   },
 ]
 
-type StepId = 'brief' | 'canvas' | 'alignment' | 'questionnaire' | 'judgement'
+const PRE_READ_CHECKS = [
+  'Reading the vendor submission',
+  'Reviewing the knowledge base',
+  'Comparing with the roadmap and backlog',
+  'Checking architecture and ownership',
+  'Preparing the pre-read summary',
+]
 
-const judgementEntriesFromResponse = (r: StrategyMemberResponse): JudgementEntries => {
-  const entries = buildInitialJudgementEntries()
-  r.judgements?.forEach((j) => {
-    entries[j.criterionId] = { value: j.value, reason: j.reason ?? '' }
-  })
-  return entries
-}
+type StepId = 'brief' | 'canvas' | 'alignment' | 'questionnaire' | 'preread'
 
 export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   request,
@@ -229,7 +216,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       question: q.text,
       cue: q.cue,
       answer: questionAnswers[q.id]?.answer ?? '',
-      attachment: questionAnswers[q.id]?.attachment,
     }))
     onSubmitReview?.(request.id, 'internal', { answers })
     setShowQuestionnaireConfirmModal(false)
@@ -238,52 +224,35 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     setReviewToast('Questionnaire submitted successfully for Director Review.')
   }
 
-  // Strategy Judgement state
-  const [judgementEntries, setJudgementEntries] = useState<JudgementEntries>(
-    buildInitialJudgementEntries
+  // Strategy Team: knowledge base, generated pre-read and the decision
+  const [kbFiles, setKbFiles] = useState<KnowledgeBaseFile[]>([])
+  const [strategyModal, setStrategyModal] = useState<'proceed' | 'reject' | null>(null)
+  const [pendingStrategy, setPendingStrategy] = useState<{
+    decision: StrategyDecision
+    reason: string
+  } | null>(null)
+  const [strategyDecided, setStrategyDecided] = useState(false)
+  const strategyMine = request.strategyTeamMembers?.[0]?.strategyResponse
+  const [lastStrategyDecision, setLastStrategyDecision] = useState<StrategyDecision | null>(null)
+  const strategyOutcome = strategyMine?.finalDecision ?? lastStrategyDecision
+  const strategyDone = strategyDecided || Boolean(request.stageApprovals?.strategy)
+  const [preReadStage, setPreReadStage] = useState<'upload' | 'generating' | 'ready'>(
+    strategyDone ? 'ready' : 'upload'
   )
-  const [strategyDecision, setStrategyDecision] = useState<StrategyDecision | null>(null)
-  const [strategyDecisionNote, setStrategyDecisionNote] = useState('')
-  const [showStrategyConfirmModal, setShowStrategyConfirmModal] = useState(false)
-  const [strategyJudgementSubmitted, setStrategyJudgementSubmitted] = useState(false)
 
-  const handleJudgementEntryChange = (id: string, patch: Partial<JudgementEntry>) => {
-    const criterion = JUDGEMENT_CRITERIA.find((c) => c.id === id)
-    setJudgementEntries((prev) => {
-      const next = { ...prev[id], ...patch }
-      // Going back to the agent's pick means there is nothing to explain
-      if (criterion && next.value === criterion.agentValue) next.reason = ''
-      return { ...prev, [id]: next }
-    })
-  }
-
-  const handleStrategyDecisionChange = (decision: StrategyDecision) => {
-    setStrategyDecision(decision)
-    setStrategyDecisionNote(buildStrategyDecisionDraft(decision, judgementEntries))
-  }
-
-  const editedJudgementCount = JUDGEMENT_CRITERIA.filter((c) =>
-    isJudgementEdited(c, judgementEntries[c.id])
-  ).length
-
-  const handleConfirmSubmitStrategyJudgement = () => {
+  const handleConfirmStrategyDecision = () => {
+    if (!pendingStrategy) return
     const response: StrategyMemberResponse = {
-      judgements: JUDGEMENT_CRITERIA.map((c) => {
-        const entry = judgementEntries[c.id]
-        return {
-          criterionId: c.id,
-          value: entry.value,
-          reason: isJudgementEdited(c, entry) ? entry.reason : undefined,
-        }
-      }),
-      finalDecision: strategyDecision ?? undefined,
-      finalDecisionNote: strategyDecisionNote,
+      documents: kbFiles.map((f) => f.name),
+      finalDecision: pendingStrategy.decision,
+      finalDecisionNote: pendingStrategy.reason,
       submittedAt: 'Just now',
     }
     onSubmitReview?.(request.id, 'strategy', { response })
-    setShowStrategyConfirmModal(false)
-    setStrategyJudgementSubmitted(true)
-    completeStep('judgement')
+    setLastStrategyDecision(pendingStrategy.decision)
+    setPendingStrategy(null)
+    setStrategyDecided(true)
+    completeStep('preread')
     setReviewToast('Strategy decision submitted successfully for Director Review.')
   }
 
@@ -298,7 +267,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     : isStrategyTeam
       ? [
           { id: 'brief', label: 'Initial Assessment Brief' },
-          { id: 'judgement', label: 'Judgement' },
+          { id: 'preread', label: 'Pre-read summary' },
         ]
       : isAdmin
         ? [{ id: 'brief', label: 'Initial Assessment Brief' }]
@@ -309,7 +278,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           ]
 
   const [localDecision, setLocalDecision] = useState<{
-    decision: BriefDecisionChoice
+    decision: 'approve' | 'reject'
     reason: string
   } | null>(null)
   const [localSent, setLocalSent] = useState<{ internal?: boolean; strategy?: boolean }>({})
@@ -379,7 +348,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const wasSeen =
     isRejected ||
     briefApproved ||
-    request.status === 'On Hold' ||
+    request.status === 'Information Requested' ||
     (isAdmin && Boolean(request.adminDecision))
   // The agent thinks first, every time a case is opened for the first time in this view
   const [runDone, setRunDone] = useState(!animateAgentRun || wasSeen)
@@ -387,6 +356,17 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     strategy: !animateAgentRun || strategySent,
     internal: !animateAgentRun || internalSent,
   })
+
+  // While the agent finds the reviewers, the animation owns the page and only the tabs stay
+  const reviewersLoading =
+    (isDirector &&
+      activeTab === 'review' &&
+      ((activeStep === 'canvas' && briefApproved && !internalApproved && !readyTeams.internal) ||
+        (activeStep === 'alignment' && !readyTeams.strategy))) ||
+    (isStrategyTeam &&
+      activeTab === 'review' &&
+      activeStep === 'preread' &&
+      preReadStage === 'generating')
 
   const stepperRef = React.useRef<HTMLDivElement>(null)
   const isFirstStepRender = React.useRef(true)
@@ -433,18 +413,11 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   }, [activeStep])
 
   // Director decision on the brief
-  const [showInfoModal, setShowInfoModal] = useState(false)
-  const [infoReason, setInfoReason] = useState('')
   const [showAnalysis, setShowAnalysis] = useState(false)
-  const [briefModal, setBriefModal] = useState<BriefDecisionChoice | null>(null)
+  const [briefModal, setBriefModal] = useState<'approve' | 'reject' | 'request_info' | null>(null)
 
-  const handleBriefDecision = (decision: BriefDecisionChoice, reason: string) => {
+  const handleBriefDecision = (decision: 'approve' | 'reject', reason: string) => {
     setBriefModal(null)
-    if (decision === 'request_info') {
-      setInfoReason(reason)
-      setShowInfoModal(true)
-      return
-    }
     setLocalDecision({ decision, reason })
     if (decision === 'approve') {
       onProceed?.(request.id, reason)
@@ -455,23 +428,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   }
 
   const handleSendInfo = (email: { to: string; subject: string; body: string }) => {
+    setBriefModal(null)
     onRequestInfo?.(request.id, email)
-    setShowInfoModal(false)
   }
 
-  const briefSubmitted: { decision: BriefDecisionChoice; reason?: string } | undefined = !isDirector
-    ? undefined
-    : request.status === 'On Hold'
-      ? {
-          decision: 'request_info',
-          reason: infoReason || 'More information requested from the vendor.',
-        }
-      : briefApproved || isRejected
-        ? {
-            decision: isRejected ? 'reject' : 'approve',
-            reason: localDecision?.reason ?? request.decision?.reason,
-          }
-        : undefined
+  const briefSubmitted =
+    isDirector && (request.status === 'Information Requested' || briefApproved || isRejected)
 
   // Partnership Admin: decision popups, with a confirmation when it changes an earlier routing
   const [adminModal, setAdminModal] = useState<'proceed' | 'reject' | null>(null)
@@ -648,7 +610,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     `Hi,\n\nWe have received a partnership request from ${request.companyName}. Please review the strategic alignment and market expansion potential for this partnership.\n\nPlease review the details in the Tech Due Diligence workspace and share your response.`
   )
   const [reviewToast, setReviewToast] = useState<string | null>(null)
-  const [showJudgementCriteriaModal, setShowJudgementCriteriaModal] = useState(false)
   // Reviewer tables: edit layout until that request is sent, tracking layout afterwards
   const canEditStrategy = !strategySent
   const canEditInternal = !internalSent
@@ -797,16 +758,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     maxLimitWarning ||
     sendTeam ||
     showAnalysis ||
-    showInfoModal ||
     pendingRouting ||
     showVendorForm ||
     isAddStrategyModalOpen ||
     deletingStrategyMember ||
     maxStrategyLimitWarning ||
     adminModal ||
-    showJudgementCriteriaModal ||
     showQuestionnaireConfirmModal ||
-    showStrategyConfirmModal
+    briefModal ||
+    strategyModal ||
+    pendingStrategy
   )
 
   React.useEffect(() => {
@@ -959,7 +920,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
-                            {person.deadline || '5 days'}
+                            {person.deadline || '4 days'}
                           </span>
                         </td>
 
@@ -1104,20 +1065,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           </div>
         </div>
       </div>
-
-      {canEditStrategy && (
-        <p className="text-xs text-[#64748b] -mt-2 pl-[30px] flex items-center gap-2 flex-wrap">
-          <span>Reviewers rate 7 criteria and give a final decision.</span>
-          <button
-            type="button"
-            onClick={() => setShowJudgementCriteriaModal(true)}
-            className="inline-flex items-center gap-1 font-medium text-[#008a8a] hover:text-[#006e6e] hover:underline cursor-pointer"
-          >
-            <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-            Preview criteria
-          </button>
-        </p>
-      )}
 
       {/* Table 2: Strategy Team Members */}
       <div className="border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-2xs">
@@ -1312,21 +1259,22 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   return (
     <div className={`flex flex-col gap-6 w-full text-[#0d212c] ${className}`.trim()}>
       {/* Top Back Link */}
-      <div>
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-[#0d212c] hover:text-[#36c0c9] transition cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Partnership Requests</span>
-        </button>
-      </div>
+      {!reviewersLoading && (
+        <div>
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-[#0d212c] hover:text-[#36c0c9] transition cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Partnership Requests</span>
+          </button>
+        </div>
+      )}
 
       {/* Tabs sit directly under the back link */}
       <div role="tablist" className="flex items-center gap-8 border-b border-[#e2e8f0] pb-0">
         {(
           [
-            { id: 'overview', label: 'Overview' },
             { id: 'review', label: 'Review' },
             { id: 'audit', label: 'Audit Log' },
           ] as const
@@ -1347,123 +1295,96 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         ))}
       </div>
 
-      {activeTab !== 'audit' && (
+      {activeTab !== 'audit' && !reviewersLoading && (
         <>
-          {/* Header Card — Status matches outside table, Submitted on moved to bottom right of Overview */}
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-xs flex flex-col gap-5">
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-              <div className="flex items-start gap-4">
-                {/* Logo box */}
-                <div className="w-14 h-14 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-center p-2.5 shrink-0 shadow-2xs">
-                  <Building2 className="w-8 h-8 text-[#36c0c9]" />
-                </div>
+          {/* Header card: title and status, with the key facts directly below */}
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] px-5 py-4 shadow-xs flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-center shrink-0 shadow-2xs">
+                <Building2 className="w-6 h-6 text-[#36c0c9]" />
+              </div>
 
-                {/* Title & Status — Same status as outside, no additional text */}
-                <div className="flex flex-col justify-center min-h-[56px]">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-xl sm:text-2xl font-semibold text-[#0d212c] tracking-tight">
-                      {request.companyName}
-                    </h1>
-                    {isAdmin && request.adminDecision && request.status !== 'On Hold' ? (
-                      <>
-                        <StatusChip
-                          label={
-                            request.adminDecision.action === 'proceed' ? 'Approved' : 'Rejected'
-                          }
-                          status={request.adminDecision.action === 'proceed' ? 'success' : 'error'}
-                          dot={false}
-                        />
-                        {request.adminDecision.type && (
-                          <StatusChip
-                            label={request.adminDecision.type}
-                            status="neutral"
-                            dot={false}
-                          />
-                        )}
-                      </>
-                    ) : (
+              <div className="flex flex-col gap-1.5 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-lg sm:text-xl font-semibold text-[#0d212c] tracking-tight">
+                    {request.companyName}
+                  </h1>
+                  {isAdmin &&
+                  request.adminDecision &&
+                  request.status !== 'Information Requested' ? (
+                    <>
                       <StatusChip
-                        label={request.status}
-                        status={getStatusCategory(request.status)}
+                        label={request.adminDecision.action === 'proceed' ? 'Approved' : 'Rejected'}
+                        status={request.adminDecision.action === 'proceed' ? 'success' : 'error'}
                         dot={false}
                       />
-                    )}
-                  </div>
+                      {request.adminDecision.type && (
+                        <StatusChip
+                          label={request.adminDecision.type}
+                          status="neutral"
+                          dot={false}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <StatusChip
+                      label={request.status}
+                      status={getStatusCategory(request.status)}
+                      dot={false}
+                    />
+                  )}
                 </div>
-              </div>
 
-              {adminCanChange && request.adminDecision && !adminEditing && (
-                <button
-                  type="button"
-                  onClick={() => setAdminEditing(true)}
-                  className="h-9 px-4 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-1.5 self-start"
-                >
-                  <Pencil className="w-4 h-4" aria-hidden="true" />
-                  Edit
-                </button>
-              )}
-            </div>
-
-            {/* Metadata items row — Vendor designation removed, Referred by retained inside, Submitted on on bottom right */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-x-6 gap-y-2 pt-4 border-t border-[#f1f5f9] text-xs text-[#64748b]">
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                {!isNonDirector && (
-                  <>
-                    <div className="flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-slate-400" />
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-[#64748b]">
+                  {!isNonDirector && (
+                    <span className="flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
                       <span className="font-medium text-[#0d212c]">{request.companyInfo.name}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{request.companyInfo.email}</span>
-                    </div>
-
-                    {request.companyInfo.phoneNumber && (
-                      <div className="flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{request.companyInfo.phoneNumber}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Founded in {request.companyInfo.yearFounded}</span>
+                    </span>
+                  )}
+                  {request.companyInfo.location && (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+                      {request.companyInfo.location}
+                    </span>
+                  )}
+                  {!isNonDirector && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-slate-400">Referred by:</span>
+                      <span className="font-medium text-[#0d212c]">
+                        {request.referredBy || '—'}
+                      </span>
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-slate-400">Submitted on:</span>
+                    <span className="font-medium text-[#0d212c]">{request.submittedOn}</span>
+                  </span>
                 </div>
-
-                {request.companyInfo.location && (
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{request.companyInfo.location}</span>
-                  </div>
-                )}
-
-                {!isNonDirector && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-400">Referred by:</span>
-                    <span className="font-medium text-[#0d212c]">{request.referredBy || '—'}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1 text-xs text-[#64748b] sm:ml-auto shrink-0 self-end sm:self-auto">
-                <span>Submitted on:</span>
-                <span className="font-medium text-[#0d212c]">{request.submittedOn}</span>
               </div>
             </div>
+
+            {adminCanChange && request.adminDecision && !adminEditing && (
+              <button
+                type="button"
+                onClick={() => setAdminEditing(true)}
+                className="h-9 px-4 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-1.5 shrink-0"
+              >
+                <Pencil className="w-4 h-4" aria-hidden="true" />
+                Edit
+              </button>
+            )}
           </div>
         </>
       )}
 
-      {/* On hold: waiting for the vendor to send more information */}
-      {request.status === 'On Hold' && (
+      {/* Information requested: waiting for the vendor to send more information */}
+      {request.status === 'Information Requested' && (
         <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 flex items-start justify-between gap-4 flex-wrap text-xs sm:text-sm animate-in fade-in">
           <div className="flex items-start gap-3">
             <Clock className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <div className="font-semibold">On hold: waiting for the vendor</div>
+              <div className="font-semibold">Information requested: waiting for the vendor</div>
               <div className="mt-1 text-xs opacity-90 leading-relaxed">
                 {request.holdInfo
                   ? `Information requested on ${request.holdInfo.requestedOn}. The case continues once the vendor replies.`
@@ -1483,302 +1404,21 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       )}
 
-      {/* Decision Status Banner (if decision has already been recorded) */}
-      {request.decision && !isAdmin && (
-        <div
-          className={`p-4 rounded-xl border flex items-start gap-3 text-xs sm:text-sm animate-in fade-in ${
-            request.decision.status === 'proceeded'
-              ? 'bg-[#e6f4ea] border-[#ceebd6] text-[#137333]'
-              : 'bg-[#fce8e6] border-[#f8c4c0] text-[#c5221f]'
-          }`}
-        >
-          {request.decision.status === 'proceeded' ? (
-            <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
-          ) : (
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-          )}
-          <div>
-            <div className="font-semibold">
-              {request.decision.status === 'proceeded'
-                ? 'Status: Approved to Proceed'
-                : 'Status: Request Rejected'}
-            </div>
-            {request.decision.reason && (
-              <div className="mt-1 text-xs opacity-90 leading-relaxed">
-                Director Notes: {request.decision.reason}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* LARGE WHITE BOX ENCLOSING TABS AND ALL CONTENT */}
-      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col gap-6">
-        {/* TAB 1: OVERVIEW */}
-        {activeTab === 'overview' && (
-          <div className="flex flex-col gap-8 w-full animate-in fade-in duration-150">
-            {/* Section 1: Workflow Progress & Agent Recommendation Chip */}
-            {!isAdmin && (
-              <>
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <h2 className="text-base font-semibold text-[#0d212c]">Workflow Progress</h2>
-
-                    {/* Agent Recommendation: one word proceed/reject and confidence level high/medium/low */}
-                    {isDirector &&
-                      (() => {
-                        const recWord =
-                          request.agentRecommendation?.status === 'reject' ? 'Reject' : 'Proceed'
-                        const rawConf = request.agentRecommendation?.confidence ?? 94
-                        const confLevel = rawConf >= 80 ? 'High' : rawConf >= 50 ? 'Medium' : 'Low'
-                        const isReject = recWord === 'Reject'
-                        return (
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium shadow-2xs border ${
-                              isReject
-                                ? 'bg-red-50 text-red-700 border-red-200'
-                                : 'bg-[#e6fffa] text-[#0f766e] border-[#a7f3d0]'
-                            }`}
-                          >
-                            <Sparkles
-                              className={`w-3.5 h-3.5 ${isReject ? 'text-red-500' : 'text-[#36c0c9]'}`}
-                            />
-                            <span>
-                              Agent Recommendation: <strong>{recWord}</strong> •{' '}
-                              <span className="font-medium">{confLevel} Confidence</span>
-                            </span>
-                          </span>
-                        )
-                      })()}
-                  </div>
-
-                  {/* Stepper visual starting directly from the left edge */}
-                  <div className="w-full overflow-x-auto pb-3 pt-2">
-                    <div className="min-w-[760px] flex items-start justify-start relative">
-                      {request.workflowStages.map((stage, idx) => {
-                        const isCompleted = stage.status === 'completed'
-                        const isInProgress = stage.status === 'in_progress'
-                        const isLast = idx === request.workflowStages.length - 1
-
-                        return (
-                          <div
-                            key={stage.id || idx}
-                            className="flex-1 flex flex-col items-start relative pr-2"
-                          >
-                            {/* Connecting Line from left node to next */}
-                            {!isLast && (
-                              <div
-                                className={`absolute top-4 left-4 w-full h-[2px] -z-0 ${
-                                  isCompleted
-                                    ? 'bg-[#10b981]'
-                                    : isInProgress
-                                      ? 'border-t-2 border-dashed border-[#36c0c9]'
-                                      : 'border-t-2 border-dotted border-[#cbd5e1]'
-                                }`}
-                              />
-                            )}
-
-                            {/* Circle Indicator aligned on the left */}
-                            <div className="relative z-10 mb-2">
-                              {isCompleted && (
-                                <div className="w-8 h-8 rounded-full bg-[#10b981] flex items-center justify-center text-white shadow-xs">
-                                  <Check className="w-4 h-4 stroke-[3]" />
-                                </div>
-                              )}
-                              {isInProgress && (
-                                <div className="w-8 h-8 rounded-full bg-white border-2 border-[#36c0c9] flex items-center justify-center shadow-xs">
-                                  <span className="w-2.5 h-2.5 rounded-full bg-[#36c0c9]" />
-                                </div>
-                              )}
-                              {!isCompleted && !isInProgress && (
-                                <div className="w-8 h-8 rounded-full bg-white border border-[#cbd5e1] flex items-center justify-center">
-                                  <span className="w-2 h-2 rounded-full bg-[#cbd5e1]" />
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Title & Subheading left-aligned */}
-                            <div className="text-left">
-                              <div className="text-xs font-semibold text-[#0d212c]">
-                                {stage.title.replace(/^\d+[\.\s]+/, '')}
-                              </div>
-                              <div
-                                className={`text-[11px] font-medium mt-0.5 ${
-                                  isInProgress ? 'text-[#36c0c9] font-medium' : 'text-[#64748b]'
-                                }`}
-                              >
-                                {stage.subheading}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="h-[1px] bg-[#f1f5f9] w-full" />
-              </>
-            )}
-
-            {/* Section 2: Solution Overview */}
-            <div className="flex flex-col gap-3">
-              <h2 className="text-base font-semibold text-[#0d212c]">Solution Overview</h2>
-              <p className="text-xs sm:text-sm text-[#475569] leading-relaxed">
-                {request.companyName} has proposed an AI-powered diagnostic platform that enables
-                early detection of chronic diseases using medical imaging and predictive analytics.
-                The solution aims to support clinicians with faster and more accurate diagnosis,
-                improving patient outcomes and operational efficiency.
-              </p>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {(
-                  request.tags || [
-                    'AI & Diagnostics',
-                    'Medical Imaging',
-                    'Clinical Decision Support',
-                  ]
-                ).map((tag, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1 rounded-xl bg-[#f0fdfa] text-[#0f766e] text-xs font-medium border border-[#ccfbf1]"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="h-[1px] bg-[#f1f5f9] w-full" />
-
-            {/* Section 3: Key Information */}
-            <div className="flex flex-col gap-4">
-              <h2 className="text-base font-semibold text-[#0d212c]">Key Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Focus Area */}
-                <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
-                    <Target className="w-4 h-4 text-[#36c0c9]" />
-                    <span>Focus Area(s)</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className="px-2.5 py-1 rounded-lg bg-[#f0fdfa] text-[#0f766e] text-xs font-medium border border-[#ccfbf1]">
-                      {request.focusArea}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Solution Maturity */}
-                <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
-                    <BarChart2 className="w-4 h-4 text-[#36c0c9]" />
-                    <span>Solution Maturity</span>
-                  </div>
-                  <div>
-                    <span className="px-3 py-1 rounded-lg bg-purple-50 text-purple-700 text-xs font-medium border border-purple-200">
-                      {request.solutionMaturity}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Regulatory Approvals */}
-                <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
-                    <ShieldCheck className="w-4 h-4 text-[#36c0c9]" />
-                    <span>Regulatory Approvals</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(
-                      request.assessmentAreas.regulatoryApprovalList || [
-                        'FDA',
-                        'CE',
-                        'Not applicable',
-                      ]
-                    ).map((appr, idx) => (
-                      <span
-                        key={idx}
-                        className={`px-2.5 py-0.5 rounded-lg text-xs font-medium border ${
-                          appr === 'Not applicable'
-                            ? 'bg-slate-50 text-slate-500 border-slate-200'
-                            : 'bg-[#f0fdfa] text-[#0f766e] border-[#ccfbf1]'
-                        }`}
-                      >
-                        {appr}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Patient Population */}
-                <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
-                    <Users className="w-4 h-4 text-[#36c0c9]" />
-                    <span>Patient Population</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(
-                      request.assessmentAreas.impactedPatientPopulations || [
-                        'Adult Patients',
-                        'Pediatric Patients',
-                      ]
-                    ).map((pop, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2.5 py-0.5 rounded-lg bg-white text-slate-700 text-xs font-medium border border-slate-200"
-                      >
-                        {pop}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Clinical Area(s) */}
-                <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
-                    <Stethoscope className="w-4 h-4 text-[#36c0c9]" />
-                    <span>Clinical Area(s)</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(
-                      request.assessmentAreas.clinicalAreas || [
-                        'Oncology',
-                        'Radiology',
-                        'Chronic Disease',
-                      ]
-                    ).map((area, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2.5 py-0.5 rounded-lg bg-white text-slate-700 text-xs font-medium border border-slate-200"
-                      >
-                        {area}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Development Approach */}
-                <div className="p-4 rounded-xl border border-[#e2e8f0] bg-slate-50/40 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#0d212c]">
-                    <Link2 className="w-4 h-4 text-[#36c0c9]" />
-                    <span>Development Approach</span>
-                  </div>
-                  <div>
-                    <span className="px-2.5 py-1 rounded-lg bg-white text-slate-700 text-xs font-medium border border-slate-200">
-                      {request.assessmentAreas.developmentApproach || 'Internally Developed'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
+      <div
+        className={
+          reviewersLoading
+            ? 'flex flex-col'
+            : 'bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col gap-6'
+        }
+      >
         {/* TAB: REVIEW — step-by-step workflow, later steps unlock one at a time */}
         {activeTab === 'review' && (
           <div
             ref={stepperRef}
             className="flex flex-col gap-8 w-full animate-in fade-in duration-200 scroll-mt-4"
           >
-            {stepperSteps.length > 1 && (
+            {stepperSteps.length > 1 && !isNonDirector && !reviewersLoading && (
               <WorkflowStepper steps={stepperSteps} activeId={activeStep} onSelect={goToStep} />
             )}
 
@@ -1795,16 +1435,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   showVerdict={isDirector || isAdmin}
                   onViewVendorResponse={() => setShowVendorForm(true)}
                   onOpenAnalysis={() => setShowAnalysis(true)}
-                  decision={
-                    isDirector && briefSubmitted ? (
-                      <BriefDecision
-                        key={request.status === 'On Hold' ? 'hold' : 'open'}
-                        agentRecommendation={request.agentRecommendation?.status}
-                        onSubmit={handleBriefDecision}
-                        submitted={briefSubmitted}
-                      />
-                    ) : undefined
-                  }
                   footer={
                     isNonDirector ? (
                       <div className="flex items-center justify-end">
@@ -1812,11 +1442,13 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           type="button"
                           onClick={() => {
                             completeStep('brief')
-                            setActiveStep(isInternalTeam ? 'questionnaire' : 'judgement')
+                            setActiveStep(isInternalTeam ? 'questionnaire' : 'preread')
                           }}
                           className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
                         >
-                          {isInternalTeam ? 'Continue to Questionnaire' : 'Continue to Judgement'}
+                          {isInternalTeam
+                            ? 'Continue to Questionnaire'
+                            : 'Continue to Knowledge Base'}
                           <ArrowRight className="w-4 h-4" aria-hidden="true" />
                         </button>
                       </div>
@@ -1918,27 +1550,47 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 </div>
               )}
 
-              {/* STEP: Judgement (Strategy Team) */}
-              {isStrategyTeam && activeStep === 'judgement' && (
-                <div className="flex flex-col gap-6 w-full max-w-4xl animate-in fade-in duration-150">
-                  <div className="flex flex-col gap-1">
-                    <h2 className="text-xl font-semibold text-[#0d212c]">Your judgement</h2>
-                    <p className="text-xs text-[#64748b]">
-                      Pre-filled by the agent, with its reasoning. Change any you disagree with and
-                      tell us why.
-                    </p>
-                  </div>
-
-                  <JudgementForm
-                    entries={judgementEntries}
-                    onEntryChange={handleJudgementEntryChange}
-                    decision={strategyDecision}
-                    onDecisionChange={handleStrategyDecisionChange}
-                    decisionNote={strategyDecisionNote}
-                    onDecisionNoteChange={setStrategyDecisionNote}
-                    readOnly={strategyJudgementSubmitted}
-                    onSubmit={() => setShowStrategyConfirmModal(true)}
-                  />
+              {/* STEP: Pre-read summary (Strategy Team) */}
+              {isStrategyTeam && activeStep === 'preread' && (
+                <div className="flex flex-col gap-6 w-full animate-in fade-in duration-150">
+                  {preReadStage === 'upload' && (
+                    <KnowledgeBaseUpload
+                      files={kbFiles}
+                      onFilesChange={setKbFiles}
+                      onGenerate={() => setPreReadStage('generating')}
+                    />
+                  )}
+                  {preReadStage === 'generating' && (
+                    <ThinkingMode
+                      title="Pre-read summary"
+                      eyebrow="GENERATING"
+                      description="The agent is reading the vendor submission and your knowledge base files to prepare the pre-read."
+                      checks={PRE_READ_CHECKS}
+                      stepMs={1100}
+                      onComplete={() => setPreReadStage('ready')}
+                    />
+                  )}
+                  {preReadStage === 'ready' && (
+                    <>
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div className="flex flex-col gap-1">
+                          <h2 className="text-xl font-semibold text-[#0d212c]">Pre-read summary</h2>
+                          <p className="text-xs text-[#64748b]">
+                            Generated by the agent from the vendor submission
+                            {kbFiles.length > 0 ? ' and your knowledge base files' : ''}.
+                          </p>
+                        </div>
+                        {strategyDone && (
+                          <StatusChip
+                            label={strategyOutcome === 'Reject' ? 'Rejected' : 'Proceeded'}
+                            status={strategyOutcome === 'Reject' ? 'error' : 'success'}
+                            dot={false}
+                          />
+                        )}
+                      </div>
+                      <PreReadSummary request={request} documents={kbFiles.map((f) => f.name)} />
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -1968,19 +1620,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         <BriefDecisionModal
           initialChoice={briefModal}
           agentRecommendation={request.agentRecommendation?.status}
+          email={buildInfoEmail(request, userProfile?.name ?? 'Director')}
           onSubmit={handleBriefDecision}
+          onRequestInfo={handleSendInfo}
           onClose={() => setBriefModal(null)}
-        />
-      )}
-
-      {/* REQUEST MORE INFO EMAIL */}
-      {showInfoModal && (
-        <RequestInfoModal
-          request={request}
-          reason={infoReason}
-          senderName={userProfile?.name ?? 'Director'}
-          onSend={handleSendInfo}
-          onClose={() => setShowInfoModal(false)}
         />
       )}
 
@@ -2342,7 +1985,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   toggle: toggleInternalSendMember,
                   note: internalSendNote,
                   setNote: setInternalSendNote,
-                  due: '5 business days',
+                  due: '4 days',
                 },
                 {
                   key: 'strategy',
@@ -2713,85 +2356,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </div>
       )}
 
-      {/* VIEW EVALUATION CRITERIA POPUP MODAL (Strategy Team) */}
-      {showJudgementCriteriaModal && (
-        <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="relative bg-white rounded-2xl max-w-xl sm:max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#e2e8f0] flex flex-col gap-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
-              <h3 className="text-base sm:text-lg font-semibold text-[#0d212c]">
-                Evaluation Criteria
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowJudgementCriteriaModal(false)}
-                className="text-[#94a3b8] hover:text-[#0d212c] p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-                aria-label="Close evaluation criteria modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* List of 7 evaluation criteria (no agent data, no dropdown input fields, only data visible) */}
-            <div className="rounded-xl border border-[#e2e8f0] bg-white divide-y divide-[#f1f5f9] overflow-hidden">
-              {[
-                {
-                  title: 'Fit to current focus areas',
-                  value: 'In scope',
-                },
-                {
-                  title: 'Duplication on the roadmap',
-                  value: 'Overlaps a roadmap item',
-                },
-                {
-                  title: 'Build, buy or partner',
-                  value: 'Build',
-                },
-                {
-                  title: 'Architecture, hosting and data residency',
-                  value: 'Does not fit',
-                },
-                {
-                  title: 'Own versus rent',
-                  value: 'Mixed',
-                },
-                {
-                  title: 'Scale across the network',
-                  value: 'High',
-                },
-                {
-                  title: 'Sovereignty and local content',
-                  value: 'Partly meets',
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-2.5 sm:py-3"
-                >
-                  <span className="text-xs sm:text-[13px] font-medium text-slate-700">
-                    {item.title}
-                  </span>
-                  <span className="text-xs font-medium text-[#0d212c] sm:text-right">
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end pt-2 border-t border-[#f1f5f9]">
-              <button
-                type="button"
-                onClick={() => setShowJudgementCriteriaModal(false)}
-                className="px-4 py-2 rounded-lg border border-[#e2e8f0] text-xs font-medium text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* VIEW MEMBER RESPONSE POPUP MODAL */}
       {viewingResponseMember && (
         <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
@@ -2851,23 +2415,42 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   id: a.questionId,
                   text: a.question,
                   cue: a.cue,
-                  researchNeeded: false,
-                  attachmentRequired: Boolean(a.attachment),
+                  mandatory: true,
                 }))}
                 answers={Object.fromEntries(
-                  viewingResponseMember.answers.map((a) => [
-                    a.questionId,
-                    { answer: a.answer, attachment: a.attachment },
-                  ])
+                  viewingResponseMember.answers.map((a) => [a.questionId, { answer: a.answer }])
                 )}
               />
             ) : viewingResponseMember.strategyResponse ? (
-              <JudgementForm
-                readOnly
-                entries={judgementEntriesFromResponse(viewingResponseMember.strategyResponse)}
-                decision={viewingResponseMember.strategyResponse.finalDecision ?? null}
-                decisionNote={viewingResponseMember.strategyResponse.finalDecisionNote ?? ''}
-              />
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-[#475569]">Decision</span>
+                    <StatusChip
+                      label={
+                        viewingResponseMember.strategyResponse.finalDecision === 'Reject'
+                          ? 'Reject'
+                          : 'Proceed'
+                      }
+                      status={
+                        viewingResponseMember.strategyResponse.finalDecision === 'Reject'
+                          ? 'error'
+                          : 'success'
+                      }
+                      dot={false}
+                    />
+                  </div>
+                  {viewingResponseMember.strategyResponse.finalDecisionNote && (
+                    <p className="text-sm text-[#0d212c] leading-relaxed">
+                      {viewingResponseMember.strategyResponse.finalDecisionNote}
+                    </p>
+                  )}
+                </div>
+                <PreReadSummary
+                  request={request}
+                  documents={viewingResponseMember.strategyResponse.documents}
+                />
+              </div>
             ) : (
               <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-3 bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
                 <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
@@ -2909,28 +2492,37 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         />
       )}
 
-      {/* SUBMIT STRATEGY DECISION CONFIRMATION */}
-      {showStrategyConfirmModal && (
+      {/* STRATEGY DECISION: reason popup, then a confirmation before it is recorded */}
+      {strategyModal && (
+        <StrategyDecisionModal
+          mode={strategyModal}
+          onClose={() => setStrategyModal(null)}
+          onConfirm={(reason) => {
+            setPendingStrategy({
+              decision: strategyModal === 'proceed' ? 'Proceed' : 'Reject',
+              reason,
+            })
+            setStrategyModal(null)
+          }}
+        />
+      )}
+      {pendingStrategy && (
         <ConfirmDialog
           title="Submit your decision?"
-          description="Your judgements and decision go to the Director. After this you will not be able to edit them."
+          description="Your decision goes to the Director. After this you will not be able to change it."
           confirmLabel="Submit"
-          onCancel={() => setShowStrategyConfirmModal(false)}
-          onConfirm={handleConfirmSubmitStrategyJudgement}
+          onCancel={() => setPendingStrategy(null)}
+          onConfirm={handleConfirmStrategyDecision}
         >
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-2 text-xs">
             <div className="flex items-center justify-between">
               <span className="text-[#64748b]">Your decision</span>
-              <span className="font-semibold text-[#0d212c]">{strategyDecision}</span>
+              <span className="font-semibold text-[#0d212c]">{pendingStrategy.decision}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[#64748b]">Judgements changed from the agent</span>
-              <span className="font-semibold text-[#0d212c]">{editedJudgementCount}</span>
-            </div>
-            {strategyDecisionNote.trim() && (
+            {pendingStrategy.reason && (
               <div className="flex flex-col gap-1 pt-2 border-t border-slate-200">
-                <span className="text-[#64748b]">Summary</span>
-                <p className="text-[#0d212c]">{strategyDecisionNote.trim()}</p>
+                <span className="text-[#64748b]">Reason</span>
+                <p className="text-[#0d212c]">{pendingStrategy.reason}</p>
               </div>
             )}
           </div>
@@ -2959,17 +2551,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       {isDirector && !briefSubmitted && activeTab !== 'audit' && activeStep === 'brief' && (
         <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
           <span className="text-sm text-[#475569]">
-            Action required: review the brief, then record your decision.
+            Review the brief, then record your decision.
           </span>
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setBriefModal('reject')}
-              className="h-10 px-5 rounded-lg border border-red-500 bg-white text-sm font-semibold text-red-600 hover:bg-red-50 cursor-pointer transition flex items-center gap-1.5"
-            >
-              <X className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
-              Reject
-            </button>
             <button
               type="button"
               onClick={() => setBriefModal('approve')}
@@ -2981,6 +2565,37 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           </div>
         </div>
       )}
+
+      {/* STRATEGY TEAM: decision bar, always in view once the pre-read is ready */}
+      {isStrategyTeam &&
+        activeTab !== 'audit' &&
+        activeStep === 'preread' &&
+        preReadStage === 'ready' &&
+        !strategyDone && (
+          <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
+            <span className="text-sm text-[#475569]">
+              Review the pre-read, then record your decision.
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setStrategyModal('reject')}
+                className="h-10 px-5 rounded-lg border border-red-500 bg-white text-sm font-semibold text-red-600 hover:bg-red-50 cursor-pointer transition flex items-center gap-1.5"
+              >
+                <X className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+                Reject
+              </button>
+              <button
+                type="button"
+                onClick={() => setStrategyModal('proceed')}
+                className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+                Proceed
+              </button>
+            </div>
+          </div>
+        )}
 
       {/* PARTNERSHIP ADMIN: decision bar, always in view so the action is obvious */}
       {isAdmin && activeTab !== 'audit' && (!previousRouting || adminEditing) && (

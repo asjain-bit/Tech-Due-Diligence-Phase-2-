@@ -5,6 +5,7 @@ import {
   formatTimestamp,
   getStageLabel,
   hasDirectorDecided,
+  buildInfoEmail,
   holdRequest,
   nextCaseCode,
   proceedRequest,
@@ -49,7 +50,9 @@ describe('getStageLabel', () => {
     expect(getStageLabel(adminCase)).toBe('Admin review')
     expect(getStageLabel(pending)).toBe('Screening & Fit')
     expect(getStageLabel(exited)).toBe('Exited')
-    expect(getStageLabel({ ...pending, status: 'On Hold' })).toBe('On hold')
+    expect(getStageLabel({ ...pending, status: 'Information Requested' })).toBe(
+      'Information requested'
+    )
     expect(getStageLabel({ ...pending, queue: 'routed', caseType: 'Procure' })).toBe(
       'Routed to Procurement'
     )
@@ -82,9 +85,9 @@ describe('director actions', () => {
     expect(next.decision?.status).toBe('rejected')
   })
 
-  it('puts a case on hold with the email, and resumes it', () => {
+  it('marks a case Information Requested with the email, and resumes it', () => {
     const held = holdRequest(pending, { to: 'a@b.com', subject: 'S', body: 'B' })
-    expect(held.status).toBe('On Hold')
+    expect(held.status).toBe('Information Requested')
     expect(held.holdInfo).toMatchObject({ to: 'a@b.com', subject: 'S', body: 'B' })
     const back = resumeRequest(held)
     expect(back.status).toBe('Pending')
@@ -259,8 +262,8 @@ describe('audit log', () => {
 
 describe('review stages', () => {
   const questions = [
-    { id: 'q1', text: 'Q1?', cue: 'Cue', researchNeeded: false, attachmentRequired: false },
-    { id: 'q2', text: 'Q2?', cue: 'Cue', researchNeeded: true, attachmentRequired: true },
+    { id: 'q1', text: 'Q1?', cue: 'Cue', mandatory: true },
+    { id: 'q2', text: 'Q2?', cue: 'Cue', mandatory: false },
   ]
   const people = INITIAL_PARTNERSHIP_REQUESTS[0].internalInterests!
 
@@ -293,7 +296,9 @@ describe('review stages', () => {
     const next = sendReview(first, 'strategy', { members: [people[0]] })
     expect(next.sent).toEqual({ internal: true, strategy: true })
     expect(next.strategyTeamMembers).toHaveLength(1)
-    expect(next.auditLog.at(-1)?.description).toBe('1 reviewer asked for a judgement.')
+    expect(next.auditLog.at(-1)?.description).toBe(
+      '1 reviewer asked to review the pre-read summary.'
+    )
   })
 
   it('sends only once per team in the log', () => {
@@ -317,7 +322,7 @@ describe('review stages', () => {
     })
     const answers = [
       { questionId: 'q1', question: 'Q1?', cue: 'Cue', answer: 'Yes' },
-      { questionId: 'q2', question: 'Q2?', cue: 'Cue', answer: 'No', attachment: 'a.pdf' },
+      { questionId: 'q2', question: 'Q2?', cue: 'Cue', answer: 'No' },
     ]
     const next = submitReview(sent, 'internal', { answers })
     expect(next.stageApprovals?.internal?.status).toBe('approved')
@@ -341,28 +346,41 @@ describe('review stages', () => {
     expect(internal.auditLog.at(-1)?.description).toBe('0 questions answered.')
     const strategy = submitReview(bare, 'strategy', {})
     expect(strategy.strategyTeamMembers).toHaveLength(1)
-    expect(strategy.auditLog.at(-1)?.description).toBe('Judgement submitted.')
+    expect(strategy.auditLog.at(-1)?.description).toBe('Decision submitted.')
   })
 
-  it('approves the Strategy stage unless the answer is No', () => {
+  it('approves the Strategy stage unless the decision is Reject', () => {
     const approved = submitReview(pending, 'strategy', {
-      response: { finalDecision: 'Proceed with a condition', finalDecisionNote: 'If UAE hosting' },
+      response: { finalDecision: 'Proceed', finalDecisionNote: 'If UAE hosting' },
     })
     expect(approved.stageApprovals?.strategy?.status).toBe('approved')
     expect(approved.strategyTeamMembers?.[0]).toMatchObject({
       status: 'Completed',
-      decision: 'Proceed with a condition',
+      decision: 'Proceed',
     })
     expect(approved.auditLog.at(-1)).toMatchObject({
       title: 'Strategy Team approved',
       kind: 'approval',
     })
 
-    const declined = submitReview(pending, 'strategy', { response: { finalDecision: 'No' } })
+    const declined = submitReview(pending, 'strategy', { response: { finalDecision: 'Reject' } })
     expect(declined.stageApprovals?.strategy?.status).toBe('declined')
     expect(declined.auditLog.at(-1)).toMatchObject({
       title: 'Strategy Team declined',
       kind: 'critical',
     })
+  })
+})
+
+describe('buildInfoEmail', () => {
+  it('starts an email to the vendor contact from the Director', () => {
+    const email = buildInfoEmail(pending, 'Zaid Al Ali')
+    expect(email.to).toBe(pending.companyInfo.email)
+    expect(email.subject).toBe(
+      `More information needed: ${pending.requestCode} ${pending.companyName}`
+    )
+    expect(email.body).toContain(`Hi ${pending.companyInfo.name},`)
+    expect(email.body).toContain('Zaid Al Ali')
+    expect(email.body).toContain('Information Requested')
   })
 })

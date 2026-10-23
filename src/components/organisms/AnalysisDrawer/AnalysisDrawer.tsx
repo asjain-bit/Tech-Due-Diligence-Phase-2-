@@ -79,16 +79,16 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({ request, actions
 
           <AgentActions request={request} actions={actions} />
 
-          <div className="flex flex-col gap-1.5 pt-5 border-t border-[#e2e8f0]">
-            <h3 className="text-sm font-semibold text-[#0d212c]">Summary of findings</h3>
-            <p className="text-xs text-[#64748b] leading-relaxed">
-              {attention.length === 0
-                ? 'All checks passed. Nothing needs attention before you decide.'
-                : `All core checks ran. ${attention.length} ${
-                    attention.length === 1 ? 'item needs' : 'items need'
-                  } attention: ${attention.map((a) => a.title.toLowerCase()).join(', ')}.`}
-            </p>
-          </div>
+          {attention.length > 0 && (
+            <div className="flex flex-col gap-1.5 pt-5 border-t border-[#e2e8f0]">
+              <h3 className="text-sm font-semibold text-[#0d212c]">Summary of findings</h3>
+              <p className="text-xs text-[#64748b] leading-relaxed">
+                {`All core checks ran. ${attention.length} ${
+                  attention.length === 1 ? 'item needs' : 'items need'
+                } attention: ${attention.map((a) => a.title.toLowerCase()).join(', ')}.`}
+              </p>
+            </div>
+          )}
         </div>
       </aside>
     </div>

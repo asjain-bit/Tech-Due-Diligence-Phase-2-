@@ -3,7 +3,7 @@ import type { InternalInterestStakeholder, QuestionnaireQuestion } from '@/types
 export interface SendInternalPayload {
   memberIds: string[]
   note: string
-  questionnaire: { name: string; questions: QuestionnaireQuestion[] }
+  questionnaire: { name: string; version: number; questions: QuestionnaireQuestion[] }
 }
 
 export interface SendInternalModalProps {

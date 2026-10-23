@@ -31,18 +31,18 @@ describe('AnalysisDrawer', () => {
     expect(screen.getByText(/2 items need attention/)).toBeInTheDocument()
   })
 
-  it('says nothing needs attention when every check passes', () => {
+  it('leaves out the summary of findings when there is nothing to show', () => {
     renderDrawer(0)
-    expect(
-      screen.getByText(/Nothing needs attention before you decide|need attention/)
-    ).toBeInTheDocument()
+    expect(screen.queryByText('Summary of findings')).not.toBeInTheDocument()
+    expect(screen.queryByText(/risks? identified/)).not.toBeInTheDocument()
   })
 
-  it('opens a check to show its detail', async () => {
+  it('shows every check expanded, and lets the user collapse one', async () => {
     const user = userEvent.setup()
     renderDrawer()
-    await user.click(screen.getByRole('button', { name: /Duplicate check/i }))
     expect(screen.getByText('Live cases compared')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Duplicate check/i }))
+    expect(screen.queryByText('Live cases compared')).not.toBeInTheDocument()
   })
 
   it('closes from the button, the backdrop and Escape', async () => {

@@ -2,7 +2,6 @@ import type { QuestionnaireQuestion } from '@/types/partnership.types'
 
 export interface QuestionAnswerValue {
   answer: string
-  attachment?: string
 }
 
 export interface ReviewQuestionnaireProps {

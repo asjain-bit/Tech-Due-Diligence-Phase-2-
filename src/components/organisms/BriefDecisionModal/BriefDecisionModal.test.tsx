@@ -1,14 +1,33 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { BriefDecisionModal } from './BriefDecisionModal'
+import type { BriefDecisionModalProps } from './BriefDecisionModal.types'
+
+const email = { to: 'sarah@vendor.com', subject: 'More info', body: 'Hi Sarah' }
+
+const renderModal = (props: Partial<BriefDecisionModalProps> = {}) => {
+  const onSubmit = vi.fn()
+  const onRequestInfo = vi.fn()
+  const onClose = vi.fn()
+  render(
+    <BriefDecisionModal
+      initialChoice="approve"
+      email={email}
+      onSubmit={onSubmit}
+      onRequestInfo={onRequestInfo}
+      onClose={onClose}
+      {...props}
+    />
+  )
+  return { onSubmit, onRequestInfo, onClose }
+}
 
 describe('BriefDecisionModal', () => {
   it('approves with an optional reason', async () => {
     const user = userEvent.setup()
-    const onSubmit = vi.fn()
-    render(<BriefDecisionModal initialChoice="approve" onSubmit={onSubmit} onClose={vi.fn()} />)
+    const { onSubmit } = renderModal()
     expect(
       screen.getByRole('radio', { name: /Approve for internal review/, checked: true })
     ).toBeInTheDocument()
@@ -19,8 +38,7 @@ describe('BriefDecisionModal', () => {
 
   it('needs a reason to reject', async () => {
     const user = userEvent.setup()
-    const onSubmit = vi.fn()
-    render(<BriefDecisionModal initialChoice="reject" onSubmit={onSubmit} onClose={vi.fn()} />)
+    const { onSubmit } = renderModal({ initialChoice: 'reject' })
     const reject = screen.getByRole('button', { name: 'Reject request' })
     expect(reject).toBeDisabled()
     await user.type(screen.getByLabelText(/^Reason/), 'Duplicate')
@@ -28,27 +46,41 @@ describe('BriefDecisionModal', () => {
     expect(onSubmit).toHaveBeenCalledWith('reject', 'Duplicate')
   })
 
-  it('continues to the email template for more information', async () => {
+  it('shows the email template in the same popup, with a copy button on each field', async () => {
     const user = userEvent.setup()
-    const onSubmit = vi.fn()
-    render(<BriefDecisionModal initialChoice="approve" onSubmit={onSubmit} onClose={vi.fn()} />)
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
+    const { onRequestInfo } = renderModal()
     await user.click(screen.getByRole('radio', { name: /Request more info/ }))
-    await user.type(screen.getByLabelText(/Information needed/), 'Share documents')
-    await user.click(screen.getByRole('button', { name: 'Continue to email' }))
-    expect(onSubmit).toHaveBeenCalledWith('request_info', 'Share documents')
+    const group = within(screen.getByRole('group', { name: 'Email to the vendor' }))
+    expect(group.getByText('sarah@vendor.com')).toBeInTheDocument()
+    expect(group.getByLabelText('Subject')).toHaveValue('More info')
+    expect(group.getByLabelText('Message')).toHaveValue('Hi Sarah')
+    expect(screen.queryByLabelText(/^Reason/)).not.toBeInTheDocument()
+    expect(group.getAllByRole('button', { name: /^Copy / })).toHaveLength(3)
+
+    await user.click(group.getByRole('button', { name: 'Copy recipient' }))
+    expect(writeText).toHaveBeenCalledWith('sarah@vendor.com')
+
+    await user.clear(group.getByLabelText('Subject'))
+    await user.type(group.getByLabelText('Subject'), 'Need documents')
+    await user.click(screen.getByRole('button', { name: 'Mark information requested' }))
+    expect(onRequestInfo).toHaveBeenCalledWith({
+      to: 'sarah@vendor.com',
+      subject: 'Need documents',
+      body: 'Hi Sarah',
+    })
+  })
+
+  it('cannot send an empty email', async () => {
+    const user = userEvent.setup()
+    renderModal({ initialChoice: 'request_info' })
+    await user.clear(screen.getByLabelText('Message'))
+    expect(screen.getByRole('button', { name: 'Mark information requested' })).toBeDisabled()
   })
 
   it('hints the agent recommendation, scrolls its body and closes', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
-    render(
-      <BriefDecisionModal
-        initialChoice="approve"
-        agentRecommendation="reject"
-        onSubmit={vi.fn()}
-        onClose={onClose}
-      />
-    )
+    const { onClose } = renderModal({ agentRecommendation: 'reject' })
     expect(screen.getByText('Agent recommends')).toBeInTheDocument()
     expect(screen.getByRole('dialog').className).toContain('max-h-[90vh]')
     await user.keyboard('{Escape}')

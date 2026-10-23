@@ -12,6 +12,8 @@ import React, { useEffect, useId, useState } from 'react'
 import { ArrowLeft, ArrowRight, Calendar, Check, Send, X } from 'lucide-react'
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog'
 import { QuestionnaireEditor } from '@/components/organisms/QuestionnaireEditor'
+import type { QuestionnaireVersion } from '@/components/organisms/QuestionnaireEditor/QuestionnaireEditor.types'
+import type { QuestionnaireQuestion } from '@/types/partnership.types'
 import { cloneQuestions, DEFAULT_QUESTIONNAIRE_ID, getQuestionnaire } from '@/types/questionnaires'
 import type { SendInternalModalProps } from './SendInternalModal.types'
 
@@ -23,9 +25,17 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
 }) => {
   const [selected, setSelected] = useState<string[]>(members.map((m) => m.id))
   const [questionnaireId, setQuestionnaireId] = useState(DEFAULT_QUESTIONNAIRE_ID)
-  const [questions, setQuestions] = useState(() =>
-    cloneQuestions(getQuestionnaire(DEFAULT_QUESTIONNAIRE_ID).questions)
-  )
+  // Every change to the questions is saved as a new version; the last one is current
+  const [versions, setVersions] = useState<QuestionnaireVersion[]>(() => [
+    {
+      version: 1,
+      label: 'Original',
+      questions: cloneQuestions(getQuestionnaire(DEFAULT_QUESTIONNAIRE_ID).questions),
+    },
+  ])
+  const questions = versions[versions.length - 1].questions
+  const saveVersion = (next: QuestionnaireQuestion[], label: string) =>
+    setVersions((prev) => [...prev, { version: prev.length + 1, label, questions: next }])
   const [note, setNote] = useState(defaultNote)
   const [confirming, setConfirming] = useState(false)
   const [step, setStep] = useState<'questions' | 'reviewers'>('questions')
@@ -73,11 +83,11 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
             </div>
             <div>
               <h3 id={titleId} className="text-lg font-semibold text-[#0d212c]">
-                Send to Internal Interest
+                {step === 'questions' ? 'Select questionnaire' : 'Select reviewers'}
               </h3>
               <p className="text-xs text-[#64748b] mt-0.5">
                 {step === 'questions'
-                  ? 'Step 1 of 2: choose the questionnaire and edit its questions.'
+                  ? 'Step 1 of 2: choose the questionnaire and edit its questions for the Internal Interest team.'
                   : 'Step 2 of 2: choose who answers, then send.'}
               </p>
             </div>
@@ -98,10 +108,21 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
               questionnaireId={questionnaireId}
               onQuestionnaireChange={(id) => {
                 setQuestionnaireId(id)
-                setQuestions(cloneQuestions(getQuestionnaire(id).questions))
+                setVersions([
+                  {
+                    version: 1,
+                    label: 'Original',
+                    questions: cloneQuestions(getQuestionnaire(id).questions),
+                  },
+                ])
               }}
               questions={questions}
-              onQuestionsChange={setQuestions}
+              onQuestionsChange={saveVersion}
+              versions={versions}
+              onRestore={(n) => {
+                const target = versions.find((v) => v.version === n)
+                if (target) saveVersion(cloneQuestions(target.questions), `Restored v${n}`)
+              }}
             />
           ) : (
             <>
@@ -184,7 +205,7 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
           <div className="flex flex-col gap-1">
             <span className="inline-flex items-center gap-1.5 text-xs text-[#64748b]">
               <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
-              Response due in 5 business days
+              SLA: 4 days to answer
             </span>
             {hint && <span className="text-xs text-amber-700">{hint}</span>}
           </div>
@@ -245,7 +266,11 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
             onSend({
               memberIds: selected,
               note,
-              questionnaire: { name: getQuestionnaire(questionnaireId).name, questions },
+              questionnaire: {
+                name: getQuestionnaire(questionnaireId).name,
+                version: versions[versions.length - 1].version,
+                questions,
+              },
             })
           }
         />

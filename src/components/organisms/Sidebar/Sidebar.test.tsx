@@ -39,6 +39,21 @@ describe('Sidebar', () => {
     expect(handleTabChange).toHaveBeenCalledWith('dashboard')
   })
 
+  it('has a Usage Insights item that opens its page', async () => {
+    const handleTabChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Sidebar
+        activeTab="dashboard"
+        onTabChange={handleTabChange}
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+      />
+    )
+    await user.click(screen.getByText('Usage Insights'))
+    expect(handleTabChange).toHaveBeenCalledWith('usage')
+  })
+
   it('opens and cancels logout modal in expanded state', async () => {
     const handleSignOut = vi.fn()
     const user = userEvent.setup()

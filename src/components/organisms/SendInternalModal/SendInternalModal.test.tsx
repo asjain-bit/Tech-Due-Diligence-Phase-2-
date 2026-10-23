@@ -25,7 +25,8 @@ const next = (user: ReturnType<typeof userEvent.setup>) =>
 describe('SendInternalModal', () => {
   it('shows the questionnaire first, without the reviewers', () => {
     renderModal()
-    expect(screen.getByRole('dialog', { name: 'Send to Internal Interest' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Select questionnaire' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Version 1')).toBeInTheDocument()
     expect(screen.getByText(/Step 1 of 2/)).toBeInTheDocument()
     expect(screen.getByLabelText('Questionnaire')).toHaveValue('internal-evaluation')
     expect(
@@ -43,6 +44,13 @@ describe('SendInternalModal', () => {
     expect(dialog.querySelector('.overflow-y-auto')).not.toBeNull()
   })
 
+  it('titles step 2 Select reviewers', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await next(user)
+    expect(screen.getByRole('dialog', { name: 'Select reviewers' })).toBeInTheDocument()
+  })
+
   it('swaps to the reviewers and a note once the questions are set', async () => {
     const user = userEvent.setup()
     renderModal()
@@ -51,7 +59,7 @@ describe('SendInternalModal', () => {
     expect(screen.getByText('(5 selected)')).toBeInTheDocument()
     expect(screen.queryByLabelText('Questionnaire')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Note to Internal Interest')).toHaveValue('Hi team')
-    expect(screen.getByText('Response due in 5 business days')).toBeInTheDocument()
+    expect(screen.getByText('SLA: 4 days to answer')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.getByLabelText('Questionnaire')).toBeInTheDocument()
   })
@@ -77,6 +85,8 @@ describe('SendInternalModal', () => {
     expect(payload.memberIds).not.toContain('int-1')
     expect(payload.questionnaire.name).toBe('Technical Questionnaire')
     expect(payload.questionnaire.questions).toHaveLength(2)
+    // Deleting a question saved a second version
+    expect(payload.questionnaire.version).toBe(2)
     expect(payload.note).toBe('Hi team')
   })
 
@@ -97,13 +107,9 @@ describe('SendInternalModal', () => {
     expect(onSend).not.toHaveBeenCalled()
   })
 
-  it('cannot move on without valid questions or send without reviewers', async () => {
+  it('cannot move on without questions or send without reviewers', async () => {
     const user = userEvent.setup()
     renderModal()
-    const nextButton = screen.getByRole('button', { name: 'Next' })
-    await user.clear(screen.getByTestId('question-1').querySelector('input') as HTMLInputElement)
-    expect(nextButton).toBeDisabled()
-    expect(screen.getByText('Every question needs text and a response cue.')).toBeInTheDocument()
     for (let i = 5; i >= 1; i--) {
       await user.click(screen.getByRole('button', { name: `Delete question ${i}` }))
     }

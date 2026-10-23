@@ -1,6 +1,5 @@
-import type { StrategyDecision } from './judgementCriteria'
-
-export type PartnershipStatus = 'Pending' | 'In Progress' | 'At Risk' | 'Exited' | 'On Hold'
+export type PartnershipStatus =
+  'Pending' | 'In Progress' | 'At Risk' | 'Exited' | 'Information Requested'
 
 /** How the Partnership Admin routes a case */
 export type CaseType = 'Partnership' | 'Procure' | 'M&A'
@@ -29,8 +28,8 @@ export interface QuestionnaireQuestion {
   text: string
   /** Guidance shown to the person answering */
   cue: string
-  researchNeeded: boolean
-  attachmentRequired: boolean
+  /** Mandatory questions must be answered before the reviewer can submit */
+  mandatory: boolean
 }
 
 export interface QuestionAnswer {
@@ -38,7 +37,6 @@ export interface QuestionAnswer {
   question: string
   cue: string
   answer: string
-  attachment?: string
 }
 
 export interface StageApproval {
@@ -97,16 +95,14 @@ export interface UploadedDoc {
   type: string
 }
 
-export interface StrategyJudgementResponse {
-  criterionId: string
-  value: string
-  /** Why the reviewer changed the agent's pre-fill (only when edited) */
-  reason?: string
-}
+/** The Strategy Team's call on the pre-read summary */
+export type StrategyDecision = 'Proceed' | 'Reject'
 
 export interface StrategyMemberResponse {
-  judgements?: StrategyJudgementResponse[]
+  /** Knowledge base files the reviewer added before the pre-read was generated */
+  documents?: string[]
   finalDecision?: StrategyDecision
+  /** The reviewer's reason (optional for Proceed, mandatory for Reject) */
   finalDecisionNote?: string
   submittedAt?: string
 }
@@ -196,7 +192,7 @@ export interface PartnershipRequest {
   /** Approval from each reviewing team; the next stage opens once a team has approved */
   stageApprovals?: { internal?: StageApproval; strategy?: StageApproval }
   /** The questionnaire the Director sent to the Internal Interest team */
-  sentQuestionnaire?: { name: string; questions: QuestionnaireQuestion[] }
+  sentQuestionnaire?: { name: string; version?: number; questions: QuestionnaireQuestion[] }
 }
 
 export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
@@ -211,7 +207,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     avatarColorBg: '#dbeafe',
     avatarColorText: '#1e40af',
     status: 'Completed',
-    deadline: '5 days',
+    deadline: '4 days',
     decision: 'Proceed',
     source: 'ai',
     answers: [
@@ -262,7 +258,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     avatarColorBg: '#f3e8ff',
     avatarColorText: '#6b21a8',
     status: 'In Progress',
-    deadline: '5 days',
+    deadline: '4 days',
     decision: '-',
     source: 'ai',
   },
@@ -277,7 +273,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     avatarColorBg: '#d1fae5',
     avatarColorText: '#065f46',
     status: 'Pending',
-    deadline: '5 days',
+    deadline: '4 days',
     decision: '-',
     source: 'ai',
   },
@@ -292,7 +288,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     avatarColorBg: '#ffedd5',
     avatarColorText: '#9a3412',
     status: 'Pending',
-    deadline: '5 days',
+    deadline: '4 days',
     decision: '-',
     source: 'ai',
   },
@@ -307,7 +303,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     avatarColorBg: '#fce7f3',
     avatarColorText: '#9d174d',
     status: 'Pending',
-    deadline: '5 days',
+    deadline: '4 days',
     decision: '-',
     source: 'ai',
   },
@@ -326,31 +322,13 @@ export const DEFAULT_STRATEGY_MEMBERS: InternalInterestStakeholder[] = [
     avatarColorText: '#1e40af',
     status: 'Completed',
     deadline: '2-3 days',
-    decision: 'Proceed with a condition',
+    decision: 'Proceed',
     source: 'ai',
     strategyResponse: {
-      judgements: [
-        { criterionId: 'focus_areas', value: 'In scope' },
-        { criterionId: 'roadmap', value: 'Overlap a roadmap item' },
-        {
-          criterionId: 'build_buy',
-          value: 'Partner',
-          reason:
-            'The vendor already holds the validated model. Partnering is faster than building and the CoE has no capacity this year.',
-        },
-        {
-          criterionId: 'architecture',
-          value: 'Fits with conditions',
-          reason:
-            'Vendor confirmed in the call that a UAE-hosted deployment is possible. Treat it as a condition of contract.',
-        },
-        { criterionId: 'own_rent', value: 'Mixed' },
-        { criterionId: 'scale', value: 'High' },
-        { criterionId: 'sovereignty', value: 'Partially meets' },
-      ],
-      finalDecision: 'Proceed with a condition',
+      documents: ['MedTech_Innovations_Pitch_Deck.pptx', 'Vendor_Security_Questionnaire.docx'],
+      finalDecision: 'Proceed',
       finalDecisionNote:
-        'Proceed only if the vendor commits to UAE hosting and registers a local entity. Review again once both are confirmed in writing.',
+        'Proceed on the condition that the vendor commits to UAE hosting and registers a local entity.',
       submittedAt: 'Yesterday at 4:30 PM',
     },
   },
@@ -558,7 +536,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
       {
         id: 'seed-8',
         title: 'Request sent to Strategy Team',
-        description: '1 reviewer asked for a judgement.',
+        description: '1 reviewer asked to review the pre-read summary.',
         actor: 'Zaid Al Ali (Director)',
         kind: 'user',
         timestamp: '12 Oct 2026, 03:00 PM',
@@ -742,7 +720,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
       {
         id: 'seed-8',
         title: 'Request sent to Strategy Team',
-        description: '1 reviewer asked for a judgement.',
+        description: '1 reviewer asked to review the pre-read summary.',
         actor: 'Zaid Al Ali (Director)',
         kind: 'user',
         timestamp: '04 Oct 2026, 12:20 PM',

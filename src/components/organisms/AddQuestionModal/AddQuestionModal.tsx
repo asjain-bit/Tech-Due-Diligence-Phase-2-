@@ -2,22 +2,24 @@
 
 /**
  * AddQuestionModal — Organism
- * Small dialog for adding a new question to the questionnaire the Director is sending.
+ * Small dialog for adding a question to the questionnaire the Director is sending, or
+ * editing an existing one. A question is either mandatory or optional for the reviewer.
  * Used in: QuestionnaireEditor
  */
 
 import React, { useEffect, useId, useState } from 'react'
 import { X } from 'lucide-react'
+import { Checkbox } from '@/components/atoms/Checkbox'
 import type { AddQuestionModalProps } from './AddQuestionModal.types'
 
 const FIELD =
   'w-full rounded-lg border border-[#d6dee6] bg-white text-sm text-[#0d212c] placeholder:text-[#9aa8b5] transition hover:border-[#bcc7d3] focus:outline-none focus:border-[#a3b1c2]'
 
-export const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onSave, onClose }) => {
-  const [text, setText] = useState('')
-  const [cue, setCue] = useState('')
-  const [researchNeeded, setResearchNeeded] = useState(false)
-  const [attachmentRequired, setAttachmentRequired] = useState(false)
+export const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ initial, onSave, onClose }) => {
+  const isEdit = Boolean(initial)
+  const [text, setText] = useState(initial?.text ?? '')
+  const [cue, setCue] = useState(initial?.cue ?? '')
+  const [mandatory, setMandatory] = useState(initial?.mandatory ?? true)
   const titleId = useId()
 
   useEffect(() => {
@@ -40,12 +42,12 @@ export const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onSave, onCl
       >
         <div className="flex items-center justify-between gap-3 pb-4 border-b border-[#e2e8f0]">
           <h3 id={titleId} className="text-xl font-semibold text-[#0d212c]">
-            Add new question
+            {isEdit ? 'Edit question' : 'Add new question'}
           </h3>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close add question"
+            aria-label="Close question dialog"
             className="text-[#94a3b8] hover:text-[#0d212c] p-1 rounded-lg hover:bg-slate-100 cursor-pointer transition"
           >
             <X className="w-5 h-5" />
@@ -79,26 +81,12 @@ export const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onSave, onCl
           />
         </div>
 
-        <div className="flex items-center gap-8 flex-wrap">
-          <label className="flex items-center gap-2.5 text-sm font-medium text-[#0d212c] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={researchNeeded}
-              onChange={(e) => setResearchNeeded(e.target.checked)}
-              className="w-4 h-4 accent-[#36c0c9]"
-            />
-            Research needed
-          </label>
-          <label className="flex items-center gap-2.5 text-sm font-medium text-[#0d212c] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={attachmentRequired}
-              onChange={(e) => setAttachmentRequired(e.target.checked)}
-              className="w-4 h-4 accent-[#36c0c9]"
-            />
-            Attachment required
-          </label>
-        </div>
+        <Checkbox checked={mandatory} onChange={setMandatory} label="Mandatory question" />
+        <p className="-mt-3 text-xs text-[#64748b]">
+          {mandatory
+            ? 'The reviewer must answer this question before they can submit.'
+            : 'Optional: the reviewer can leave this question blank.'}
+        </p>
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e2e8f0]">
           <button
@@ -115,13 +103,12 @@ export const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onSave, onCl
               onSave({
                 text: text.trim(),
                 cue: cue.trim(),
-                researchNeeded,
-                attachmentRequired,
+                mandatory,
               })
             }
             className="h-11 px-6 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:bg-slate-400 disabled:hover:bg-slate-400 disabled:cursor-not-allowed text-white text-sm font-semibold transition cursor-pointer"
           >
-            Save question
+            {isEdit ? 'Save changes' : 'Save question'}
           </button>
         </div>
       </div>

@@ -2,8 +2,8 @@
 
 /**
  * AgentActions — Organism
- * The checks the agent ran for a case, as a plain list separated by dividers. Each check opens
- * to its findings and output. Confidence is always shown as a level, never a percentage.
+ * The checks the agent ran for a case, as a plain list separated by dividers. Every check starts expanded
+ * with its findings and output, and can be collapsed. Confidence is always shown as a level, never a percentage.
  * Used in: AnalysisDrawer
  */
 
@@ -65,9 +65,10 @@ export const AgentActions: React.FC<AgentActionsProps> = ({
 }) => {
   const built = useMemo(() => buildAgentActions(request), [request])
   const actions = actionsProp ?? built
-  const [open, setOpen] = useState<Record<string, boolean>>({})
+  // Every check starts expanded; the user can collapse the ones they do not need
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
-  const toggle = (id: string) => setOpen((prev) => ({ ...prev, [id]: !prev[id] }))
+  const toggle = (id: string) => setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }))
 
   return (
     <ol
@@ -75,7 +76,7 @@ export const AgentActions: React.FC<AgentActionsProps> = ({
       className={`flex flex-col divide-y divide-[#e2e8f0] ${className}`.trim()}
     >
       {actions.map((action) => {
-        const isOpen = Boolean(open[action.id])
+        const isOpen = !collapsed[action.id]
         const Icon = ICONS[action.icon]
         const panelId = `agent-action-${action.id}`
         return (

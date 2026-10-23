@@ -114,7 +114,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         return 'error'
       case 'Exited':
         return 'neutral'
-      case 'On Hold':
+      case 'Information Requested':
         return 'neutral'
       default:
         return 'neutral'
@@ -147,7 +147,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     email: { to: string; subject: string; body: string }
   ) => {
     updateRequest(requestId, (r) => holdRequest(r, email))
-    notify('Information request sent. The case is on hold until the vendor replies.')
+    notify(
+      'Information request sent. The case is marked Information Requested until the vendor replies.'
+    )
   }
 
   const handleResume = (requestId: string) => {
@@ -258,9 +260,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             count: scopedRequests.filter((r) => r.status === 'Exited').length,
           },
           {
-            key: 'on hold',
-            label: 'On Hold',
-            count: scopedRequests.filter((r) => r.status === 'On Hold').length,
+            key: 'information requested',
+            label: 'Information Requested',
+            count: scopedRequests.filter((r) => r.status === 'Information Requested').length,
           },
         ]
       : []),
@@ -405,7 +407,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">3</div>
               <div className="h-[1px] bg-slate-100 w-full" />
               <div className="text-xs font-medium text-[#64748b]">
-                Judgement criteria awaiting review
+                Pre-reads awaiting a decision
               </div>
             </div>
 
@@ -575,7 +577,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   <>
                     <th className="py-4 px-4">Company</th>
                     <th className="py-4 px-4">Solution description</th>
-                    <th className="py-4 px-4">Type</th>
+                    {isAdmin && <th className="py-4 px-4">Type</th>}
                     <th className="py-4 px-4">Stage</th>
                     <th className="py-4 px-4">Days in stage</th>
                     <th className="py-4 px-4">Owner</th>
@@ -587,7 +589,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <tbody className="divide-y divide-[#e2e8f0]/60">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={isNonDirector ? 7 : 8} className="py-16 text-center text-[#64748b]">
+                  <td
+                    colSpan={isNonDirector ? 7 : isAdmin ? 8 : 7}
+                    className="py-16 text-center text-[#64748b]"
+                  >
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
                         <Inbox className="w-6 h-6 stroke-[1.5]" />
@@ -667,15 +672,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                           />
                         </td>
 
-                        <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] whitespace-nowrap">
-                          {req.caseType ? (
-                            <span className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs">
-                              {req.caseType}
-                            </span>
-                          ) : (
-                            <span className="text-[#94a3b8]">Unassigned</span>
-                          )}
-                        </td>
+                        {isAdmin && (
+                          <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] whitespace-nowrap">
+                            {req.caseType ? (
+                              <span className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs">
+                                {req.caseType}
+                              </span>
+                            ) : (
+                              <span className="text-[#94a3b8]">Unassigned</span>
+                            )}
+                          </td>
+                        )}
 
                         <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] whitespace-nowrap">
                           {getStageLabel(req)}

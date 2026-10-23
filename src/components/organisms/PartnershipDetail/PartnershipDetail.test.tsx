@@ -85,30 +85,46 @@ describe('PartnershipDetail', () => {
       const title = screen.getByRole('heading', { name: 'MedTech Innovations' })
       expect(back.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(tabs.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
-        'Overview',
-        'Review',
-        'Audit Log',
-      ])
+      // No Overview tab on any profile
+      expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Review', 'Audit Log'])
     })
 
-    it('renders the header card with contact details for the Director', () => {
+    it('shows a compact header card: vendor, location, referred by and submitted on', () => {
       renderDetail()
-      expect(screen.getByText('Pending')).toBeInTheDocument()
-      expect(screen.getAllByText('Sarah Ahmed').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('sarah@medtechinnovations.com').length).toBeGreaterThan(0)
-      expect(screen.getByText('Founded in 2018')).toBeInTheDocument()
-      expect(screen.getByText('Referred by:')).toBeInTheDocument()
+      const card = screen
+        .getByRole('heading', { name: 'MedTech Innovations' })
+        .closest('.rounded-2xl') as HTMLElement
+      expect(within(card).getByText('Pending')).toBeInTheDocument()
+      expect(within(card).getByText('Sarah Ahmed')).toBeInTheDocument()
+      expect(within(card).getByText('UAE, Dubai')).toBeInTheDocument()
+      expect(within(card).getByText('Referred by:')).toBeInTheDocument()
+      expect(within(card).getByText('Submitted on:')).toBeInTheDocument()
+      // No phone, email, founding year or separator line
+      expect(card.textContent).not.toMatch(/@|\+971|Founded in/)
+      expect(card.querySelector('.border-t')).toBeNull()
     })
 
-    it('keeps the Overview tab with workflow progress and the verdict chip', async () => {
-      const user = userEvent.setup()
-      renderDetail()
-      await user.click(screen.getByRole('tab', { name: 'Overview' }))
-      expect(screen.getByText('Workflow Progress')).toBeInTheDocument()
-      expect(screen.getByText(/Agent Recommendation:/i)).toBeInTheDocument()
-      expect(screen.getByText('Solution Overview')).toBeInTheDocument()
-      expect(screen.getByText('Key Information')).toBeInTheDocument()
+    it('hides the vendor name and referrer from reviewers, who still see location and date', () => {
+      renderDetail({ userProfile: internalProfile })
+      expect(screen.queryByText('Referred by:')).not.toBeInTheDocument()
+      expect(screen.queryByText('Sarah Ahmed')).not.toBeInTheDocument()
+      expect(screen.getAllByText('UAE, Dubai').length).toBeGreaterThan(0)
+      expect(screen.getByText('Submitted on:')).toBeInTheDocument()
+    })
+
+    it('shows no green decision banner once a decision is recorded', () => {
+      const { unmount } = renderDetail({ request: approved() })
+      expect(screen.queryByText('Status: Approved to Proceed')).not.toBeInTheDocument()
+      expect(screen.queryByText(/Director Notes/)).not.toBeInTheDocument()
+      unmount()
+      renderDetail({
+        request: {
+          ...mockRequest,
+          status: 'Exited',
+          decision: { status: 'rejected', reason: 'No' },
+        },
+      })
+      expect(screen.queryByText('Status: Request Rejected')).not.toBeInTheDocument()
     })
 
     it('shows the audit log with its colour legend and the case events, newest first', async () => {
@@ -237,16 +253,16 @@ describe('PartnershipDetail', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
-    it('keeps Reject and Next in a bar that stays in view', () => {
+    it('keeps only Next in a bar that stays in view', () => {
       renderDetail()
-      const bar = screen.getByText(/Action required: review the brief/).parentElement!
+      const bar = screen.getByText(/Review the brief, then record your decision/).parentElement!
       expect(bar.className).toContain('sticky')
       expect(bar.className).toContain('bottom-0')
       expect(
         within(bar)
           .getAllByRole('button')
           .map((b) => b.textContent)
-      ).toEqual(['Reject', 'Next'])
+      ).toEqual(['Next'])
       // The decision is taken in a popup, not a form on the page
       expect(
         screen.queryByRole('radio', { name: /Approve for internal review/i })
@@ -268,7 +284,9 @@ describe('PartnershipDetail', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       expect(screen.getByRole('heading', { level: 2, name: 'Internal Canvas' })).toBeInTheDocument()
       expect(stepper().getByRole('button', { name: /Strategic Alignment/ })).toBeDisabled()
-      expect(screen.queryByText(/Action required: review the brief/)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(/Review the brief, then record your decision/)
+      ).not.toBeInTheDocument()
     })
 
     it('approves without any reason', async () => {
@@ -282,8 +300,9 @@ describe('PartnershipDetail', () => {
     it('needs a reason to reject', async () => {
       const user = userEvent.setup()
       renderDetail()
-      await user.click(screen.getByRole('button', { name: 'Reject' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
       const dialog = screen.getByRole('dialog', { name: 'Your decision' })
+      await user.click(within(dialog).getByRole('radio', { name: /Reject request/ }))
       const reject = within(dialog).getByRole('button', { name: 'Reject request' })
       expect(reject).toBeDisabled()
       await user.type(within(dialog).getByLabelText(/^Reason/), 'Duplicate of an existing case')
@@ -291,10 +310,9 @@ describe('PartnershipDetail', () => {
       expect(onReject).toHaveBeenCalledWith(mockRequest.id, 'Duplicate of an existing case')
       expect(onProceed).not.toHaveBeenCalled()
       expect(screen.getAllByText('Closed').length).toBe(2)
-      expect(screen.getByDisplayValue('Duplicate of an existing case')).toBeDisabled()
     })
 
-    it('shows a decided case locked', async () => {
+    it('has no decision section or footer once the brief has been decided', async () => {
       const user = userEvent.setup()
       renderDetail({
         request: {
@@ -304,29 +322,25 @@ describe('PartnershipDetail', () => {
         },
       })
       await user.click(stepper().getByRole('button', { name: /Initial Assessment Brief/ }))
-      expect(screen.getByRole('radio', { name: /Reject request/i, checked: true })).toBeDisabled()
-      expect(screen.getByDisplayValue('Not a fit')).toBeDisabled()
+      expect(screen.queryByRole('heading', { name: 'Your Decision' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+      expect(screen.queryByDisplayValue('Not a fit')).not.toBeInTheDocument()
     })
   })
 
   describe('Director: request more information', () => {
-    it('opens an email template, sends it and reports it', async () => {
+    it('shows the email template in the same popup and reports the request', async () => {
       const user = userEvent.setup()
       renderDetail()
       await user.click(screen.getByRole('button', { name: 'Next' }))
       const decision = screen.getByRole('dialog', { name: 'Your decision' })
       await user.click(within(decision).getByRole('radio', { name: /Request more info/i }))
-      await user.type(
-        within(decision).getByLabelText(/Information needed/),
-        'Please share regulatory documents.'
+      // The email template is in the same popup, with a copy button on each field
+      expect(within(decision).getAllByRole('button', { name: /^Copy / })).toHaveLength(3)
+      expect((within(decision).getByLabelText('Message') as HTMLTextAreaElement).value).toContain(
+        'Hi Sarah Ahmed,'
       )
-      await user.click(within(decision).getByRole('button', { name: 'Continue to email' }))
-
-      const dialog = screen.getByRole('dialog', { name: /Request more information/i })
-      expect((within(dialog).getByLabelText('Message') as HTMLTextAreaElement).value).toContain(
-        'Please share regulatory documents.'
-      )
-      await user.click(within(dialog).getByRole('button', { name: /Send & put on hold/i }))
+      await user.click(within(decision).getByRole('button', { name: 'Mark information requested' }))
       expect(onRequestInfo).toHaveBeenCalledWith(
         mockRequest.id,
         expect.objectContaining({ to: 'sarah@medtechinnovations.com' })
@@ -335,19 +349,17 @@ describe('PartnershipDetail', () => {
       expect(onReject).not.toHaveBeenCalled()
     })
 
-    it('shows an on-hold case waiting for the vendor and resumes it', async () => {
+    it('shows an information-requested case waiting for the vendor and resumes it', async () => {
       const user = userEvent.setup()
       renderDetail({
         request: {
           ...mockRequest,
-          status: 'On Hold',
+          status: 'Information Requested',
           holdInfo: { requestedOn: '22 Oct 2026', to: 'a@b.com', subject: 'S', body: 'B' },
         },
       })
-      expect(screen.getByText('On hold: waiting for the vendor')).toBeInTheDocument()
-      expect(
-        screen.getByRole('radio', { name: /Request more info/i, checked: true })
-      ).toBeDisabled()
+      expect(screen.getByText('Information requested: waiting for the vendor')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
       expect(stepper().getByRole('button', { name: /Internal Canvas/ })).toBeDisabled()
       await user.click(screen.getByRole('button', { name: 'Mark info received' }))
       expect(onResume).toHaveBeenCalledWith(mockRequest.id)
@@ -390,7 +402,7 @@ describe('PartnershipDetail', () => {
       renderDetail({ request: approved() })
       await user.click(screen.getByRole('button', { name: 'Send Request' }))
 
-      const dialog = screen.getByRole('dialog', { name: 'Send to Internal Interest' })
+      const dialog = screen.getByRole('dialog', { name: 'Select questionnaire' })
       await user.selectOptions(within(dialog).getByLabelText('Questionnaire'), 'technical')
       expect(within(dialog).queryByRole('checkbox', { name: 'Sara Malik' })).not.toBeInTheDocument()
       await user.click(within(dialog).getByRole('button', { name: 'Next' }))
@@ -533,15 +545,21 @@ describe('PartnershipDetail', () => {
       expect(screen.getByText('Declined', { selector: 'span.inline-flex' })).toBeInTheDocument()
     })
 
-    it('shows the reviewers’ own answers and judgements', async () => {
+    it('shows the reviewers’ own answers and the Strategy Team decision with its pre-read', async () => {
       const user = userEvent.setup()
       renderDetail({ request: INITIAL_PARTNERSHIP_REQUESTS[1] })
       expect(stepper().getAllByText('Approved')).toHaveLength(2)
 
-      // Strategy response: judgements with the reviewer's reason for each edit
+      // Strategy response: the decision, the reason and the pre-read summary
       await user.click(screen.getByRole('button', { name: /View member response/i }))
-      expect(screen.getAllByText('Manually edited').length).toBe(2)
-      expect(screen.getByDisplayValue(/Partnering is faster than building/i)).toBeInTheDocument()
+      expect(screen.getAllByText('Proceed').length).toBeGreaterThan(1)
+      expect(screen.getByText(/vendor commits to UAE hosting/)).toBeInTheDocument()
+      expect(
+        within(screen.getByRole('list', { name: 'Pre-read summary' })).getAllByRole('heading', {
+          level: 3,
+        })
+      ).toHaveLength(6)
+      expect(screen.getByText('Vendor_Security_Questionnaire.docx')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /Close modal/i }))
 
       // Internal response: the questions they were asked and their answers, same layout
@@ -558,14 +576,11 @@ describe('PartnershipDetail', () => {
   })
 
   describe('Partnership Admin', () => {
-    it('has no stepper, no workflow progress and no verdict-free brief', async () => {
-      const user = userEvent.setup()
+    it('has no stepper or workflow progress, and shows the verdict', () => {
       renderDetail({ userProfile: adminProfile, request: adminCase })
       expect(screen.queryByRole('navigation', { name: 'Review progress' })).not.toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Agent Verdict' })).toBeInTheDocument()
-      await user.click(screen.getByRole('tab', { name: 'Overview' }))
       expect(screen.queryByText('Workflow Progress')).not.toBeInTheDocument()
-      expect(screen.getByText('Solution Overview')).toBeInTheDocument()
     })
 
     it('shows the admin checks in Agent Actions', async () => {
@@ -581,7 +596,7 @@ describe('PartnershipDetail', () => {
         'Solution maturity scoring',
         'Vendor screening',
       ].forEach((title) => expect(within(drawer).getByText(title)).toBeInTheDocument())
-      expect(within(drawer).getByText('Re-applying')).toBeInTheDocument()
+      expect(within(drawer).getAllByText('Re-applying').length).toBeGreaterThan(0)
     })
 
     it('keeps Proceed and Reject in a bar that stays in view', () => {
@@ -787,18 +802,11 @@ describe('PartnershipDetail', () => {
   })
 
   describe('Internal Interest Team', () => {
-    it('goes Brief, Questionnaire with the default questions, then a view-only form', async () => {
+    it('has no workflow stages, then answers the default questions into a view-only form', async () => {
       const user = userEvent.setup()
       renderDetail({ userProfile: internalProfile })
 
-      expect(
-        stepper()
-          .getAllByRole('button')
-          .map((b) => b.textContent)
-      ).toEqual([
-        expect.stringContaining('Initial Assessment Brief'),
-        expect.stringContaining('Questionnaire'),
-      ])
+      expect(screen.queryByRole('navigation', { name: 'Review progress' })).not.toBeInTheDocument()
       // No verdict and no vendor contact details
       expect(screen.queryByRole('heading', { name: 'Agent Verdict' })).not.toBeInTheDocument()
       expect(screen.queryByText('sarah@medtechinnovations.com')).not.toBeInTheDocument()
@@ -808,6 +816,7 @@ describe('PartnershipDetail', () => {
 
       await user.click(screen.getByRole('button', { name: /Continue to Questionnaire/i }))
       expect(screen.getByText('Internal Evaluation Questionnaire')).toBeInTheDocument()
+      expect(screen.queryByText(/Research needed|Attachment/)).not.toBeInTheDocument()
       const boxes = screen.getAllByRole('textbox')
       expect(boxes).toHaveLength(5)
       const submit = screen.getByRole('button', { name: 'Submit' })
@@ -831,7 +840,7 @@ describe('PartnershipDetail', () => {
       screen.getAllByRole('textbox').forEach((b) => expect(b).toBeDisabled())
     })
 
-    it('answers exactly the questions the Director sent', async () => {
+    it('answers exactly the questions the Director sent, and may skip optional ones', async () => {
       const user = userEvent.setup()
       renderDetail({
         userProfile: internalProfile,
@@ -840,14 +849,15 @@ describe('PartnershipDetail', () => {
           sent: { internal: true },
           sentQuestionnaire: {
             name: 'Technical Questionnaire',
+            version: 2,
             questions: [
               {
                 id: 'x1',
                 text: 'Which hospitals use it?',
                 cue: 'Name the sites.',
-                researchNeeded: false,
-                attachmentRequired: true,
+                mandatory: true,
               },
+              { id: 'x2', text: 'Anything else?', cue: 'Optional notes.', mandatory: false },
             ],
           },
         },
@@ -855,38 +865,65 @@ describe('PartnershipDetail', () => {
       await user.click(screen.getByRole('button', { name: /Continue to Questionnaire/i }))
       expect(screen.getByText('Technical Questionnaire')).toBeInTheDocument()
       expect(screen.getByText('Which hospitals use it?')).toBeInTheDocument()
-      expect(screen.getAllByRole('textbox')).toHaveLength(1)
-      await user.type(screen.getByRole('textbox'), 'Three UAE sites')
+      expect(screen.getAllByRole('textbox')).toHaveLength(2)
       expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
-      await user.click(screen.getByRole('button', { name: 'Attach file' }))
+      await user.type(screen.getAllByRole('textbox')[0], 'Three UAE sites')
       expect(screen.getByRole('button', { name: 'Submit' })).toBeEnabled()
     })
   })
 
   describe('Strategy Team', () => {
-    it('goes Brief, Judgement and asks for a reason on edits', async () => {
+    const upToPreRead = async (user: User) => {
+      await user.click(screen.getByRole('button', { name: /Continue to Knowledge Base/i }))
+    }
+    type User = ReturnType<typeof userEvent.setup>
+
+    it('has no workflow stages and goes from the brief to an optional knowledge base', async () => {
       const user = userEvent.setup()
       renderDetail({ userProfile: strategyProfile })
-
-      expect(stepper().getByRole('button', { name: /Judgement/ })).toBeDisabled()
+      expect(screen.queryByRole('navigation', { name: 'Review progress' })).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Agent Verdict' })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: /Continue to Judgement/i }))
-      expect(screen.getAllByText('Agent pre-filled').length).toBe(7)
+      await upToPreRead(user)
+      expect(screen.getByRole('heading', { name: 'Add to the knowledge base' })).toBeInTheDocument()
+      expect(screen.getByText(/Optional/)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Proceed' })).not.toBeInTheDocument()
+    })
 
-      await user.selectOptions(
-        within(screen.getByTestId('criterion-architecture')).getByRole('combobox'),
-        'Fits'
-      )
-      expect(screen.getByText('Manually edited')).toBeInTheDocument()
-      await user.click(screen.getByRole('radio', { name: /Proceed with a condition/i }))
-      const submit = screen.getByRole('button', { name: /Submit decision/i })
-      expect(submit).toBeDisabled()
-      await user.type(screen.getByLabelText(/Why are you changing this/i), 'Hosted in UAE')
-      await user.click(submit)
+    it('generates the pre-read with the shared animation, then decides with a confirmation', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      renderDetail({ userProfile: strategyProfile })
+      await upToPreRead(user)
+      await user.click(screen.getByRole('button', { name: 'Generate pre-read summary' }))
 
+      // The animation owns the page: only the tabs stay
+      expect(screen.getByText('GENERATING')).toBeInTheDocument()
+      expect(screen.getByRole('tablist')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Back to Partnership Requests' })
+      ).not.toBeInTheDocument()
+      runTimers(1100, 8)
+
+      expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(6)
+      const bar = screen.getByText(/Review the pre-read, then record your decision/).parentElement!
+      expect(bar.className).toContain('sticky')
+      expect(
+        within(bar)
+          .getAllByRole('button')
+          .map((b) => b.textContent)
+      ).toEqual(['Reject', 'Proceed'])
+
+      // Reject needs a reason, then a confirmation before it is recorded
+      await user.click(within(bar).getByRole('button', { name: 'Reject' }))
+      const popup = screen.getByRole('dialog', { name: 'Reject this partnership' })
+      const reject = within(popup).getByRole('button', { name: 'Reject partnership' })
+      expect(reject).toBeDisabled()
+      await user.type(within(popup).getByLabelText(/^Reason/), 'No UAE hosting')
+      await user.click(reject)
+      expect(onSubmitReview).not.toHaveBeenCalled()
       const confirm = screen.getByRole('dialog', { name: 'Submit your decision?' })
-      expect(confirm).toHaveTextContent('Proceed with a condition')
-      expect(confirm).toHaveTextContent('Judgements changed from the agent')
+      expect(confirm).toHaveTextContent('Reject')
+      expect(confirm).toHaveTextContent('No UAE hosting')
       await user.click(within(confirm).getByRole('button', { name: 'Submit' }))
 
       expect(onSubmitReview).toHaveBeenCalledWith(
@@ -894,19 +931,60 @@ describe('PartnershipDetail', () => {
         'strategy',
         expect.objectContaining({
           response: expect.objectContaining({
-            finalDecision: 'Proceed with a condition',
-            judgements: expect.arrayContaining([
-              expect.objectContaining({
-                criterionId: 'architecture',
-                value: 'Fits',
-                reason: 'Hosted in UAE',
-              }),
-            ]),
+            finalDecision: 'Reject',
+            finalDecisionNote: 'No UAE hosting',
           }),
         })
       )
-      expect(screen.queryByRole('button', { name: /Submit decision/i })).not.toBeInTheDocument()
-      screen.getAllByRole('combobox').forEach((c) => expect(c).toBeDisabled())
+      expect(screen.queryByText(/Review the pre-read, then record/)).not.toBeInTheDocument()
+      expect(screen.getByText('Rejected')).toBeInTheDocument()
+    })
+
+    it('proceeds without a reason after confirming, and records the added files', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      renderDetail({ userProfile: strategyProfile })
+      await upToPreRead(user)
+      await user.upload(screen.getByLabelText('Knowledge base files'), new File(['x'], 'deck.pptx'))
+      await user.click(screen.getByRole('button', { name: 'Generate pre-read summary' }))
+      runTimers(1100, 8)
+
+      await user.click(screen.getByRole('button', { name: 'Proceed' }))
+      await user.click(
+        within(screen.getByRole('dialog', { name: 'Proceed with this partnership' })).getByRole(
+          'button',
+          { name: 'Proceed' }
+        )
+      )
+      await user.click(
+        within(screen.getByRole('dialog', { name: 'Submit your decision?' })).getByRole('button', {
+          name: 'Submit',
+        })
+      )
+      expect(onSubmitReview).toHaveBeenCalledWith(
+        mockRequest.id,
+        'strategy',
+        expect.objectContaining({
+          response: expect.objectContaining({
+            finalDecision: 'Proceed',
+            finalDecisionNote: '',
+            documents: ['deck.pptx'],
+          }),
+        })
+      )
+      expect(screen.getByText('Proceeded')).toBeInTheDocument()
+    })
+
+    it('shows a decided case as a read-only pre-read', async () => {
+      const user = userEvent.setup()
+      renderDetail({
+        userProfile: strategyProfile,
+        request: INITIAL_PARTNERSHIP_REQUESTS[1],
+      })
+      await upToPreRead(user)
+      expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(6)
+      expect(screen.queryByRole('button', { name: 'Proceed' })).not.toBeInTheDocument()
+      expect(screen.getByText('Proceeded')).toBeInTheDocument()
     })
   })
 })

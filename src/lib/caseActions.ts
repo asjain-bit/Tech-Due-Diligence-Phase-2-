@@ -49,7 +49,7 @@ export const appendAudit = (r: PartnershipRequest, event: AuditInput): Partnersh
 /** Where the case is right now, in one short label */
 export const getStageLabel = (r: PartnershipRequest): string => {
   if (r.queue === 'admin') return 'Admin review'
-  if (r.status === 'On Hold') return 'On hold'
+  if (r.status === 'Information Requested') return 'Information requested'
   if (r.queue === 'closed' || r.status === 'Exited') return 'Exited'
   if (r.queue === 'routed') {
     return r.caseType === 'Procure' ? 'Routed to Procurement' : 'Routed to Corporate Development'
@@ -113,6 +113,26 @@ export const rejectRequest = (r: PartnershipRequest, reason: string): Partnershi
     { title: 'Request rejected', description: reason, actor: DIRECTOR_ACTOR, kind: 'critical' }
   )
 
+/** Starting point for the email the Director sends when more information is needed */
+export const buildInfoEmail = (r: PartnershipRequest, senderName: string) => ({
+  to: r.companyInfo.email,
+  subject: `More information needed: ${r.requestCode} ${r.companyName}`,
+  body: [
+    `Hi ${r.companyInfo.name},`,
+    '',
+    `Thank you for your partnership request (${r.requestCode}) for "${r.solution}". Before we can take it forward, we need a little more information:`,
+    '',
+    '• [Describe the information you need]',
+    '',
+    'Please reply to this email with the details. Your request stays marked as Information Requested until we hear from you.',
+    '',
+    'Kind regards,',
+    senderName,
+    'Director, Partnerships',
+    'M42',
+  ].join('\n'),
+})
+
 /** Director asks the vendor for more information: the case waits until it arrives */
 export const holdRequest = (
   r: PartnershipRequest,
@@ -121,7 +141,7 @@ export const holdRequest = (
   appendAudit(
     {
       ...r,
-      status: 'On Hold',
+      status: 'Information Requested',
       daysInStage: 0,
       holdInfo: { requestedOn: todayLabel(), ...email },
     },
@@ -240,7 +260,7 @@ export const sendReview = (
   const members = payload.members.map((m, i) => ({
     ...m,
     status: i === 0 ? 'In Progress' : 'Pending',
-    deadline: team === 'internal' ? '5 days' : '2-3 days',
+    deadline: team === 'internal' ? '4 days' : '2-3 days',
     decision: '-',
     answers: undefined,
     strategyResponse: undefined,
@@ -264,7 +284,7 @@ export const sendReview = (
         ? `${members.length} ${members.length === 1 ? 'reviewer' : 'reviewers'} asked to answer ${
             payload.questionnaire?.questions.length ?? 0
           } questions.`
-        : `${members.length} ${members.length === 1 ? 'reviewer' : 'reviewers'} asked for a judgement.`,
+        : `${members.length} ${members.length === 1 ? 'reviewer' : 'reviewers'} asked to review the pre-read summary.`,
     actor: DIRECTOR_ACTOR,
     kind: 'user',
   })
@@ -300,7 +320,7 @@ export const submitReview = (
   }
 
   const response = payload.response ?? {}
-  const declined = response.finalDecision === 'No'
+  const declined = response.finalDecision === 'Reject'
   const people = r.strategyTeamMembers?.length
     ? r.strategyTeamMembers
     : DEFAULT_STRATEGY_MEMBERS.slice(0, 1)
@@ -328,7 +348,7 @@ export const submitReview = (
     },
     {
       title: declined ? 'Strategy Team declined' : 'Strategy Team approved',
-      description: response.finalDecision ?? 'Judgement submitted.',
+      description: response.finalDecision ?? 'Decision submitted.',
       actor: STRATEGY_ACTOR,
       kind: declined ? 'critical' : 'approval',
     }
