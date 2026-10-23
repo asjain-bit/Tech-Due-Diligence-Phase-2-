@@ -1,3 +1,4 @@
+import { getStageLabel } from '@/lib/caseActions'
 import { DEFAULT_INTERNAL_INTERESTS, type PartnershipRequest } from '@/types/partnership.types'
 
 export interface RoleKpi {
@@ -98,6 +99,87 @@ export const sponsorKpis = (requests: PartnershipRequest[]): RoleKpi[] => {
       title: 'Overdue',
       caption: 'Assigned tasks past their deadline.',
       value: 0,
+    },
+  ]
+}
+
+/**
+ * Partnership Admin: pass every case. Decisions only carry a timestamp (`decidedAt`) when they were
+ * taken in the app, so earlier seeded decisions cannot be placed in a month.
+ */
+export const adminKpis = (requests: PartnershipRequest[], now = new Date()): RoleKpi[] => {
+  const decidedThisMonth = requests.filter((r) => {
+    const at = r.adminDecision?.decidedAt ? new Date(r.adminDecision.decidedAt) : null
+    return at !== null && at.getFullYear() === now.getFullYear() && at.getMonth() === now.getMonth()
+  })
+  return [
+    {
+      title: 'Awaiting Review',
+      caption: 'New requests to assess.',
+      value: requests.filter((r) => r.queue === 'admin' && !r.adminDecision).length,
+    },
+    {
+      title: 'Reviewed This Month',
+      caption: 'Decisions recorded this month.',
+      value: decidedThisMonth.length,
+    },
+    {
+      title: 'Proceeded',
+      caption: 'Forwarded to Director.',
+      value: requests.filter((r) => r.queue === 'director').length,
+    },
+    {
+      title: 'Rejected',
+      caption: 'Closed at admin review.',
+      value: requests.filter((r) => r.adminDecision?.action === 'reject').length,
+    },
+  ]
+}
+
+/** Does the Director have to decide something on this case right now? */
+const needsDirectorDecision = (r: PartnershipRequest) => {
+  if (isTerminal(r) || r.queue !== 'director') return false
+  const briefPending = getStageLabel(r) === 'Initial Assessment Brief'
+  // The vendor owes information: nothing for the Director to do yet
+  if (briefPending) return r.status === 'Pending' && !r.decision
+  const scenario = r.internalOutcome?.scenario
+  const sponsorsToAssign = scenario === 'multiple' && !r.sponsors
+  const conflict =
+    r.stageApprovals?.internal?.status === 'approved' &&
+    r.stageApprovals?.strategy?.status === 'declined'
+  return scenario === 'not-ready' || sponsorsToAssign || conflict
+}
+
+/** Director: pass the cases in the Director's queue */
+export const directorKpis = (requests: PartnershipRequest[]): RoleKpi[] => {
+  const open = requests.filter((r) => !isTerminal(r))
+  const stage = (r: PartnershipRequest) => getStageLabel(r)
+  const awaitingTeams = (r: PartnershipRequest) =>
+    (stage(r) === 'Internal Canvas' && Boolean(r.sent?.internal)) ||
+    (stage(r) === 'Strategic Alignment' && Boolean(r.sent?.strategy) && !r.stageApprovals?.strategy)
+  return [
+    {
+      title: 'Awaiting My Decision',
+      caption: 'Initial reviews and escalations.',
+      value: requests.filter(needsDirectorDecision).length,
+    },
+    {
+      title: 'Internal Canvas',
+      caption: 'Awaiting team responses.',
+      value: open.filter(awaitingTeams).length,
+    },
+    {
+      title: 'NDA & Discovery',
+      caption: 'In the current stage.',
+      value: open.filter((r) => stage(r) === 'NDA & Discovery').length,
+    },
+    {
+      title: 'Alignment Pack',
+      caption: 'Awaiting preparation or review.',
+      value: open.filter(
+        (r) =>
+          stage(r) === 'NDA & Discovery' && Boolean(r.alignmentPackOn) && !r.discovery?.proceededOn
+      ).length,
     },
   ]
 }

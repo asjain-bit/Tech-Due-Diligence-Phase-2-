@@ -795,11 +795,13 @@ describe('PartnershipDetail', () => {
       expect(modal.className).toContain('max-h-[90vh]')
     })
 
-    it('shows Edit as a text-only button in the primary colour', () => {
+    it('shows Edit as a primary button, after View vendor response', () => {
       renderDetail({ userProfile: adminProfile, request: routed('Partnership') })
       const edit = screen.getByRole('button', { name: 'Edit' })
-      expect(edit.className).toContain('text-[#008a8a]')
-      expect(edit.className).not.toMatch(/\bborder\b|bg-white/)
+      expect(edit.className).toContain('bg-[#36c0c9]')
+      expect(edit.className).toContain('text-white')
+      const view = screen.getByRole('button', { name: /View vendor response/i })
+      expect(view.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(edit.querySelector('svg')).not.toBeNull()
     })
 
@@ -845,10 +847,23 @@ describe('PartnershipDetail', () => {
   })
 
   describe('Internal Interest Team', () => {
-    it('has no workflow stages, with Continue in a fixed footer on the brief', async () => {
+    it('shows the workflow progress, with Continue in a fixed footer on the brief', async () => {
       const user = userEvent.setup()
       renderDetail({ userProfile: internalProfile })
-      expect(screen.queryByRole('navigation', { name: 'Review progress' })).not.toBeInTheDocument()
+      expect(
+        stepper()
+          .getAllByRole('button')
+          .map((b) => b.textContent)
+      ).toEqual([
+        expect.stringContaining('Initial Assessment Brief'),
+        expect.stringContaining('Internal Canvas'),
+        expect.stringContaining('Strategic Alignment'),
+        expect.stringContaining('NDA & Discovery'),
+        expect.stringContaining('Value & Due Diligence'),
+      ])
+      // Only their own two stages open; the later ones show progress
+      await user.click(stepper().getByRole('button', { name: /NDA & Discovery/ }))
+      expect(screen.getByRole('heading', { name: 'Company Information' })).toBeInTheDocument()
       // No verdict and no vendor contact details
       expect(screen.queryByRole('heading', { name: 'Agent Verdict' })).not.toBeInTheDocument()
       expect(screen.queryByText('sarah@medtechinnovations.com')).not.toBeInTheDocument()

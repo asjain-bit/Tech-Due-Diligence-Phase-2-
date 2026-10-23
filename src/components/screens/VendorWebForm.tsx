@@ -113,9 +113,8 @@ const Field: React.FC<{
   required?: boolean
   error?: boolean
   suggestion?: VendorFormSuggestion
-  onIgnore?: () => void
   children: React.ReactNode
-}> = ({ id, label, helper, required, error, suggestion, onIgnore, children }) => (
+}> = ({ id, label, helper, required, error, suggestion, children }) => (
   <div id={`field-${id}`} className="flex flex-col gap-1.5 scroll-mt-24">
     <label htmlFor={id} className="text-xs font-semibold text-[#0d212c] leading-snug">
       {label}
@@ -132,19 +131,12 @@ const Field: React.FC<{
     {suggestion && (
       <div
         role="note"
-        className="rounded-lg border border-[#bae6fd] bg-[#f0f9ff] px-3.5 py-3 flex items-start justify-between gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
+        className="rounded-lg border border-[#bae6fd] bg-[#f0f9ff] px-3.5 py-3 flex items-start gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
       >
         <div className="flex items-start gap-2.5">
           <Sparkles className="w-4 h-4 text-[#0369a1] shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-xs text-[#0c4a6e] leading-relaxed">{suggestion.message}</p>
         </div>
-        <button
-          type="button"
-          onClick={onIgnore}
-          className="text-[11px] font-semibold text-[#0369a1] hover:underline shrink-0 cursor-pointer"
-        >
-          Ignore
-        </button>
       </div>
     )}
   </div>
@@ -155,7 +147,6 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   const [showErrors, setShowErrors] = useState(false)
   const [isChecking, setIsChecking] = useState(false)
   const [suggestions, setSuggestions] = useState<VendorFormSuggestion[] | null>(null)
-  const [ignored, setIgnored] = useState<string[]>([])
   const [confirming, setConfirming] = useState(false)
   const [caseId, setCaseId] = useState<string | null>(null)
   const [focusOpen, setFocusOpen] = useState(false)
@@ -168,15 +159,11 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   const isMissing = (field: keyof VendorFormValues) => showErrors && missing.includes(field)
 
   // While the check runs, there are no Ignore buttons and no Run AI check button, only Submit
-  const openSuggestions = isChecking
-    ? []
-    : (suggestions ?? []).filter((s) => !ignored.includes(s.field))
+  const openSuggestions = isChecking ? [] : (suggestions ?? [])
   const suggestionFor = (field: keyof VendorFormValues) =>
     openSuggestions.find((s) => s.field === field)
-  const ignore = (field: string) => setIgnored((prev) => [...prev, field])
 
   const handleRunCheck = () => {
-    setIgnored([])
     setCheckStep(0)
     setIsChecking(true)
   }
@@ -224,7 +211,6 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
     setValues(EMPTY_VENDOR_FORM)
     setShowErrors(false)
     setSuggestions(null)
-    setIgnored([])
     setCaseId(null)
   }
 
@@ -256,7 +242,6 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
         required={q.required}
         error={isMissing(q.field)}
         suggestion={suggestionFor(q.field)}
-        onIgnore={() => ignore(q.field)}
       >
         <textarea
           id={q.field}
@@ -422,7 +407,6 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
               required
               error={isMissing('focusAreas')}
               suggestion={suggestionFor('focusAreas')}
-              onIgnore={() => ignore('focusAreas')}
             >
               <div className="relative">
                 <button
@@ -535,7 +519,6 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
               label="If applicable, which patient populations, clinical areas, or operational workflows will be impacted?"
               helper="Identify who or what will be directly affected by your solution (patients, clinical teams, care pathways or administrative workflows) to help assess relevance and scope."
               suggestion={suggestionFor('populations')}
-              onIgnore={() => ignore('populations')}
             >
               <div
                 id="populations"
@@ -561,8 +544,18 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
                               : [...values.populations, pop]
                           )
                         }
-                        className="w-4 h-4 accent-[#36c0c9]"
+                        className="peer sr-only"
                       />
+                      <span
+                        aria-hidden="true"
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition peer-focus-visible:ring-2 peer-focus-visible:ring-[#36c0c9]/40 ${
+                          checked
+                            ? 'bg-[#36c0c9] border-[#36c0c9] text-white'
+                            : 'bg-white border-slate-300'
+                        }`}
+                      >
+                        {checked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </span>
                       {pop}
                     </label>
                   )

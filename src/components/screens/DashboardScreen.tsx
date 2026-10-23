@@ -34,7 +34,13 @@ import {
   type AuditInput,
   type CaseAction,
 } from '@/lib/caseActions'
-import { internalInterestKpis, sponsorKpis, strategyLeadKpis } from '@/lib/roleKpis'
+import {
+  adminKpis,
+  directorKpis,
+  internalInterestKpis,
+  sponsorKpis,
+  strategyLeadKpis,
+} from '@/lib/roleKpis'
 import { type UserProfile } from './LoginScreen'
 
 export interface DashboardScreenProps {
@@ -64,11 +70,15 @@ const CASE_ACTION_TOASTS: Partial<Record<CaseAction['type'], string>> = {
   uploadTddReport: 'The TDD report has been uploaded.',
 }
 
-const SLA_CATEGORY: Record<SlaStatus, 'success' | 'warning' | 'error'> = {
-  'On track': 'success',
-  'At risk': 'warning',
-  Breached: 'error',
+const SLA_TEXT_COLOR: Record<SlaStatus, string> = {
+  'On track': 'text-[#16a34a]',
+  'At risk': 'text-[#d97706]',
+  Breached: 'text-[#dc2626]',
 }
+
+/** At Risk is not a status in the table: those cases are simply in progress */
+const tableStatus = (status: PartnershipRequest['status']) =>
+  status === 'At Risk' ? 'In Progress' : status
 
 /** Two lines of the solution description, with the full text in a tooltip */
 const DescriptionCell: React.FC<{ text: string }> = ({ text }) => {
@@ -104,6 +114,12 @@ const DescriptionCell: React.FC<{ text: string }> = ({ text }) => {
 }
 
 /** Icons of the four role KPI cards, in order */
+const KPI_ICONS_OPERATIONS = [
+  <Layers key="a" className="w-5 h-5 text-[#0284c7] stroke-[2]" />,
+  <Clock key="b" className="w-5 h-5 text-[#d97706] stroke-[2]" />,
+  <FileSignature key="c" className="w-5 h-5 text-[#6366f1] stroke-[2]" />,
+  <GitFork key="d" className="w-5 h-5 text-[#ef4444] stroke-[2]" />,
+]
 const KPI_ICONS = [
   <Briefcase key="a" className="w-5 h-5 text-[#0284c7] stroke-[2]" />,
   <ClipboardList key="b" className="w-5 h-5 text-[#d97706] stroke-[2]" />,
@@ -240,6 +256,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     )
   }
 
+  const isDirectorRole = !isNonDirector && !isAdmin && !isSponsor
+
   // Filter requests
   // Directors and reviewers only see cases the Partnership Admin has sent on; the admin sees all
   // Reviewers only see cases the Director has sent to their team.
@@ -259,9 +277,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       return false
     }
 
+    const shownStatus = isNonDirector ? req.status : tableStatus(req.status)
     const matchesFilter =
       selectedStatusFilter === 'all' ||
-      req.status.toLowerCase() === selectedStatusFilter.toLowerCase()
+      shownStatus.toLowerCase() === selectedStatusFilter.toLowerCase()
 
     if (!matchesFilter) return false
 
@@ -292,13 +311,19 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     {
       key: 'in progress',
       label: 'In Progress',
-      count: scopedRequests.filter((r) => r.status === 'In Progress').length,
+      count: scopedRequests.filter(
+        (r) => (isNonDirector ? r.status : tableStatus(r.status)) === 'In Progress'
+      ).length,
     },
-    {
-      key: 'at risk',
-      label: 'At Risk',
-      count: scopedRequests.filter((r) => r.status === 'At Risk').length,
-    },
+    ...(isNonDirector
+      ? [
+          {
+            key: 'at risk',
+            label: 'At Risk',
+            count: scopedRequests.filter((r) => r.status === 'At Risk').length,
+          },
+        ]
+      : []),
     ...(!isNonDirector
       ? [
           {
@@ -364,99 +389,37 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
       {/* 4 KPI Cards — Exact same design as director flow, role-tailored metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        {isInternalTeam || isStrategyTeam || isSponsor ? (
-          <>
-            {(isInternalTeam
-              ? internalInterestKpis(scopedRequests)
-              : isStrategyTeam
-                ? strategyLeadKpis(scopedRequests)
-                : sponsorKpis(scopedRequests)
-            ).map((card, i) => (
-              <div
-                key={card.title}
-                className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                    {card.title}
-                  </span>
-                  <div className="flex items-center justify-center shrink-0">{KPI_ICONS[i]}</div>
-                </div>
-                <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">
-                  {card.value}
-                </div>
-                <div className="h-[1px] bg-slate-100 w-full" />
-                <div className="text-xs font-medium text-[#64748b]">{card.caption}</div>
-              </div>
-            ))}
-          </>
-        ) : (
-          <>
-            {/* KPI Card 1: Total Request */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
+        <>
+          {(isInternalTeam
+            ? internalInterestKpis(scopedRequests)
+            : isStrategyTeam
+              ? strategyLeadKpis(scopedRequests)
+              : isSponsor
+                ? sponsorKpis(scopedRequests)
+                : isAdmin
+                  ? adminKpis(scopedRequests)
+                  : directorKpis(scopedRequests)
+          ).map((card, i) => (
+            <div
+              key={card.title}
+              className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Total Request
+                  {card.title}
                 </span>
                 <div className="flex items-center justify-center shrink-0">
-                  <Layers className="w-5 h-5 text-[#0284c7] stroke-[2]" />
+                  {(isAdmin || isDirectorRole ? KPI_ICONS_OPERATIONS : KPI_ICONS)[i]}
                 </div>
               </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">24</div>
+              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">
+                {card.value}
+              </div>
               <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="flex items-center gap-1.5 text-xs font-medium text-[#16a34a]">
-                <span>+1 this month ↗</span>
-              </div>
+              <div className="text-xs font-medium text-[#64748b]">{card.caption}</div>
             </div>
-
-            {/* KPI Card 2: Pending */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  Pending
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <Clock className="w-5 h-5 text-[#d97706] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">8</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">Require Director Action</div>
-            </div>
-
-            {/* KPI Card 3: NDA in Progress */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  NDA in Progress
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <FileSignature className="w-5 h-5 text-[#6366f1] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">6</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">Needs monitoring</div>
-            </div>
-
-            {/* KPI Card 4: EXITED BEFORE REVIEW */}
-            <div className="bg-white/90 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-[#94a3b8] uppercase tracking-[0.06em]">
-                  EXITED BEFORE REVIEW
-                </span>
-                <div className="flex items-center justify-center shrink-0">
-                  <GitFork className="w-5 h-5 text-[#ef4444] stroke-[2]" />
-                </div>
-              </div>
-              <div className="text-4xl font-medium text-[#0d212c] leading-none my-1">12</div>
-              <div className="h-[1px] bg-slate-100 w-full" />
-              <div className="text-xs font-medium text-[#64748b]">
-                Filtered out during initial agent screening
-              </div>
-            </div>
-          </>
-        )}
+          ))}
+        </>
       </div>
 
       {/* Title */}
@@ -522,6 +485,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   <>
                     <th className="py-4 px-4">Company</th>
                     <th className="py-4 px-4">Solution description</th>
+                    <th className="py-4 px-4">Status</th>
                     {isAdmin && <th className="py-4 px-4">Type</th>}
                     <th className="py-4 px-4">Stage</th>
                     <th className="py-4 px-4">Days in stage</th>
@@ -535,7 +499,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               {filteredRequests.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={isNonDirector ? 7 : isAdmin ? 8 : 7}
+                    colSpan={isNonDirector ? 7 : isAdmin ? 9 : 8}
                     className="py-16 text-center text-[#64748b]"
                   >
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
@@ -617,6 +581,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                           />
                         </td>
 
+                        <td className="py-4.5 px-4 text-xs font-normal">
+                          <StatusChip
+                            label={tableStatus(req.status)}
+                            status={getStatusCategory(tableStatus(req.status))}
+                            dot={false}
+                          />
+                        </td>
+
                         {isAdmin && (
                           <td className="py-4.5 px-4 text-xs font-normal text-[#0d212c] whitespace-nowrap">
                             {req.caseType ? (
@@ -641,12 +613,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                           {req.owner}
                         </td>
 
-                        <td className="py-4.5 px-4 text-xs font-normal">
-                          <StatusChip
-                            label={req.slaStatus}
-                            status={SLA_CATEGORY[req.slaStatus]}
-                            dot={false}
-                          />
+                        <td
+                          className={`py-4.5 px-4 text-xs font-medium whitespace-nowrap ${SLA_TEXT_COLOR[req.slaStatus]}`}
+                        >
+                          {req.slaStatus}
                         </td>
                       </>
                     )}

@@ -194,6 +194,7 @@ export const routeRequest = (r: PartnershipRequest, routing: AdminRouting): Part
     type: routing.type,
     reason: routing.reason,
     date: 'Just now',
+    decidedAt: new Date().toISOString(),
   }
 
   if (routing.action === 'reject') {

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { internalInterestKpis, sponsorKpis, strategyLeadKpis } from './roleKpis'
+import {
+  adminKpis,
+  directorKpis,
+  internalInterestKpis,
+  sponsorKpis,
+  strategyLeadKpis,
+} from './roleKpis'
 import {
   DEFAULT_INTERNAL_INTERESTS,
   INITIAL_PARTNERSHIP_REQUESTS,
@@ -45,5 +51,60 @@ describe('role KPIs', () => {
       { ...base, status: 'Closed' },
     ]
     expect(values(sponsorKpis(cases))).toEqual([4, 2, 1, 0])
+  })
+
+  it('counts the Partnership Admin queue, decisions this month, forwarded and rejected cases', () => {
+    const now = new Date('2026-10-23T10:00:00Z')
+    const decision = (action: 'proceed' | 'reject', decidedAt?: string) => ({
+      action,
+      reason: '',
+      date: 'Just now',
+      decidedAt,
+    })
+    const cases: PartnershipRequest[] = [
+      { ...base, queue: 'admin', adminDecision: undefined },
+      { ...base, queue: 'admin', adminDecision: undefined },
+      { ...base, queue: 'director', adminDecision: decision('proceed', '2026-10-02T09:00:00Z') },
+      { ...base, queue: 'closed', adminDecision: decision('reject', '2026-10-21T09:00:00Z') },
+      { ...base, queue: 'closed', adminDecision: decision('reject', '2026-09-30T09:00:00Z') },
+    ]
+    expect(values(adminKpis(cases, now))).toEqual([2, 2, 1, 2])
+  })
+
+  it('counts the Director cases by their current stage', () => {
+    const ok = approval('approved')
+    const mk = (over: Partial<PartnershipRequest>): PartnershipRequest => ({
+      ...base,
+      queue: 'director',
+      status: 'In Progress',
+      decision: { status: 'proceeded', date: 'x' },
+      ...over,
+    })
+    const cases: PartnershipRequest[] = [
+      // Initial review waiting on the Director
+      mk({ status: 'Pending', decision: undefined }),
+      // Internal Canvas sent, awaiting responses
+      mk({ sent: { internal: true } }),
+      // Strategy declined after Internal approved: an escalation
+      mk({
+        sent: { internal: true, strategy: true },
+        stageApprovals: { internal: ok, strategy: approval('declined') },
+      }),
+      // NDA & Discovery, pack ready for the Director
+      mk({
+        stageApprovals: { internal: ok, strategy: ok },
+        alignmentPackOn: 'x',
+      }),
+      // NDA & Discovery already handed on: no pack left to review
+      mk({
+        stageApprovals: { internal: ok, strategy: ok },
+        alignmentPackOn: 'x',
+        discovery: { notes: [], recordings: [], proceededOn: 'x' },
+      }),
+      // Closed cases count nowhere
+      mk({ status: 'Closed' }),
+    ]
+    // The escalation is in Strategic Alignment with the Strategy response in, so not "awaiting"
+    expect(values(directorKpis(cases))).toEqual([2, 1, 1, 1])
   })
 })

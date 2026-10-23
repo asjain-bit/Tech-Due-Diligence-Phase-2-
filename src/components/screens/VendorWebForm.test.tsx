@@ -146,9 +146,8 @@ describe('VendorWebForm', () => {
     expect(notes.length).toBe(7)
     expect(screen.getByRole('button', { name: /Run AI check again/i })).toBeInTheDocument()
 
-    await user.click(within(notes[0]).getByRole('button', { name: 'Ignore' }))
-    expect(screen.getAllByRole('note').length).toBe(6)
-    expect(screen.getByRole('status')).toHaveTextContent('AI check found 6 suggestions')
+    // Suggestions cannot be ignored
+    expect(within(notes[0]).queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('reports when the AI check finds nothing to improve', async () => {

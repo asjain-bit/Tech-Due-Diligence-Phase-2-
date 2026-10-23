@@ -285,8 +285,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   // Review workflow: each step unlocks only after the one before it is done
   const stepDefs: { id: StepId; label: string }[] = isInternalTeam
     ? [
+        // The Internal Interest reviewer answers in Internal Canvas; later stages only show progress
         { id: 'brief', label: 'Initial Assessment Brief' },
-        { id: 'questionnaire', label: 'Questionnaire' },
+        { id: 'questionnaire', label: 'Internal Canvas' },
+        { id: 'alignment', label: 'Strategic Alignment' },
+        { id: 'nda', label: 'NDA & Discovery' },
+        { id: 'value', label: 'Value & Due Diligence' },
       ]
     : isStrategyTeam
       ? [
@@ -374,6 +378,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
       return completedSteps.includes(id)
     }
+    if (isInternalTeam) {
+      if (id === 'alignment') return strategyApproved
+      if (id === 'nda') return Boolean(request.discovery?.proceededOn)
+      if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
+      if (id === 'questionnaire') return completedSteps.includes(id) || internalApproved
+    }
     if (!isFlowView) return completedSteps.includes(id)
     if (id === 'brief') return briefApproved || isRejected
     if (id === 'canvas') return internalApproved
@@ -438,6 +448,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const goToStep = (id: string) => {
     const target = stepperSteps.find((st) => st.id === id)
     if (!target) return
+    // The Internal Interest reviewer only opens their own two stages
+    if (isInternalTeam && id !== 'brief' && id !== 'questionnaire') return
     // The Admin can look at every stage; the others unlock one at a time
     if (!isAdmin && (target.state === 'upcoming' || target.state === 'closed')) return
     setActiveStep(id as StepId)
@@ -1460,7 +1472,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-5 shrink-0">
+            <div className="flex items-center gap-5 shrink-0 self-center">
               <button
                 type="button"
                 onClick={() => setShowVendorForm(true)}
@@ -1473,7 +1485,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <button
                   type="button"
                   onClick={() => setAdminModal('reassign')}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
+                  className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition inline-flex items-center gap-1.5"
                 >
                   <Pencil className="w-4 h-4" aria-hidden="true" />
                   Edit
@@ -1528,9 +1540,11 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               fixedStage ? 'flex-1 min-h-0' : ''
             }`}
           >
-            {stepperSteps.length > 1 && (!isNonDirector || isStrategyTeam) && !reviewersLoading && (
-              <WorkflowStepper steps={stepperSteps} activeId={activeStep} onSelect={goToStep} />
-            )}
+            {stepperSteps.length > 1 &&
+              (!isNonDirector || isStrategyTeam || isInternalTeam) &&
+              !reviewersLoading && (
+                <WorkflowStepper steps={stepperSteps} activeId={activeStep} onSelect={goToStep} />
+              )}
 
             <div
               key={activeStep}

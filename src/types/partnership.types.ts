@@ -212,6 +212,8 @@ export interface PartnershipRequest {
     type?: CaseType
     reason: string
     date: string
+    /** ISO timestamp of the decision, used for period counts */
+    decidedAt?: string
   }
   auditLog: AuditEvent[]
   /** Which review requests the Director has sent */

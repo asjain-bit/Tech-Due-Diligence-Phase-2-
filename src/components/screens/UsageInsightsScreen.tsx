@@ -111,7 +111,7 @@ const CostChart: React.FC<{
   labels: string[]
 }> = ({ manual, ai, selected, labels }) => {
   const W = 600
-  const H = 260
+  const H = 400
   const left = 44
   const right = 124
   const top = 16
@@ -365,8 +365,8 @@ export const UsageInsightsScreen: React.FC = () => {
                 labels={USAGE_WEEKS.map((w) => w.short)}
               />
             ) : (
-              <dl className="flex flex-col border-t border-[#e2e8f0]/70">
-                <div className="grid grid-cols-2 py-8">
+              <dl className="flex flex-col flex-1 border-t border-[#e2e8f0]/70">
+                <div className="grid grid-cols-2 py-8 flex-1 items-center">
                   <div className="flex flex-col gap-2 pr-6">
                     <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
                       Manual cost
@@ -389,7 +389,7 @@ export const UsageInsightsScreen: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 py-8 border-t border-[#e2e8f0]/70">
+                <div className="grid grid-cols-2 py-8 flex-1 items-center border-t border-[#e2e8f0]/70">
                   <div className="flex flex-col gap-2 pr-6">
                     <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
                       Estimated ROI

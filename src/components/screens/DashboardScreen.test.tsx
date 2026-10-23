@@ -52,7 +52,9 @@ const setup = () => {
 
 /** The four KPI cards, in order, each with its label and supporting text */
 const expectKpis = (cards: [string, string][]) => {
-  const titles = cards.map(([title]) => screen.getByText(title))
+  const titles = cards.map(([title]) =>
+    screen.getAllByText(title).find((el) => el.className.includes('uppercase'))!
+  )
   titles.forEach((el, i) => {
     const card = el.closest('.rounded-2xl') as HTMLElement
     expect(within(card).getByText(cards[i][1])).toBeInTheDocument()
@@ -71,22 +73,12 @@ describe('DashboardScreen', () => {
     // Breadcrumb removed
     expect(screen.queryByText('M42 admin')).not.toBeInTheDocument()
 
-    // 4 KPI Cards (Updated Titles)
-    expect(screen.getByText('Total Request')).toBeInTheDocument()
-    expect(screen.getByText('24')).toBeInTheDocument()
-    expect(screen.getByText('+1 this month ↗')).toBeInTheDocument()
-
-    expect(screen.getAllByText('Pending').length).toBeGreaterThan(0)
-    expect(screen.getByText('8')).toBeInTheDocument()
-    expect(screen.getByText('Require Director Action')).toBeInTheDocument()
-
-    expect(screen.getByText('NDA in Progress')).toBeInTheDocument()
-    expect(screen.getByText('6')).toBeInTheDocument()
-    expect(screen.getByText('Needs monitoring')).toBeInTheDocument()
-
-    expect(screen.getByText('EXITED BEFORE REVIEW')).toBeInTheDocument()
-    expect(screen.getByText('12')).toBeInTheDocument()
-    expect(screen.getByText('Filtered out during initial agent screening')).toBeInTheDocument()
+    expectKpis([
+      ['Awaiting My Decision', 'Initial reviews and escalations.'],
+      ['Internal Canvas', 'Awaiting team responses.'],
+      ['NDA & Discovery', 'In the current stage.'],
+      ['Alignment Pack', 'Awaiting preparation or review.'],
+    ])
   })
 
   it('shows the Director the Case ID led table with the new columns', () => {
@@ -98,6 +90,7 @@ describe('DashboardScreen', () => {
       'Case ID',
       'Company',
       'Solution description',
+      'Status',
       'Stage',
       'Days in stage',
       'Owner',
@@ -112,8 +105,12 @@ describe('DashboardScreen', () => {
     expect(row).toHaveTextContent('3 days')
     expect(row).toHaveTextContent('Zaid Al Ali')
     expect(row).toHaveTextContent('On track')
-    expect(screen.getByText('At risk')).toBeInTheDocument()
-    expect(screen.getByText('Breached')).toBeInTheDocument()
+    // SLA is coloured text, not a chip; At Risk is not a status in the table
+    expect(screen.getByText('At risk')).toHaveClass('text-[#d97706]')
+    expect(screen.getByText('Breached')).toHaveClass('text-[#dc2626]')
+    expect(screen.getAllByText('On track')[0]).toHaveClass('text-[#16a34a]')
+    expect(within(row).getByText('Pending')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /At Risk/ })).not.toBeInTheDocument()
   })
 
   it('clamps the solution description to two lines and shows the full text in a tooltip', async () => {
@@ -148,6 +145,12 @@ describe('DashboardScreen', () => {
     expect(row).toHaveTextContent('Initial Assessment Brief')
     expect(row).toHaveTextContent('Nadia Al-Farsi')
     expect(screen.getByRole('button', { name: /All requests/ })).toHaveTextContent('5')
+    expectKpis([
+      ['Awaiting Review', 'New requests to assess.'],
+      ['Reviewed This Month', 'Decisions recorded this month.'],
+      ['Proceeded', 'Forwarded to Director.'],
+      ['Rejected', 'Closed at admin review.'],
+    ])
   })
 
   it('searches by Case ID', async () => {
@@ -404,7 +407,7 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('AlphaHealth BioTech')).toBeInTheDocument()
   })
 
-  it('hides vendor details, the verdict and the Director steps for the internal team', async () => {
+  it('hides vendor details and the verdict for the internal team, who see the workflow progress', async () => {
     const user = setup()
     render(<DashboardScreen userProfile={internalProfile} />)
 
@@ -414,8 +417,8 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText(/Referred by:/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Agent Verdict' })).not.toBeInTheDocument()
 
-    // No workflow stages for this profile
-    expect(screen.queryByRole('navigation', { name: 'Review progress' })).not.toBeInTheDocument()
+    // The workflow stages show progress, with no Director decision steps
+    expect(screen.getByRole('navigation', { name: 'Review progress' })).toBeInTheDocument()
 
     // The brief has no decision form
     expect(screen.getByRole('button', { name: /Continue to Questionnaire/i })).toBeInTheDocument()
