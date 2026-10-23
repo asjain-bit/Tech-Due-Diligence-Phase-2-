@@ -77,11 +77,11 @@ describe('QuestionnaireEditor', () => {
     expect(edit.className).not.toMatch(/\bborder\b|bg-white/)
     expect(screen.getByRole('button', { name: 'Add question' }).className).not.toMatch(/\bborder\b/)
     await user.click(edit)
-    expect(screen.getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute('aria-pressed', 'true')
     expect(document.querySelectorAll('[draggable="true"]')).toHaveLength(3)
     expect(screen.getAllByRole('button', { name: /Delete question/ })).toHaveLength(3)
     expect(screen.getAllByRole('button', { name: /Edit question/ })).toHaveLength(3)
-    await user.click(screen.getByRole('button', { name: 'Done' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(document.querySelectorAll('[draggable="true"]')).toHaveLength(0)
   })
 

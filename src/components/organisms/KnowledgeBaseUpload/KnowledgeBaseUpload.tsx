@@ -2,156 +2,78 @@
 
 /**
  * KnowledgeBaseUpload — Organism
- * First screen of the Strategy Team's review: the M42 knowledge base documents that will be
- * compared with the vendor submission (two are pre-selected), with room to upload more, before
- * the pre-read summary is generated.
+ * The Strategy Team's "Prepare Pre-read Summary" screen: an upload area whose Browse files opens
+ * the Add supporting documents popup, the documents added so far, and Generate Summary.
  * Used in: PartnershipDetail
  */
 
-import React, { useRef, useState } from 'react'
-import { FileSpreadsheet, FileText, FileUp, Info, Presentation, Sparkles, X } from 'lucide-react'
-import { isSupportedKnowledgeFile, KNOWLEDGE_BASE_ACCEPT } from '@/lib/preRead'
+import React, { useState } from 'react'
+import { ArrowRight, FileText, FileUp, Info, Sparkles, X } from 'lucide-react'
+import { AddDocumentsModal } from '@/components/organisms/AddDocumentsModal'
+import {
+  fileTypeLabel,
+  formatFileSize,
+} from '@/components/organisms/AddDocumentsModal/AddDocumentsModal'
+import { FileTypeIcon } from './FileTypeIcon'
 import type { KnowledgeBaseUploadProps } from './KnowledgeBaseUpload.types'
-
-const MAX_BYTES = 20 * 1024 * 1024
-
-export const FileTypeIcon: React.FC<{ name: string; className?: string }> = ({
-  name,
-  className = 'w-5 h-5',
-}) => {
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
-  if (ext.startsWith('xl')) return <FileSpreadsheet className={`${className} text-[#16a34a]`} />
-  if (ext.startsWith('pp')) return <Presentation className={`${className} text-[#ea580c]`} />
-  return <FileText className={`${className} text-[#2563eb]`} />
-}
 
 export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
   files,
   onFilesChange,
   onGenerate,
-  onViewBrief,
   className = '',
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [dragging, setDragging] = useState(false)
-  const [problems, setProblems] = useState<string[]>([])
-
-  const add = (list: FileList | File[]) => {
-    const incoming = Array.from(list)
-    const notes: string[] = []
-    const fresh = incoming.filter((f) => {
-      if (!isSupportedKnowledgeFile(f.name)) {
-        notes.push(`${f.name} is not a supported file type.`)
-        return false
-      }
-      if (f.size > MAX_BYTES) {
-        notes.push(`${f.name} is larger than 20 MB.`)
-        return false
-      }
-      return !files.some((existing) => existing.name === f.name)
-    })
-    setProblems(notes)
-    if (fresh.length > 0) {
-      onFilesChange([
-        ...files,
-        ...fresh.map((f) => ({ name: f.name, size: f.size, source: 'Uploaded by you' })),
-      ])
-    }
-  }
+  const [adding, setAdding] = useState(false)
 
   return (
     <div className={`flex flex-col gap-6 w-full ${className}`.trim()}>
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold text-[#0d212c]">Prepare Initial Assessment Brief</h2>
-          <p className="text-sm text-[#64748b] leading-relaxed">
-            Add relevant M42 knowledge base documents before generating the pre-read summary.
-          </p>
-        </div>
-        {onViewBrief && (
-          <button
-            type="button"
-            onClick={onViewBrief}
-            className="text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
-          >
-            View initial assessment brief
-          </button>
-        )}
+      <div className="flex flex-col gap-1">
+        <h2 className="text-xl font-semibold text-[#0d212c]">Prepare Pre-read Summary</h2>
+        <p className="text-sm text-[#64748b] leading-relaxed">
+          Upload relevant documents to help the agent generate the pre-read summary.
+        </p>
       </div>
 
-      <div
-        onDragOver={(e) => {
-          e.preventDefault()
-          setDragging(true)
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault()
-          setDragging(false)
-          add(e.dataTransfer.files)
-        }}
-        className={`rounded-2xl border border-dashed px-6 py-10 flex flex-col items-center gap-3 text-center transition ${
-          dragging ? 'border-[#36c0c9] bg-[#f0fdfa]' : 'border-[#cbd5e1] bg-white'
-        }`}
-      >
-        <span className="w-12 h-12 rounded-full bg-[#e6fffa] text-[#36c0c9] flex items-center justify-center">
-          <FileUp className="w-6 h-6" aria-hidden="true" />
+      <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-6 py-12 flex flex-col items-center gap-3 text-center">
+        <span className="w-14 h-14 rounded-full bg-[#e6fffa] text-[#00a8b0] flex items-center justify-center">
+          <FileUp className="w-7 h-7" aria-hidden="true" />
         </span>
         <div className="flex flex-col gap-1">
           <span className="text-base font-semibold text-[#0d212c]">
             Upload supporting documents
           </span>
           <span className="text-sm text-[#64748b]">
-            Add roadmap, portfolio, strategy, or policy documents to help the agent assess this
-            proposal.
+            Add roadmap, portfolio, strategy, or policy documents to help generate the pre-read
+            summary.
           </span>
         </div>
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
-          className="h-10 px-5 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition"
+          onClick={() => setAdding(true)}
+          className="h-10 px-6 rounded-lg border border-[#00a8b0] bg-white text-sm font-semibold text-[#008a8a] hover:bg-[#f0fdfa] cursor-pointer transition"
         >
           Browse files
         </button>
-        <span className="text-xs text-[#64748b]">PDF, DOCX, XLSX, PPTX · Max 20 MB per file</span>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept={KNOWLEDGE_BASE_ACCEPT}
-          aria-label="Knowledge base files"
-          className="sr-only"
-          onChange={(e) => {
-            if (e.target.files) add(e.target.files)
-            e.target.value = ''
-          }}
-        />
+        <span className="text-xs text-[#64748b]">PDF, DOCX, XLSX · Max 20 MB per file</span>
       </div>
 
-      {problems.length > 0 && (
-        <p role="alert" className="text-xs font-medium text-red-600">
-          {problems.join(' ')}
-        </p>
-      )}
-
-      <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold text-[#0d212c]">
-          Knowledge base documents{' '}
-          <span className="font-normal text-[#64748b]">({files.length})</span>
-        </h3>
-        {files.length > 0 && (
-          <ul aria-label="Knowledge base documents" className="flex flex-col gap-2">
+      {files.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-[#0d212c]">
+            Documents added <span className="font-normal text-[#64748b]">({files.length})</span>
+          </h3>
+          <ul aria-label="Documents added" className="flex flex-col gap-2">
             {files.map((f) => (
               <li
                 key={f.name}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[#e2e8f0] bg-white"
               >
-                <span className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
-                  <FileTypeIcon name={f.name} />
-                </span>
+                <FileTypeIcon name={f.name} className="w-6 h-6" />
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="text-sm font-semibold text-[#0d212c] truncate">{f.name}</span>
-                  <span className="text-xs text-[#64748b]">{f.source ?? 'M42 knowledge base'}</span>
+                  <span className="text-xs text-[#64748b]">
+                    {fileTypeLabel(f.name)} · {formatFileSize(f.size)}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -164,29 +86,42 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
               </li>
             ))}
           </ul>
-        )}
-        <div className="flex items-center justify-between gap-3 flex-wrap text-xs text-[#64748b]">
-          <span className="inline-flex items-center gap-1.5">
-            <Info className="w-3.5 h-3.5" aria-hidden="true" />
-            Only documents selected for this assessment will be used.
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" aria-hidden="true" />
-            The agent will compare the vendor submission against the selected documents.
-          </span>
         </div>
+      )}
+
+      <div className="flex items-start justify-between gap-6 flex-wrap text-sm text-[#64748b]">
+        <span className="inline-flex items-center gap-2">
+          <Info className="w-4 h-4 shrink-0" aria-hidden="true" />
+          Only documents selected for this assessment will be used.
+        </span>
+        <span className="inline-flex items-start gap-2 max-w-sm">
+          <FileText className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+          The agent will analyse the uploaded documents to generate the pre-read summary.
+        </span>
       </div>
 
       <div className="flex items-center justify-end">
         <button
           type="button"
           onClick={onGenerate}
-          className="h-11 px-6 rounded-lg bg-[#00c4c4] hover:bg-[#00b0b0] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-2"
+          className="h-11 px-6 rounded-lg bg-[#00a8b0] hover:bg-[#009199] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-2"
         >
           <Sparkles className="w-4 h-4" aria-hidden="true" />
-          Generate Pre-read Summary
+          Generate Summary
+          <ArrowRight className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
+
+      {adding && (
+        <AddDocumentsModal
+          onClose={() => setAdding(false)}
+          onAdd={(picked) => {
+            const fresh = picked.filter((p) => !files.some((f) => f.name === p.name))
+            onFilesChange([...files, ...fresh])
+            setAdding(false)
+          }}
+        />
+      )}
     </div>
   )
 }

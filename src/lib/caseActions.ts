@@ -54,6 +54,7 @@ export const appendAudit = (r: PartnershipRequest, event: AuditInput): Partnersh
 export const getStageLabel = (r: PartnershipRequest): string => {
   if (r.queue === 'admin') return 'Admin review'
   if (r.status === 'Information Requested') return 'Information requested'
+  if (r.status === 'Closed') return 'Closed'
   if (r.queue === 'closed' || r.status === 'Exited') return 'Exited'
   if (r.queue === 'routed') {
     return r.caseType === 'Procure' ? 'Routed to Procurement' : 'Routed to Corporate Development'
@@ -67,6 +68,7 @@ export const hasDirectorDecided = (r: PartnershipRequest) =>
   (Boolean(r.decision) ||
     r.status === 'In Progress' ||
     r.status === 'At Risk' ||
+    r.status === 'Closed' ||
     r.status === 'Exited')
 
 const setStages = (
@@ -261,11 +263,13 @@ export const sendReview = (
     questionnaire?: { name: string; questions: QuestionnaireQuestion[] }
   }
 ): PartnershipRequest => {
-  const members = payload.members.map((m, i) => ({
+  const members = payload.members.map((m) => ({
     ...m,
-    status: i === 0 ? 'In Progress' : 'Pending',
+    status: 'Pending',
     deadline: team === 'internal' ? '4 days' : '2-3 days',
     decision: '-',
+    sponsor: undefined,
+    responseDate: undefined,
     answers: undefined,
     strategyResponse: undefined,
   }))
@@ -307,7 +311,16 @@ export const submitReview = (
       {
         ...r,
         internalInterests: people.map((m, i) =>
-          i === 0 ? { ...m, status: 'Completed', decision: 'Proceed', answers } : m
+          i === 0
+            ? {
+                ...m,
+                status: 'Completed',
+                decision: 'Proceed',
+                sponsor: 'Yes',
+                responseDate: todayLabel(),
+                answers,
+              }
+            : m
         ),
         sponsors: r.sponsors ?? { lead: people[0].name, co: [] },
         stageApprovals: {
@@ -483,13 +496,10 @@ export const buildCaseFromForm = (
 
 /* ---------- Internal Interest outcome, sponsors and closing a case ---------- */
 
-export const READY_TO_SPONSOR = 'Ready to sponsor'
-export const NOT_READY_TO_SPONSOR = 'Not ready to sponsor'
-
 /** Closes a case that was already approved at the brief, with the reason recorded */
 export const closeRequest = (r: PartnershipRequest, reason: string): PartnershipRequest =>
   appendAudit(
-    { ...r, status: 'Exited', daysInStage: 0, closedReason: reason },
+    { ...r, status: 'Closed', daysInStage: 0, closedReason: reason },
     { title: 'Case closed', description: reason, actor: DIRECTOR_ACTOR, kind: 'critical' }
   )
 
@@ -525,13 +535,25 @@ export const applyInternalScenario = (
   const people = r.internalInterests?.length ? r.internalInterests : DEFAULT_INTERNAL_INTERESTS
   const ready = scenario === 'single' ? 1 : scenario === 'multiple' ? 3 : 0
   const answered = scenario === 'none' ? 0 : scenario === 'not-ready' ? 2 : ready + 1
-  const members = people.map((m, i) => ({
-    ...m,
-    status: i < answered ? 'Completed' : 'Pending',
-    decision: i < ready ? READY_TO_SPONSOR : i < answered ? NOT_READY_TO_SPONSOR : '-',
-  }))
+  const date = todayLabel()
+  const members = people.map((m, i) => {
+    if (i >= answered) {
+      return { ...m, status: 'Pending', decision: '-', sponsor: undefined, responseDate: undefined }
+    }
+    return {
+      ...m,
+      status: 'Completed',
+      // Someone can be interested, or not, without being ready to sponsor
+      decision: i === 1 && scenario === 'not-ready' ? 'Reject' : 'Proceed',
+      sponsor: i < ready ? ('Yes' as const) : ('No' as const),
+      responseDate: date,
+    }
+  })
+  // Picking another outcome re-opens a case an earlier outcome had closed
   const base: PartnershipRequest = {
     ...r,
+    status: r.status === 'Closed' ? 'In Progress' : r.status,
+    closedReason: undefined,
     internalInterests: members,
     internalOutcome: { scenario },
     sponsors: undefined,
@@ -582,7 +604,12 @@ export const uploadSignedNda = (r: PartnershipRequest, fileName: string): Partne
   })
   if (version > 1) return logged
   return appendAudit(
-    { ...logged, alignmentPackOn: todayLabel() },
+    {
+      ...logged,
+      alignmentPackOn: todayLabel(),
+      daysInStage: 0,
+      workflowStages: setStages(r.workflowStages, 4, 5),
+    },
     {
       title: 'Alignment pack generated',
       description:
@@ -669,7 +696,7 @@ export const decideValue = (
     return appendAudit(
       {
         ...next,
-        status: 'Exited',
+        status: 'Closed',
         daysInStage: 0,
         closedReason: reason || 'Rejected by the sponsor.',
       },

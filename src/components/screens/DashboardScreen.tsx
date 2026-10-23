@@ -106,6 +106,7 @@ const DescriptionCell: React.FC<{ text: string }> = ({ text }) => {
 /** The sponsor still has something to do on this case */
 const sponsorActionNeeded = (r: PartnershipRequest) =>
   r.status !== 'Exited' &&
+  r.status !== 'Closed' &&
   ((Boolean(r.alignmentPackOn) && !r.discovery?.confirmedOn) ||
     (Boolean(r.discovery?.confirmedOn) && !r.value?.decision))
 
@@ -142,6 +143,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       case 'At Risk':
         return 'error'
       case 'Exited':
+        return 'neutral'
+      case 'Closed':
         return 'neutral'
       case 'Information Requested':
         return 'neutral'
@@ -298,6 +301,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     ...(!isNonDirector
       ? [
           {
+            key: 'closed',
+            label: 'Closed',
+            count: scopedRequests.filter((r) => r.status === 'Closed').length,
+          },
+          {
             key: 'exited',
             label: 'Exited',
             count: scopedRequests.filter((r) => r.status === 'Exited').length,
@@ -445,7 +453,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               },
               {
                 title: 'Closed',
-                value: scopedRequests.filter((r) => r.status === 'Exited').length,
+                value: scopedRequests.filter((r) => r.status === 'Exited' || r.status === 'Closed')
+                  .length,
                 caption: 'No longer progressing',
                 icon: <GitFork className="w-5 h-5 text-[#ef4444] stroke-[2]" />,
               },

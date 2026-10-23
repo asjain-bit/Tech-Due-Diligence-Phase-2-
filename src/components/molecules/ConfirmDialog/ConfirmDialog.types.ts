@@ -10,6 +10,8 @@ export interface ConfirmDialogProps {
   /** Extra details between the description and the buttons */
   children?: ReactNode
   confirmDisabled?: boolean
+  /** Single-button notice: only the confirm button (closing still calls onCancel) */
+  hideCancel?: boolean
   onConfirm: () => void
   onCancel: () => void
 }

@@ -40,12 +40,7 @@ import { ValueDueDiligenceStage } from '@/components/organisms/ValueDueDiligence
 import { SponsorAssignModal } from '@/components/organisms/SponsorAssignModal'
 import { PrototypeScenarioSelect } from '@/components/molecules/PrototypeScenarioSelect'
 import { AnalysisDrawer } from '@/components/organisms/AnalysisDrawer'
-import {
-  buildInfoEmail,
-  hasDirectorDecided,
-  READY_TO_SPONSOR,
-  type AdminRouting,
-} from '@/lib/caseActions'
+import { buildInfoEmail, hasDirectorDecided, type AdminRouting } from '@/lib/caseActions'
 import { AssessmentBrief } from '@/components/organisms/AssessmentBrief'
 import { BriefDecisionModal } from '@/components/organisms/BriefDecisionModal'
 import { ReviewersLoading } from '@/components/molecules/ReviewersLoading'
@@ -128,11 +123,11 @@ const CANDIDATE_DIRECTORY = [
 const STRATEGY_CANDIDATE_DIRECTORY = [
   {
     id: 'strat-1',
-    name: 'Ahmed Darwish',
+    name: 'Dr. Zainab',
     role: 'Head of Strategy',
     department: 'Strategy',
     expertise: 'Market Strategy',
-    initials: 'AD',
+    initials: 'DZ',
     avatarColorBg: '#dbeafe',
     avatarColorText: '#1e40af',
   },
@@ -166,11 +161,6 @@ const STRATEGY_CANDIDATE_DIRECTORY = [
     avatarColorBg: '#d1fae5',
     avatarColorText: '#065f46',
   },
-]
-
-const DEFAULT_KNOWLEDGE_BASE_FILES: KnowledgeBaseFile[] = [
-  { name: 'M42_Roadmap_Register.xlsx', size: 184320, source: 'M42 knowledge base' },
-  { name: 'News_Trends_Agent_KB_Extract.docx', size: 92160, source: 'M42 knowledge base' },
 ]
 
 const PRE_READ_CHECKS = [
@@ -244,7 +234,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   }
 
   // Strategy Team: knowledge base, generated pre-read and the decision
-  const [kbFiles, setKbFiles] = useState<KnowledgeBaseFile[]>(DEFAULT_KNOWLEDGE_BASE_FILES)
+  const [kbFiles, setKbFiles] = useState<KnowledgeBaseFile[]>([])
   const [strategyModal, setStrategyModal] = useState<'proceed' | 'reject' | null>(null)
   const [pendingStrategy, setPendingStrategy] = useState<{
     decision: StrategyDecision
@@ -285,8 +275,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       ]
     : isStrategyTeam
       ? [
-          { id: 'preread', label: 'Pre-read summary' },
           { id: 'brief', label: 'Initial Assessment Brief' },
+          { id: 'preread', label: 'Pre-read Summary' },
         ]
       : isAdmin
         ? [{ id: 'brief', label: 'Initial Assessment Brief' }]
@@ -305,8 +295,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [localSent, setLocalSent] = useState<{ internal?: boolean; strategy?: boolean }>({})
 
   // For the Director, progress comes from the case itself, so it survives switching profiles
-  const isClosedAfterBrief =
-    isDirectorView && request.status === 'Exited' && request.decision?.status === 'proceeded'
+  const isClosedAfterBrief = isDirectorView && request.status === 'Closed'
   const isRejected =
     isDirectorView &&
     !isClosedAfterBrief &&
@@ -330,6 +319,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
   // Prototype outcomes of the Internal Interest team that need the Director's input
   const [scenarioPrompt, setScenarioPrompt] = useState<'open' | 'dismissed'>('open')
+  const [readyPromptOpen, setReadyPromptOpen] = useState(false)
   const internalScenario = request.internalOutcome?.scenario
   const showNotReadyConfirm =
     isDirector &&
@@ -342,11 +332,19 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     !request.sponsors &&
     !isClosedAfterBrief &&
     scenarioPrompt === 'open'
-  const sponsorCandidates = (request.internalInterests ?? []).filter(
-    (m) => m.decision === READY_TO_SPONSOR
-  )
+  // One person is ready to sponsor: say so, then move on to Strategic Alignment either way
+  const showSponsorReady =
+    isDirector && readyPromptOpen && internalScenario === 'single' && Boolean(request.sponsors)
+  const goToAlignment = () => {
+    setReadyPromptOpen(false)
+    setActiveStep('alignment')
+  }
+  const sponsorCandidates = (request.internalInterests ?? []).filter((m) => m.sponsor === 'Yes')
 
-  const [completedSteps, setCompletedSteps] = useState<StepId[]>([])
+  // A decided strategy case has both steps behind it already
+  const [completedSteps, setCompletedSteps] = useState<StepId[]>(() =>
+    isStrategyTeam && request.stageApprovals?.strategy ? ['brief', 'preread'] : []
+  )
   const completeStep = (id: StepId) =>
     setCompletedSteps((prev) => (prev.includes(id) ? prev : [...prev, id]))
 
@@ -355,7 +353,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     if (id === 'brief') return briefApproved || isRejected
     if (id === 'canvas') return internalApproved
     if (id === 'alignment') return strategyApproved
-    if (id === 'nda') return Boolean(request.discovery?.confirmedOn)
+    if (id === 'nda') return Boolean(request.alignmentPackOn)
     if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
     return false
   }
@@ -523,6 +521,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         return 'error'
       case 'Exited':
         return 'neutral'
+      case 'Closed':
+        return 'neutral'
       default:
         return 'neutral'
     }
@@ -640,13 +640,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   // Send Review states
   const [sendTeam, setSendTeam] = useState<'strategy' | 'internal' | null>(null)
   const [showVendorForm, setShowVendorForm] = useState(false)
-  const [selectedInternalSendIds, setSelectedInternalSendIds] = useState<string[]>(
-    stakeholders.map((s) => s.id)
-  )
-  const [selectedStrategySendIds, setSelectedStrategySendIds] = useState<string[]>(
-    DEFAULT_STRATEGY_MEMBERS.slice(0, 1).map((s) => s.id)
-  )
-  const [internalSendNote, setInternalSendNote] = useState(
+  const [internalSendNote] = useState(
     `Hi,\n\nWe have received a partnership request from ${request.companyName}. We would value your input and would like to confirm your interest in exploring this opportunity.\n\nPlease review the details in the Tech Due Diligence workspace and share your response.`
   )
   const [strategySendNote, setStrategySendNote] = useState(
@@ -695,20 +689,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         </span>
       )
     }
-    if (dl === 'ready to sponsor') {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-          Ready to sponsor
-        </span>
-      )
-    }
-    if (dl === 'not ready to sponsor') {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200">
-          Not ready to sponsor
-        </span>
-      )
-    }
     const isProceed = dl === 'proceed' || dl === 'interested' || dl === 'yes, proceed'
     const isDecline = dl === 'decline' || dl === 'reject' || dl === 'declined' || dl === 'no'
 
@@ -722,7 +702,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     if (isDecline) {
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
-          Decline
+          Reject
         </span>
       )
     }
@@ -775,29 +755,13 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     }
 
     setStrategyMembers([...strategyMembers, newMember])
-    setSelectedStrategySendIds((prev) => [...prev, newMember.id])
     setIsAddStrategyModalOpen(false)
   }
 
   const handleConfirmDeleteStrategyMember = () => {
     if (!deletingStrategyMember) return
     setStrategyMembers(strategyMembers.filter((p) => p.id !== deletingStrategyMember.id))
-    setSelectedStrategySendIds((prev) => prev.filter((id) => id !== deletingStrategyMember.id))
     setDeletingStrategyMember(null)
-  }
-
-  // Toggle selection for Internal Interest Review Modal
-  const toggleInternalSendMember = (id: string) => {
-    setSelectedInternalSendIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    )
-  }
-
-  // Toggle selection for Strategy Team Review Modal
-  const toggleStrategySendMember = (id: string) => {
-    setSelectedStrategySendIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    )
   }
 
   // Auto-dismiss review toast
@@ -825,6 +789,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     briefModal ||
     showNotReadyConfirm ||
     showSponsorAssign ||
+    showSponsorReady ||
     strategyModal ||
     pendingStrategy
   )
@@ -914,6 +879,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Deadline</th>
                     <th className="py-3 px-4">Decision</th>
+                    <th className="py-3 px-4">Sponsor</th>
+                    <th className="py-3 px-4">Response Date</th>
                     <th className="py-3 px-4">Type</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </>
@@ -930,7 +897,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <tbody className="divide-y divide-[#e2e8f0]">
               {stakeholders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-[#64748b]">
+                  <td colSpan={8} className="py-12 text-center text-[#64748b]">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Users className="w-6 h-6 text-slate-300" />
                       <div className="text-xs font-medium text-[#0d212c]">
@@ -943,7 +910,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   </td>
                 </tr>
               ) : (
-                stakeholders.map((person, idx) => (
+                stakeholders.map((person) => (
                   <tr key={person.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
@@ -972,8 +939,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       <>
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           {renderRequestStatusBadge(
-                            person.status ||
-                              (idx === 0 ? 'Completed' : idx === 1 ? 'In Progress' : 'Pending')
+                            person.status === 'Completed' ? 'Completed' : 'Pending'
                           )}
                         </td>
 
@@ -984,13 +950,31 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         </td>
 
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          {renderDecisionBadge(
-                            person.decision !== undefined
-                              ? person.decision
-                              : idx === 0
-                                ? 'Proceed'
-                                : '-'
+                          {renderDecisionBadge(person.decision)}
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {person.sponsor ? (
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${
+                                person.sponsor === 'Yes'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              {person.sponsor}
+                            </span>
+                          ) : (
+                            <span className="text-[#94a3b8] font-medium text-xs sm:text-sm pl-1">
+                              -
+                            </span>
                           )}
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="text-xs sm:text-[13px] font-medium text-[#0d212c]">
+                            {person.responseDate ?? '-'}
+                          </span>
                         </td>
 
                         <td className="py-3.5 px-4 whitespace-nowrap">
@@ -1424,7 +1408,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 <button
                   type="button"
                   onClick={() => setAdminModal('reassign')}
-                  className="h-9 px-4 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition flex items-center gap-1.5"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
                 >
                   <Pencil className="w-4 h-4" aria-hidden="true" />
                   Edit
@@ -1481,7 +1465,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             ref={stepperRef}
             className="flex flex-col gap-8 w-full animate-in fade-in duration-200 scroll-mt-4"
           >
-            {stepperSteps.length > 1 && !isNonDirector && !reviewersLoading && (
+            {stepperSteps.length > 1 && (!isNonDirector || isStrategyTeam) && !reviewersLoading && (
               <WorkflowStepper steps={stepperSteps} activeId={activeStep} onSelect={goToStep} />
             )}
 
@@ -1511,16 +1495,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         >
                           Continue to Questionnaire
                           <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                      </div>
-                    ) : isStrategyTeam ? (
-                      <div className="flex items-center justify-end">
-                        <button
-                          type="button"
-                          onClick={() => setActiveStep('preread')}
-                          className="px-6 py-2.5 rounded-xl border border-[#cbd5e1] bg-white hover:bg-slate-50 text-[#0d212c] text-sm font-semibold cursor-pointer transition"
-                        >
-                          Back to pre-read summary
                         </button>
                       </div>
                     ) : undefined
@@ -1556,6 +1530,17 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           <Send className="w-4 h-4" aria-hidden="true" />
                           <span>Send Request</span>
                         </button>
+                      ) : isDirector && internalSent && !strategySent ? (
+                        // Prototype only: sits where the awaiting-approval chip used to be, and
+                        // stays available so every outcome can be tried on the same screen
+                        <PrototypeScenarioSelect
+                          value={request.internalOutcome?.scenario}
+                          onChange={(scenario) => {
+                            setScenarioPrompt('open')
+                            if (scenario === 'single') setReadyPromptOpen(true)
+                            onCaseAction?.(request.id, { type: 'internalScenario', scenario })
+                          }}
+                        />
                       ) : isClosedAfterBrief && !internalApproved ? (
                         <StatusChip label="Closed" status="neutral" dot={false} />
                       ) : (
@@ -1578,16 +1563,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           </>
                         )}
                       </p>
-                    )}
-                    {isDirector && internalSent && !internalApproved && !isClosedAfterBrief && (
-                      <PrototypeScenarioSelect
-                        value={request.internalOutcome?.scenario}
-                        onChange={(scenario) => {
-                          setScenarioPrompt('open')
-                          onCaseAction?.(request.id, { type: 'internalScenario', scenario })
-                          if (scenario === 'single') setActiveStep('alignment')
-                        }}
-                      />
                     )}
                     {internalSection}
                   </div>
@@ -1649,6 +1624,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   request={request}
                   role={isSponsor ? 'sponsor' : 'director'}
                   onAction={(action) => onCaseAction?.(request.id, action)}
+                  onNext={() => setActiveStep('value')}
                 />
               )}
 
@@ -1692,7 +1668,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       files={kbFiles}
                       onFilesChange={setKbFiles}
                       onGenerate={() => setPreReadStage('generating')}
-                      onViewBrief={() => setActiveStep('brief')}
                     />
                   )}
                   {preReadStage === 'generating' && (
@@ -1716,13 +1691,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           </p>
                         </div>
                         <div className="flex items-center gap-4">
-                          <button
-                            type="button"
-                            onClick={() => setActiveStep('brief')}
-                            className="text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
-                          >
-                            View initial assessment brief
-                          </button>
                           {strategyDone && (
                             <StatusChip
                               label={strategyOutcome === 'Reject' ? 'Rejected' : 'Proceeded'}
@@ -2094,6 +2062,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           }
         />
       )}
+      {showSponsorReady && (
+        <ConfirmDialog
+          title="Ready to sponsor"
+          description={`${request.sponsors?.lead} is ready to sponsor this request. Moving to the Strategic Alignment stage.`}
+          confirmLabel="Proceed"
+          hideCancel
+          onCancel={goToAlignment}
+          onConfirm={goToAlignment}
+        />
+      )}
       {showSponsorAssign && (
         <SponsorAssignModal
           candidates={sponsorCandidates}
@@ -2128,7 +2106,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             role="dialog"
             aria-modal="true"
             aria-labelledby="send-team-title"
-            className="relative bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-6 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto"
+            className="relative bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-7 shadow-2xl border border-[#e2e8f0] flex flex-col gap-6 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -2137,12 +2115,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 </div>
                 <div>
                   <h3 id="send-team-title" className="text-lg font-semibold text-[#0d212c]">
-                    {sendTeam === 'strategy'
-                      ? 'Send to the Strategy Team'
-                      : 'Send to Internal Interest'}
+                    Send to the Strategy Team
                   </h3>
                   <p className="text-xs text-[#64748b] mt-0.5">
-                    The reviewers are notified as soon as you send it.
+                    The reviewer is notified as soon as you send it.
                   </p>
                 </div>
               </div>
@@ -2155,114 +2131,59 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               </button>
             </div>
 
-            {(
-              [
-                {
-                  key: 'internal',
-                  title: 'Internal Interest',
-                  people: stakeholders,
-                  selected: selectedInternalSendIds,
-                  toggle: toggleInternalSendMember,
-                  note: internalSendNote,
-                  setNote: setInternalSendNote,
-                  due: '4 days',
-                },
-                {
-                  key: 'strategy',
-                  title: 'Strategy Team',
-                  people: strategyMembers,
-                  selected: selectedStrategySendIds,
-                  toggle: toggleStrategySendMember,
-                  note: strategySendNote,
-                  setNote: setStrategySendNote,
-                  due: '2-3 business days',
-                },
-              ] as const
-            )
-              .filter((team) => team.key === sendTeam)
-              .map((team) => (
-                <div key={team.key} className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <h4 className="text-sm font-semibold text-[#0d212c]">
-                      {team.title}{' '}
-                      <span className="font-normal text-[#64748b]">
-                        ({team.selected.length} selected)
-                      </span>
-                    </h4>
-                    <span className="inline-flex items-center gap-1.5 text-xs text-[#64748b]">
-                      <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
-                      Response due in {team.due}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h4 className="text-sm font-semibold text-[#0d212c]">Strategy Team reviewer</h4>
+                <span className="inline-flex items-center gap-1.5 text-xs text-[#64748b]">
+                  <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
+                  Response due in 2-3 business days
+                </span>
+              </div>
+
+              <ul className="border border-[#e2e8f0] rounded-xl divide-y divide-[#f1f5f9] bg-white">
+                {strategyMembers.map((person) => (
+                  <li key={person.id} className="flex items-center justify-between p-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-[11px] shrink-0"
+                        style={{
+                          backgroundColor: person.avatarColorBg,
+                          color: person.avatarColorText,
+                        }}
+                      >
+                        {person.initials}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs sm:text-sm font-medium text-[#0d212c] truncate">
+                          {person.name}
+                        </span>
+                        <span className="text-[11px] text-[#64748b] truncate">{person.role}</span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-normal text-[#64748b] shrink-0 pl-2">
+                      {person.expertise}
                     </span>
-                  </div>
+                  </li>
+                ))}
+              </ul>
 
-                  <div className="border border-[#e2e8f0] rounded-xl divide-y divide-[#f1f5f9] bg-white">
-                    {team.people.map((person) => {
-                      const isChecked = team.selected.includes(person.id)
-                      return (
-                        <div
-                          key={person.id}
-                          onClick={() => team.toggle(person.id)}
-                          className="flex items-center justify-between p-3 hover:bg-slate-50 transition cursor-pointer select-none"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              role="checkbox"
-                              aria-checked={isChecked}
-                              aria-label={person.name}
-                              tabIndex={0}
-                              className={`w-5 h-5 rounded-md border flex items-center justify-center transition shrink-0 ${
-                                isChecked
-                                  ? 'bg-[#36c0c9] border-[#36c0c9] text-white'
-                                  : 'border-slate-300 bg-white'
-                              }`}
-                            >
-                              {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                            </div>
-                            <div
-                              className="w-7 h-7 rounded-full flex items-center justify-center font-semibold text-[11px] shrink-0"
-                              style={{
-                                backgroundColor: person.avatarColorBg,
-                                color: person.avatarColorText,
-                              }}
-                            >
-                              {person.initials}
-                            </div>
-                            <span className="text-xs sm:text-sm font-medium text-[#0d212c] truncate">
-                              {person.name}
-                            </span>
-                          </div>
-                          <span className="text-xs font-normal text-[#64748b] shrink-0 pl-2">
-                            {person.expertise}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label
-                      htmlFor={`send-note-${team.key}`}
-                      className="text-xs font-medium text-[#0d212c]"
-                    >
-                      Note to {team.title}
-                    </label>
-                    <textarea
-                      id={`send-note-${team.key}`}
-                      rows={4}
-                      value={team.note}
-                      onChange={(e) => team.setNote(e.target.value)}
-                      className="w-full p-3 rounded-lg border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white leading-relaxed"
-                    />
-                  </div>
-                </div>
-              ))}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="send-note-strategy" className="text-xs font-medium text-[#0d212c]">
+                  Note to Strategy Team
+                </label>
+                <textarea
+                  id="send-note-strategy"
+                  rows={9}
+                  value={strategySendNote}
+                  onChange={(e) => setStrategySendNote(e.target.value)}
+                  className="w-full p-3 rounded-lg border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white leading-relaxed resize-none"
+                />
+              </div>
+            </div>
 
             <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#f1f5f9] flex-wrap">
               <span className="text-xs text-[#64748b]">
-                {(sendTeam === 'strategy' ? selectedStrategySendIds : selectedInternalSendIds)
-                  .length === 0
-                  ? 'Select at least one reviewer.'
-                  : ''}
+                {strategyMembers.length === 0 ? 'Add a reviewer first.' : ''}
               </span>
               <div className="flex items-center gap-3">
                 <button
@@ -2274,21 +2195,14 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 </button>
                 <button
                   type="button"
-                  disabled={
-                    (sendTeam === 'strategy' ? selectedStrategySendIds : selectedInternalSendIds)
-                      .length === 0
-                  }
+                  disabled={strategyMembers.length === 0}
                   onClick={() => {
-                    const members = strategyMembers.filter((m) =>
-                      selectedStrategySendIds.includes(m.id)
-                    )
-                    onSendReview?.(request.id, 'strategy', { members })
+                    onSendReview?.(request.id, 'strategy', { members: strategyMembers })
                     setLocalSent((prev) => ({ ...prev, strategy: true }))
                     setSendTeam(null)
                   }}
                   className={`px-5 py-2.5 rounded-lg font-semibold text-xs shadow-xs transition ${
-                    (sendTeam === 'strategy' ? selectedStrategySendIds : selectedInternalSendIds)
-                      .length === 0
+                    strategyMembers.length === 0
                       ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                       : 'bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer'
                   }`}
@@ -2743,6 +2657,26 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* STRATEGY TEAM: Next on the brief, always in view */}
+      {isStrategyTeam && activeTab !== 'audit' && activeStep === 'brief' && !strategyDone && (
+        <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
+          <span className="text-sm text-[#475569]">
+            Review the brief, then continue to prepare the pre-read summary.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              completeStep('brief')
+              setActiveStep('preread')
+            }}
+            className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
+          >
+            Next
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
       )}
 

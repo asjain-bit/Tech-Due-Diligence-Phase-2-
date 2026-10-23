@@ -273,10 +273,19 @@ describe('DashboardScreen', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getAllByRole('columnheader', { name: 'Status' })).toHaveLength(1)
 
-    // The stage now waits for the Internal Interest team, and the next stage stays locked
+    // The stage now waits for the Internal Interest team, and the next stage stays locked. The
+    // simulation dropdown sits where the awaiting-approval chip used to be.
     expect(
-      screen.getByText('Awaiting approval', { selector: 'span.inline-flex' })
-    ).toBeInTheDocument()
+      screen.queryByText('Awaiting approval', { selector: 'span.inline-flex' })
+    ).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/Simulate the team/)).toBeInTheDocument()
+    // Everyone starts as Pending, with Sponsor and Response Date columns
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual(
+      expect.arrayContaining(['Status', 'Deadline', 'Decision', 'Sponsor', 'Response Date'])
+    )
+    const table = within(screen.getByRole('table'))
+    expect(table.getAllByText('Pending')).toHaveLength(5)
+    expect(table.queryByText('Completed')).not.toBeInTheDocument()
     const stepper = within(screen.getByRole('navigation', { name: 'Review progress' }))
     expect(stepper.getByRole('button', { name: /Strategic Alignment/ })).toBeDisabled()
     await user.click(screen.getByRole('tab', { name: 'Audit Log' }))
@@ -428,38 +437,47 @@ describe('DashboardScreen', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('lands the strategy team on the knowledge base, without the brief animation', async () => {
-    const user = setup()
+  const openStrategyCase = () => {
     const open = INITIAL_PARTNERSHIP_REQUESTS.map((r) =>
       r.id === 'req-002' ? { ...r, stageApprovals: undefined } : r
     )
     render(<DashboardScreen userProfile={strategyProfile} requests={open} />)
+  }
 
+  it('opens the strategy team on the brief, with no animation and the workflow stages', async () => {
+    const user = setup()
+    openStrategyCase()
     await user.click(screen.getByText('AlphaHealth BioTech'))
-    // No thinking animation and no stepper: straight to the prepare screen
     expect(screen.queryByText('ANALYZING')).not.toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'Review progress' })).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'Prepare Initial Assessment Brief' })
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /Continue to Knowledge Base/i })
-    ).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Skip/i })).not.toBeInTheDocument()
-    // The vendor details card stays above it
-    expect(screen.getByRole('heading', { name: 'AlphaHealth BioTech' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Company Information' })).toBeInTheDocument()
+    const stepper = within(screen.getByRole('navigation', { name: 'Review progress' }))
+    expect(stepper.getAllByRole('button').map((b) => b.textContent)).toEqual([
+      expect.stringContaining('Initial Assessment Brief'),
+      expect.stringContaining('Pre-read Summary'),
+    ])
+    expect(stepper.getByRole('button', { name: /Pre-read Summary/ })).toBeDisabled()
+    // A fixed footer with a Next button
+    const bar = screen.getByRole('button', { name: 'Next' }).parentElement!
+    expect(bar.className).toContain('sticky')
   })
 
-  it('walks the strategy team through the pre-read and a confirmed decision', async () => {
+  it('walks the strategy team from the brief through the documents screen to a confirmed decision', async () => {
     const user = setup()
-    const open = INITIAL_PARTNERSHIP_REQUESTS.map((r) =>
-      r.id === 'req-002' ? { ...r, stageApprovals: undefined } : r
-    )
-    render(<DashboardScreen userProfile={strategyProfile} requests={open} />)
-
+    openStrategyCase()
     await user.click(screen.getByText('AlphaHealth BioTech'))
-    await user.upload(screen.getByLabelText('Knowledge base files'), new File(['x'], 'extra.pptx'))
-    await user.click(screen.getByRole('button', { name: 'Generate Pre-read Summary' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+
+    // The screen before the pre-read is generated
+    expect(screen.getByRole('heading', { name: 'Prepare Pre-read Summary' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Review progress' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Browse files' }))
+    const popup = screen.getByRole('dialog', { name: 'Add supporting documents' })
+    await user.upload(
+      within(popup).getByLabelText('Supporting documents'),
+      new File(['x'], 'extra.pptx')
+    )
+    await user.click(within(popup).getByRole('button', { name: 'Add documents' }))
+    await user.click(screen.getByRole('button', { name: /Generate Summary/ }))
 
     // The simple animation runs below the vendor details card
     expect(screen.getByText('GENERATING')).toBeInTheDocument()
@@ -472,11 +490,14 @@ describe('DashboardScreen', () => {
       })
     ).toHaveLength(6)
     expect(screen.getByText('extra.pptx', { selector: 'span' })).toBeInTheDocument()
+    // Workflow stages stay visible so the brief can be revisited
+    expect(screen.getByRole('navigation', { name: 'Review progress' })).toBeInTheDocument()
 
     // Fixed bar with Reject and Proceed; both confirm before recording
     await user.click(screen.getByRole('button', { name: 'Proceed' }))
-    const popup = screen.getByRole('dialog', { name: 'Proceed with this partnership' })
-    await user.click(within(popup).getByRole('button', { name: 'Proceed' }))
+    const decision = screen.getByRole('dialog', { name: 'Proceed with this partnership' })
+    expect(within(decision).queryByText(/optional/i)).not.toBeInTheDocument()
+    await user.click(within(decision).getByRole('button', { name: 'Proceed' }))
     const confirm = screen.getByRole('dialog', { name: 'Submit your decision?' })
     expect(confirm).toHaveTextContent('Proceed')
     await user.click(within(confirm).getByRole('button', { name: 'Submit' }))
@@ -542,7 +563,7 @@ const simulate = (user: ReturnType<typeof setup>, option: string) =>
 describe('Internal Interest outcomes', () => {
   afterEach(() => vi.useRealTimers())
 
-  it('shows a prototype-only dropdown above the table once the request is sent', async () => {
+  it('shows a prototype-only dropdown in the header, above the table', async () => {
     const user = setup()
     render(<Shared profile={directorProfile} initial={[sentToInternal]} />)
     await openCase(user)
@@ -554,9 +575,13 @@ describe('Internal Interest outcomes', () => {
     expect(
       select.compareDocumentPosition(screen.getByRole('table')) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy()
+    // No awaiting-approval chip next to the title
+    expect(
+      screen.queryByText('Awaiting approval', { selector: 'span.inline-flex' })
+    ).not.toBeInTheDocument()
   })
 
-  it('closes the case when no one responds', async () => {
+  it('closes the case as Closed when no one responds, and keeps the dropdown to try the others', async () => {
     const user = setup()
     render(<Shared profile={directorProfile} initial={[sentToInternal]} />)
     await openCase(user)
@@ -564,7 +589,40 @@ describe('Internal Interest outcomes', () => {
     expect(
       screen.getByText('This case was closed: No one from the Internal Interest team responded.')
     ).toBeInTheDocument()
-    expect(screen.queryByLabelText(/Simulate the team/)).not.toBeInTheDocument()
+    expect(screen.getAllByText('Closed').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Exited')).not.toBeInTheDocument()
+    // Still available, and picking another outcome re-opens the case
+    expect(screen.getByLabelText(/Simulate the team/)).toBeEnabled()
+    await simulate(user, 'single')
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Ready to sponsor' })).getByRole('button', {
+        name: 'Proceed',
+      })
+    )
+    expect(screen.queryByText(/This case was closed/)).not.toBeInTheDocument()
+  })
+
+  it('separates the decision from the sponsor answer, with a response date', async () => {
+    const user = setup()
+    render(<Shared profile={directorProfile} initial={[sentToInternal]} />)
+    await openCase(user)
+    await simulate(user, 'not-ready')
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Close this case?' })).getByRole('button', {
+        name: 'Cancel',
+      })
+    )
+    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
+    const cells = (i: number) =>
+      within(rows[i])
+        .getAllByRole('cell')
+        .map((c) => c.textContent)
+    // Status, Deadline, Decision, Sponsor, Response Date
+    expect(cells(0).slice(1, 4)).toEqual(['Completed', '4 days', 'Proceed'])
+    expect(cells(0)[4]).toBe('No')
+    expect(cells(0)[5]).not.toBe('-')
+    expect(cells(1)[3]).toBe('Reject')
+    expect(cells(2).slice(1, 6)).toEqual(['Pending', '4 days', '-', '-', '-'])
   })
 
   it('asks before closing when someone responds but no one is ready to sponsor', async () => {
@@ -576,7 +634,6 @@ describe('Internal Interest outcomes', () => {
     expect(confirm).toHaveTextContent(
       'No one from the Internal Interest team is ready to sponsor this request. Do you want to close this case?'
     )
-    expect(screen.getAllByText('Not ready to sponsor').length).toBeGreaterThan(0)
     await user.click(within(confirm).getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await simulate(user, 'not-ready')
@@ -592,11 +649,16 @@ describe('Internal Interest outcomes', () => {
     ).toBeInTheDocument()
   })
 
-  it('goes straight to Strategic Alignment when one person is ready to sponsor', async () => {
+  it('says who is ready to sponsor, then opens Strategic Alignment whichever way the popup is closed', async () => {
     const user = setup()
     render(<Shared profile={directorProfile} initial={[sentToInternal]} />)
     await openCase(user)
     await simulate(user, 'single')
+    const popup = screen.getByRole('dialog', { name: 'Ready to sponsor' })
+    expect(popup).toHaveTextContent('Riza Sayeed is ready to sponsor this request.')
+    expect(popup).toHaveTextContent('Moving to the Strategic Alignment stage')
+    expect(within(popup).queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+    await user.click(within(popup).getByRole('button', { name: 'Proceed' }))
     expect(screen.getByText('Finding the Strategy team…')).toBeInTheDocument()
     finishThinking()
     expect(
@@ -604,8 +666,19 @@ describe('Internal Interest outcomes', () => {
     ).toBeInTheDocument()
     const stepper = within(screen.getByRole('navigation', { name: 'Review progress' }))
     expect(stepper.getByRole('button', { name: /Internal Canvas/ })).toHaveTextContent('Approved')
-    // 5 steps in the workflow
     expect(stepper.getAllByRole('button')).toHaveLength(5)
+  })
+
+  it('also opens Strategic Alignment when the popup is closed with the X', async () => {
+    const user = setup()
+    render(<Shared profile={directorProfile} initial={[sentToInternal]} />)
+    await openCase(user)
+    await simulate(user, 'single')
+    await user.click(screen.getByRole('button', { name: 'Close dialog' }))
+    finishThinking()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Strategic Alignment' })
+    ).toBeInTheDocument()
   })
 
   it('asks the Director to assign the lead and co-sponsors when several are ready', async () => {
@@ -636,11 +709,18 @@ describe('Internal Interest outcomes', () => {
     render(<Shared profile={directorProfile} initial={[sentToInternal]} />)
     await openCase(user)
     await simulate(user, 'single')
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Ready to sponsor' })).getByRole('button', {
+        name: 'Proceed',
+      })
+    )
     finishThinking()
     await user.click(screen.getByRole('button', { name: 'Send Request' }))
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Send Request' })
-    )
+    const popup = screen.getByRole('dialog', { name: 'Send to the Strategy Team' })
+    // One reviewer, Dr. Zainab, with nothing to tick
+    expect(within(popup).getByText('Dr. Zainab')).toBeInTheDocument()
+    expect(within(popup).queryByRole('checkbox')).not.toBeInTheDocument()
+    await user.click(within(popup).getByRole('button', { name: 'Send Request' }))
     expect(screen.getByText('Approval: Proceed')).toBeInTheDocument()
     expect(
       screen.getByText(/Conditions: Proceed on the condition that the vendor commits to UAE/)
@@ -649,27 +729,38 @@ describe('Internal Interest outcomes', () => {
     expect(stepper.getByRole('button', { name: /Strategic Alignment/ })).toHaveTextContent(
       'Approved'
     )
-    expect(stepper.getByRole('button', { name: /NDA & Discovery/ })).toBeEnabled()
   })
 })
 
 describe('NDA & Discovery, Value and the Sponsor profile', () => {
   afterEach(() => vi.useRealTimers())
 
-  it('lets the Director upload the signed NDA, which generates the alignment pack', async () => {
+  it('takes the Director from the NDA template, through the signed copy, to the alignment pack', async () => {
     const user = setup()
     render(<Shared profile={directorProfile} initial={[...INITIAL_PARTNERSHIP_REQUESTS]} />)
     await openCase(user, 'AlphaHealth BioTech')
     expect(screen.getByRole('heading', { level: 2, name: 'NDA & Discovery' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Alignment pack' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'NDA Execution Form' })).toBeInTheDocument()
     await user.click(
       screen.getByRole('checkbox', {
         name: 'I acknowledge that the document has been signed by the vendor',
       })
     )
-    await user.upload(screen.getByLabelText('Upload signed copy'), new File(['x'], 'signed.pdf'))
-    expect(screen.getByText(/Signed copy · Version 1/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Alignment pack' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Proceed/ }))
+    await user.upload(screen.getByLabelText('Signed NDA file'), new File(['x'], 'signed.pdf'))
+    await user.click(screen.getByRole('button', { name: 'Upload' }))
+
+    // The template is replaced by the signed copy, version shown along with the title
+    expect(screen.getByRole('heading', { name: 'Signed NDA Execution Form' })).toBeInTheDocument()
+    expect(screen.getByLabelText('NDA version')).toHaveValue('1')
+    await user.click(screen.getByRole('button', { name: /Proceed/ }))
+
+    // The alignment pack, with Next to the last stage
+    expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Next/ }))
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Value & Due Diligence' })
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'Audit Log' }))
     const titles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
     expect(titles).toEqual(
@@ -717,7 +808,7 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     )
   })
 
-  it('shows the Director the earlier stages as read-only for the Sponsor', async () => {
+  it('opens the Sponsor on the alignment pack, with the signed NDA behind Back and no template', async () => {
     const user = setup()
     render(<Shared profile={sponsorProfile} initial={[...INITIAL_PARTNERSHIP_REQUESTS]} />)
     await user.click(screen.getByText('GenomicX MENA FZ-LLC'))
@@ -726,8 +817,11 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
         name: /NDA & Discovery/,
       })
     )
+    expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'NDA Execution Form' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Back to signed NDA/ }))
+    expect(screen.getByRole('heading', { name: 'Signed NDA Execution Form' })).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-    expect(screen.getByText(/Signed copy · Version 1/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Alignment pack' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Download/ })).not.toBeInTheDocument()
   })
 })

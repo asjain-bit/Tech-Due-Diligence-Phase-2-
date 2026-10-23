@@ -65,4 +65,25 @@ describe('ConfirmDialog', () => {
     expect(screen.getByText('Extra details')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Confirm change' })).toBeDisabled()
   })
+
+  it('can show a single button, while closing still reports onCancel', async () => {
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+    const onConfirm = vi.fn()
+    render(
+      <ConfirmDialog
+        title="Ready"
+        description="d"
+        confirmLabel="Proceed"
+        hideCancel
+        onCancel={onCancel}
+        onConfirm={onConfirm}
+      />
+    )
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Close dialog' }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('button', { name: 'Proceed' }))
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
 })

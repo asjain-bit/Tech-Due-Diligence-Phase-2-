@@ -6,6 +6,8 @@ import {
   getStageLabel,
   hasDirectorDecided,
   buildInfoEmail,
+  applyInternalScenario,
+  uploadSignedNda,
   holdRequest,
   nextCaseCode,
   proceedRequest,
@@ -274,13 +276,16 @@ describe('review stages', () => {
     })
     expect(next.sent).toEqual({ internal: true })
     expect(next.sentQuestionnaire?.questions).toHaveLength(2)
-    expect(next.internalInterests?.map((m) => m.status)).toEqual([
-      'In Progress',
-      'Pending',
-      'Pending',
-    ])
+    // Everyone starts as Pending, with no decision, sponsor answer or response date
+    expect(next.internalInterests?.map((m) => m.status)).toEqual(['Pending', 'Pending', 'Pending'])
     expect(
-      next.internalInterests?.every((m) => m.answers === undefined && m.decision === '-')
+      next.internalInterests?.every(
+        (m) =>
+          m.answers === undefined &&
+          m.decision === '-' &&
+          m.sponsor === undefined &&
+          m.responseDate === undefined
+      )
     ).toBe(true)
     expect(next.auditLog.at(-1)).toMatchObject({
       title: 'Request sent to Internal Interest team',
@@ -382,5 +387,63 @@ describe('buildInfoEmail', () => {
     expect(email.body).toContain(`Hi ${pending.companyInfo.name},`)
     expect(email.body).toContain('Zaid Al Ali')
     expect(email.body).toContain('Information Requested')
+  })
+})
+
+describe('applyInternalScenario', () => {
+  const sent = sendReview(pending, 'internal', {
+    members: INITIAL_PARTNERSHIP_REQUESTS[0].internalInterests!,
+  })
+
+  it('closes the case, as Closed, when no one responds', () => {
+    const next = applyInternalScenario(sent, 'none')
+    expect(next.status).toBe('Closed')
+    expect(next.closedReason).toMatch(/No one from the Internal Interest team responded/)
+    expect(
+      next.internalInterests?.every((m) => m.status === 'Pending' && m.sponsor === undefined)
+    ).toBe(true)
+    expect(getStageLabel(next)).toBe('Closed')
+  })
+
+  it('records decisions and sponsor answers separately, and waits when no one is ready', () => {
+    const next = applyInternalScenario(sent, 'not-ready')
+    const done = next.internalInterests!.filter((m) => m.status === 'Completed')
+    expect(done).toHaveLength(2)
+    expect(done.map((m) => m.decision)).toEqual(['Proceed', 'Reject'])
+    expect(done.every((m) => m.sponsor === 'No' && m.responseDate)).toBe(true)
+    expect(next.status).not.toBe('Closed')
+    expect(next.sponsors).toBeUndefined()
+  })
+
+  it('approves the stage with that person as lead when one is ready', () => {
+    const next = applyInternalScenario(sent, 'single')
+    expect(next.sponsors).toEqual({ lead: next.internalInterests![0].name, co: [] })
+    expect(next.stageApprovals?.internal?.status).toBe('approved')
+    expect(next.internalInterests![0]).toMatchObject({ decision: 'Proceed', sponsor: 'Yes' })
+    expect(next.internalInterests![1]).toMatchObject({ sponsor: 'No', status: 'Completed' })
+  })
+
+  it('leaves the lead and co-sponsors to the Director when several are ready', () => {
+    const next = applyInternalScenario(sent, 'multiple')
+    expect(next.internalInterests!.filter((m) => m.sponsor === 'Yes')).toHaveLength(3)
+    expect(next.sponsors).toBeUndefined()
+    expect(next.stageApprovals?.internal).toBeUndefined()
+  })
+
+  it('re-opens a closed case when another outcome is picked', () => {
+    const closed = applyInternalScenario(sent, 'none')
+    const reopened = applyInternalScenario(closed, 'single')
+    expect(reopened.status).toBe('In Progress')
+    expect(reopened.closedReason).toBeUndefined()
+    expect(reopened.stageApprovals?.internal?.status).toBe('approved')
+  })
+})
+
+describe('signed NDA', () => {
+  it('moves the case on to Value Assessment when the first signed copy arrives', () => {
+    const next = uploadSignedNda(INITIAL_PARTNERSHIP_REQUESTS[1], 'signed.pdf')
+    expect(next.alignmentPackOn).toBeDefined()
+    expect(next.workflowStages.find((st) => st.id === 4)?.status).toBe('completed')
+    expect(next.workflowStages.find((st) => st.id === 5)?.status).toBe('in_progress')
   })
 })

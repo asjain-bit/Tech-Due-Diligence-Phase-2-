@@ -438,10 +438,11 @@ describe('PartnershipDetail', () => {
       // The popup closes once sent
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-      // The stage now waits: tracking layout, Awaiting approval, next stage locked
+      // The stage now waits: tracking layout, the simulation dropdown where the chip used to be
       expect(
-        screen.getByText('Awaiting approval', { selector: 'span.inline-flex' })
-      ).toBeInTheDocument()
+        screen.queryByText('Awaiting approval', { selector: 'span.inline-flex' })
+      ).not.toBeInTheDocument()
+      expect(screen.getByLabelText(/Simulate the team/)).toBeInTheDocument()
       expect(stepper().getByRole('button', { name: /Internal Canvas/ })).toHaveTextContent(
         'Awaiting approval'
       )
@@ -476,9 +477,10 @@ describe('PartnershipDetail', () => {
         screen.getByRole('heading', { level: 2, name: 'Strategic Alignment' })
       ).toBeInTheDocument()
 
-      // The earlier stage keeps its tracking table and an Approved chip
+      // The earlier stage keeps its tracking table, and the simulation stays until the next
+      // stage has been sent
       await user.click(stepper().getByRole('button', { name: /Internal Canvas/ }))
-      expect(screen.getByText('Approved', { selector: 'span.inline-flex' })).toBeInTheDocument()
+      expect(screen.getByLabelText(/Simulate the team/)).toBeInTheDocument()
       expect(screen.getAllByRole('columnheader', { name: 'Decision' })).toHaveLength(1)
     })
   })
@@ -497,18 +499,21 @@ describe('PartnershipDetail', () => {
       expect(
         screen.getByText('Choose the Strategy Team reviewer, then send the request.')
       ).toBeInTheDocument()
-      expect(screen.getByText('Ahmed Darwish')).toBeInTheDocument()
+      expect(screen.getByText('Dr. Zainab')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Add Member/i })).toBeDisabled()
       expect(screen.getByText('You can add 1 member for now.')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Send Request' }))
       const dialog = screen.getByRole('dialog')
       expect(within(dialog).getByText('Send to the Strategy Team')).toBeInTheDocument()
+      // The one reviewer is not a choice: no checkbox, and the note is tall enough not to scroll
+      expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+      expect(within(dialog).getByLabelText('Note to Strategy Team')).toHaveAttribute('rows', '9')
       await user.click(within(dialog).getByRole('button', { name: 'Send Request' }))
       expect(onSendReview).toHaveBeenCalledWith(
         mockRequest.id,
         'strategy',
-        expect.objectContaining({ members: [expect.objectContaining({ name: 'Ahmed Darwish' })] })
+        expect.objectContaining({ members: [expect.objectContaining({ name: 'Dr. Zainab' })] })
       )
       expect(
         screen.getByText('Awaiting approval', { selector: 'span.inline-flex' })
@@ -735,7 +740,7 @@ describe('PartnershipDetail', () => {
       })
     })
 
-    it('does not confirm when the type stays the same', async () => {
+    it('keeps Reassign disabled until a different type is chosen', async () => {
       const user = userEvent.setup()
       renderDetail({ userProfile: adminProfile, request: routed('Partnership') })
       await user.click(screen.getByRole('button', { name: 'Edit' }))
@@ -743,12 +748,41 @@ describe('PartnershipDetail', () => {
       expect(within(modal).getByRole('button', { name: /Request type/ })).toHaveTextContent(
         'Partnership'
       )
-      await user.click(within(modal).getByRole('button', { name: 'Reassign' }))
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(onRoute).toHaveBeenCalledWith(
-        adminCase.id,
-        expect.objectContaining({ type: 'Partnership', reason: 'Original reason' })
+      expect(within(modal).getByRole('button', { name: 'Reassign' })).toBeDisabled()
+      // Picking the type it already has changes nothing
+      await user.click(within(modal).getByRole('button', { name: /Request type/ }))
+      await user.click(
+        within(modal)
+          .getByRole('option', { name: /Partnership/ })
+          .querySelector('button')!
       )
+      expect(within(modal).getByRole('button', { name: 'Reassign' })).toBeDisabled()
+      await user.click(within(modal).getByRole('button', { name: /Request type/ }))
+      await user.click(
+        within(modal)
+          .getByRole('option', { name: /Procure/ })
+          .querySelector('button')!
+      )
+      expect(within(modal).getByRole('button', { name: 'Reassign' })).toBeEnabled()
+    })
+
+    it('shows the request type list in the flow of the popup, so it is never clipped', async () => {
+      const user = userEvent.setup()
+      renderDetail({ userProfile: adminProfile, request: routed('Partnership') })
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
+      const modal = screen.getByRole('dialog', { name: 'Reassign request type' })
+      await user.click(within(modal).getByRole('button', { name: /Request type/ }))
+      const list = within(modal).getByRole('listbox', { name: 'Request type' })
+      expect(list.className).not.toContain('absolute')
+      expect(modal.className).toContain('max-h-[90vh]')
+    })
+
+    it('shows Edit as a text-only button in the primary colour', () => {
+      renderDetail({ userProfile: adminProfile, request: routed('Partnership') })
+      const edit = screen.getByRole('button', { name: 'Edit' })
+      expect(edit.className).toContain('text-[#008a8a]')
+      expect(edit.className).not.toMatch(/\bborder\b|bg-white/)
+      expect(edit.querySelector('svg')).not.toBeNull()
     })
 
     it('makes a recorded decision view-only, with Edit as the only way to change it', async () => {
@@ -864,48 +898,51 @@ describe('PartnershipDetail', () => {
   })
 
   describe('Strategy Team', () => {
-    it('lands on the prepare screen, with no stepper, brief animation or skip button', () => {
+    it('opens on the brief, with no animation, the workflow stages and a fixed Next', () => {
       renderDetail({ userProfile: strategyProfile, animateAgentRun: true })
       expect(screen.queryByText('ANALYZING')).not.toBeInTheDocument()
-      expect(screen.queryByRole('navigation', { name: 'Review progress' })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Company Information' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Agent Verdict' })).not.toBeInTheDocument()
+      expect(screen.queryByText('sarah@medtechinnovations.com')).not.toBeInTheDocument()
       expect(
-        screen.getByRole('heading', { name: 'Prepare Initial Assessment Brief' })
-      ).toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: /Continue to Knowledge Base/i })
-      ).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /Skip/i })).not.toBeInTheDocument()
-      // The vendor details card stays above it
-      expect(screen.getByRole('heading', { name: 'MedTech Innovations' })).toBeInTheDocument()
-      // Two M42 knowledge base documents are already selected
-      const docs = within(screen.getByRole('list', { name: 'Knowledge base documents' }))
-      expect(docs.getAllByRole('listitem')).toHaveLength(2)
+        stepper()
+          .getAllByRole('button')
+          .map((b) => b.textContent)
+      ).toEqual([
+        expect.stringContaining('Initial Assessment Brief'),
+        expect.stringContaining('Pre-read Summary'),
+      ])
+      expect(stepper().getByRole('button', { name: /Pre-read Summary/ })).toBeDisabled()
+      const bar = screen.getByRole('button', { name: 'Next' }).parentElement!
+      expect(bar.className).toContain('sticky')
+      expect(bar.className).toContain('bottom-0')
     })
 
-    it('still lets the team read the initial assessment brief, and come back', async () => {
+    it('goes from Next to the Prepare Pre-read Summary screen, with nothing pre-selected', async () => {
       const user = userEvent.setup()
       renderDetail({ userProfile: strategyProfile })
-      await user.click(screen.getByRole('button', { name: 'View initial assessment brief' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      expect(screen.getByRole('heading', { name: 'Prepare Pre-read Summary' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Skip/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('list', { name: 'Documents added' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+      // The brief is still one click away in the stages
+      await user.click(stepper().getByRole('button', { name: /Initial Assessment Brief/ }))
       expect(screen.getByRole('heading', { name: 'Company Information' })).toBeInTheDocument()
-      expect(screen.queryByText('sarah@medtechinnovations.com')).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Back to pre-read summary' }))
-      expect(
-        screen.getByRole('heading', { name: 'Prepare Initial Assessment Brief' })
-      ).toBeInTheDocument()
     })
 
     it('generates the pre-read below the vendor card with the simple animation, then decides with a confirmation', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderDetail({ userProfile: strategyProfile })
-      await user.click(screen.getByRole('button', { name: 'Generate Pre-read Summary' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: /Generate Summary/ }))
 
       // The vendor card and tabs stay; the animation sits below them
       expect(screen.getByText('GENERATING')).toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'MedTech Innovations' })).toBeInTheDocument()
       expect(screen.getByRole('tablist')).toBeInTheDocument()
-      expect(screen.queryByRole('list')).not.toBeInTheDocument()
+      expect(screen.queryByRole('list', { name: 'Pre-read summary' })).not.toBeInTheDocument()
       runTimers(1100, 8)
 
       expect(
@@ -948,13 +985,19 @@ describe('PartnershipDetail', () => {
       expect(screen.getByText('Rejected')).toBeInTheDocument()
     })
 
-    it('proceeds without a reason after confirming, and records the documents used', async () => {
+    it('proceeds without a reason after confirming, and records the documents added', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderDetail({ userProfile: strategyProfile })
-      await user.click(screen.getByRole('button', { name: 'Remove M42_Roadmap_Register.xlsx' }))
-      await user.upload(screen.getByLabelText('Knowledge base files'), new File(['x'], 'deck.pptx'))
-      await user.click(screen.getByRole('button', { name: 'Generate Pre-read Summary' }))
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await user.click(screen.getByRole('button', { name: 'Browse files' }))
+      await user.upload(screen.getByLabelText('Supporting documents'), [
+        new File(['x'], 'deck.pptx'),
+        new File(['x'], 'plan.pdf'),
+      ])
+      await user.click(screen.getByRole('button', { name: 'Add documents' }))
+      await user.click(screen.getByRole('button', { name: 'Remove plan.pdf' }))
+      await user.click(screen.getByRole('button', { name: /Generate Summary/ }))
       runTimers(1100, 8)
 
       await user.click(screen.getByRole('button', { name: 'Proceed' }))
@@ -976,14 +1019,14 @@ describe('PartnershipDetail', () => {
           response: expect.objectContaining({
             finalDecision: 'Proceed',
             finalDecisionNote: '',
-            documents: ['News_Trends_Agent_KB_Extract.docx', 'deck.pptx'],
+            documents: ['deck.pptx'],
           }),
         })
       )
       expect(screen.getByText('Proceeded')).toBeInTheDocument()
     })
 
-    it('shows a decided case as a read-only pre-read straight away', () => {
+    it('shows a decided case as a read-only pre-read straight away, with both stages done', () => {
       renderDetail({
         userProfile: strategyProfile,
         request: INITIAL_PARTNERSHIP_REQUESTS[1],
@@ -995,6 +1038,7 @@ describe('PartnershipDetail', () => {
       ).toHaveLength(6)
       expect(screen.queryByRole('button', { name: 'Proceed' })).not.toBeInTheDocument()
       expect(screen.getByText('Proceeded')).toBeInTheDocument()
+      expect(stepper().getByRole('button', { name: /Pre-read Summary/ })).toBeEnabled()
     })
   })
 
@@ -1044,7 +1088,9 @@ describe('PartnershipDetail', () => {
       expect(screen.queryByRole('button', { name: 'Proceed' })).not.toBeInTheDocument()
       expect(screen.getByText('Waiting for the lead sponsor to decide.')).toBeInTheDocument()
       await user.click(stepper().getByRole('button', { name: /NDA & Discovery/ }))
-      expect(screen.getByText(/Signed copy · Version 1/)).toBeInTheDocument()
+      // Signed already: the alignment pack, with the signed NDA behind Back
+      expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /Back to signed NDA/ }))
       expect(screen.getByRole('button', { name: 'Upload new version' })).toBeInTheDocument()
     })
   })

@@ -37,7 +37,12 @@ const Check: React.FC<{ checked?: boolean; label: string }> = ({ checked = false
   </span>
 )
 
-const Signature: React.FC = () => <span className="text-[#94a3b8]">Signature</span>
+const Signature: React.FC<{ signedOn?: string }> = ({ signedOn }) =>
+  signedOn ? (
+    <span className="italic font-medium text-[#0d212c]">Signed</span>
+  ) : (
+    <span className="text-[#94a3b8]">Signature</span>
+  )
 
 const Part: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <section className="flex flex-col gap-2">
@@ -46,27 +51,35 @@ const Part: React.FC<{ title: string; children: React.ReactNode }> = ({ title, c
   </section>
 )
 
-const Approval: React.FC<{ approver: string }> = ({ approver }) => (
+const Approval: React.FC<{ approver: string; signedOn?: string }> = ({ approver, signedOn }) => (
   <>
     <Row label="Approver name and contact">{approver}</Row>
     <Row label="Approved?">
-      <Check label="Approve" />
+      <Check checked={Boolean(signedOn)} label="Approve" />
       <Check label="Reject" />
     </Row>
     <Row label="Additional comments, if any">&nbsp;</Row>
     <Row label="Signature">
-      <Signature />
+      <Signature signedOn={signedOn} />
     </Row>
-    <Row label="Date">&nbsp;</Row>
+    <Row label="Date">{signedOn ?? <>&nbsp;</>}</Row>
   </>
 )
 
-export const NdaExecutionForm: React.FC<NdaExecutionFormProps> = ({ request, className = '' }) => (
+export const NdaExecutionForm: React.FC<NdaExecutionFormProps> = ({
+  request,
+  signedOn,
+  className = '',
+}) => (
   <div className={`flex flex-col gap-6 ${className}`.trim()}>
     <div className="flex flex-col gap-1">
-      <h3 className="text-lg font-semibold text-[#0d212c]">NDA Execution Form</h3>
+      <h3 className="text-lg font-semibold text-[#0d212c]">
+        {signedOn ? 'Signed NDA Execution Form' : 'NDA Execution Form'}
+      </h3>
       <p className="text-xs text-[#64748b]">
-        Read-only. Download the form to have it signed by the vendor.
+        {signedOn
+          ? `Signed copy uploaded on ${signedOn}.`
+          : 'Read-only. Download the form to have it signed by the vendor.'}
       </p>
     </div>
 
@@ -114,34 +127,34 @@ export const NdaExecutionForm: React.FC<NdaExecutionFormProps> = ({ request, cla
       <Row label="Department">Partnerships</Row>
       <Row label="Business Owner name and contact">Zaid Al Ali · zaid.alali@m42.ae</Row>
       <Row label="Business Owner signature">
-        <Signature />
+        <Signature signedOn={signedOn} />
       </Row>
-      <Row label="Date">&nbsp;</Row>
+      <Row label="Date">{signedOn ?? <>&nbsp;</>}</Row>
     </Part>
 
     <Part title="Business Head: Approval">
       <Row label="Business Head name and contact">&nbsp;</Row>
       <Row label="Approved?">
-        <Check label="Approve" />
+        <Check checked={Boolean(signedOn)} label="Approve" />
         <Check label="Reject" />
       </Row>
       <Row label="Comments (if any)">&nbsp;</Row>
       <Row label="Business Head signature">
-        <Signature />
+        <Signature signedOn={signedOn} />
       </Row>
-      <Row label="Date">&nbsp;</Row>
+      <Row label="Date">{signedOn ?? <>&nbsp;</>}</Row>
     </Part>
 
     <Part title="Part B: Governance & Compliance (for completion by Compliance)">
-      <Approval approver="&nbsp;" />
+      <Approval approver="&nbsp;" signedOn={signedOn} />
     </Part>
 
     <Part title="Part C: Legal (for completion by Legal)">
-      <Approval approver="&nbsp;" />
+      <Approval approver="&nbsp;" signedOn={signedOn} />
     </Part>
 
     <Part title="Part D: Other Approvers (where applicable)">
-      <Approval approver="&nbsp;" />
+      <Approval approver="&nbsp;" signedOn={signedOn} />
     </Part>
   </div>
 )

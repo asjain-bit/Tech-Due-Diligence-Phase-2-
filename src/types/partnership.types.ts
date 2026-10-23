@@ -1,5 +1,5 @@
 export type PartnershipStatus =
-  'Pending' | 'In Progress' | 'At Risk' | 'Exited' | 'Information Requested'
+  'Pending' | 'In Progress' | 'At Risk' | 'Exited' | 'Information Requested' | 'Closed'
 
 /** How the Partnership Admin routes a case */
 export type CaseType = 'Partnership' | 'Procure' | 'M&A'
@@ -141,6 +141,10 @@ export interface InternalInterestStakeholder {
   status?: string
   deadline?: string
   decision?: string
+  /** Whether the reviewer is ready to sponsor the partnership */
+  sponsor?: 'Yes' | 'No'
+  /** When the response was captured */
+  responseDate?: string
   source?: 'ai' | 'manual'
   answers?: QuestionAnswer[]
   strategyResponse?: StrategyMemberResponse
@@ -251,6 +255,8 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     status: 'Completed',
     deadline: '4 days',
     decision: 'Proceed',
+    sponsor: 'Yes',
+    responseDate: '12 Oct 2026',
     source: 'ai',
     answers: [
       {
@@ -299,7 +305,7 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
     whySuggested: 'Direct expertise in radiology workflow integration and clinical PACS validation',
     avatarColorBg: '#f3e8ff',
     avatarColorText: '#6b21a8',
-    status: 'In Progress',
+    status: 'Pending',
     deadline: '4 days',
     decision: '-',
     source: 'ai',
@@ -354,8 +360,8 @@ export const DEFAULT_INTERNAL_INTERESTS: InternalInterestStakeholder[] = [
 export const DEFAULT_STRATEGY_MEMBERS: InternalInterestStakeholder[] = [
   {
     id: 'strat-1',
-    name: 'Ahmed Darwish',
-    initials: 'AD',
+    name: 'Dr. Zainab',
+    initials: 'DZ',
     role: 'Head of Strategy',
     department: 'Strategy',
     expertise: 'Market Strategy',
@@ -587,7 +593,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
         id: 'seed-9',
         title: 'Strategy Team approved',
         description: 'Proceed with a condition.',
-        actor: 'Ahmed Darwish (Strategy Team)',
+        actor: 'Dr. Zainab (Strategy Team)',
         kind: 'approval',
         timestamp: '13 Oct 2026, 04:30 PM',
       },
@@ -597,7 +603,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     sent: { internal: true, strategy: true },
     stageApprovals: {
       internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Done' },
-      strategy: { status: 'approved', by: 'Ahmed Darwish', date: 'Done' },
+      strategy: { status: 'approved', by: 'Dr. Zainab', date: 'Done' },
     },
     companyName: 'AlphaHealth BioTech',
     vendorName: 'Dr. Tariq Mansoor',
@@ -773,7 +779,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
         id: 'seed-9',
         title: 'Strategy Team approved',
         description: 'Proceed with a condition.',
-        actor: 'Ahmed Darwish (Strategy Team)',
+        actor: 'Dr. Zainab (Strategy Team)',
         kind: 'approval',
         timestamp: '06 Oct 2026, 03:10 PM',
       },
@@ -819,7 +825,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     sent: { internal: true, strategy: true },
     stageApprovals: {
       internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Done' },
-      strategy: { status: 'approved', by: 'Ahmed Darwish', date: 'Done' },
+      strategy: { status: 'approved', by: 'Dr. Zainab', date: 'Done' },
     },
     companyName: 'GenomicX MENA FZ-LLC',
     vendorName: 'Karim El-Sayed',

@@ -48,7 +48,12 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, open])
 
-  const canConfirm = isProceed ? Boolean(type) : reason.trim().length > 0
+  // Reassigning only makes sense once a different type has been picked
+  const canConfirm = isReassign
+    ? Boolean(type) && type !== initialType
+    : isProceed
+      ? Boolean(type)
+      : reason.trim().length > 0
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0d212c]/40 backdrop-blur-xs flex items-center justify-center p-4">
@@ -81,14 +86,14 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
             <span id="request-type-label" className="text-sm font-semibold text-[#0d212c]">
               Request type <span className="text-red-500">*</span>
             </span>
-            <div className="relative">
+            <div>
               <button
                 type="button"
                 aria-haspopup="listbox"
                 aria-expanded={open}
                 aria-labelledby="request-type-label"
                 onClick={() => setOpen((o) => !o)}
-                className={`${FIELD} h-11 px-3.5 pr-10 text-left flex items-center gap-2 cursor-pointer`}
+                className={`${FIELD} relative h-11 px-3.5 pr-10 text-left flex items-center gap-2 cursor-pointer`}
               >
                 {type ? (
                   <span className="flex items-center gap-2">
@@ -109,7 +114,7 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
                 <ul
                   role="listbox"
                   aria-label="Request type"
-                  className="absolute z-10 mt-1.5 w-full rounded-lg border border-[#e2e8f0] bg-white shadow-lg py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+                  className="mt-1.5 w-full rounded-lg border border-[#e2e8f0] bg-white shadow-xs py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
                 >
                   {TYPES.map((t) => (
                     <li key={t.value} role="option" aria-selected={type === t.value}>

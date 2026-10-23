@@ -19,6 +19,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   icon: Icon = Send,
   children,
   confirmDisabled = false,
+  hideCancel = false,
   onConfirm,
   onCancel,
 }) => {
@@ -62,14 +63,16 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
         {children && <div className="w-full text-left">{children}</div>}
 
-        <div className="grid grid-cols-2 gap-3 w-full pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="h-12 rounded-xl border border-[#e2e8f0] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
-          >
-            {cancelLabel}
-          </button>
+        <div className={`grid gap-3 w-full pt-2 ${hideCancel ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {!hideCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="h-12 rounded-xl border border-[#e2e8f0] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 transition cursor-pointer"
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             type="button"
             disabled={confirmDisabled}

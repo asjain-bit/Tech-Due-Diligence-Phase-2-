@@ -126,7 +126,7 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
             className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
           >
             <Pencil className="w-4 h-4" aria-hidden="true" />
-            {editMode ? 'Done' : 'Edit'}
+            {editMode ? 'Save' : 'Edit'}
           </button>
           <button
             type="button"

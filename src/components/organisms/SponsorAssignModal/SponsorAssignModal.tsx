@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect, useId, useState } from 'react'
-import { X } from 'lucide-react'
+import { Circle, CircleDot, X } from 'lucide-react'
 import { Checkbox } from '@/components/atoms/Checkbox'
 import type { SponsorAssignModalProps } from './SponsorAssignModal.types'
 
@@ -74,8 +74,13 @@ export const SponsorAssignModal: React.FC<SponsorAssignModalProps> = ({
                   name="lead-sponsor"
                   checked={lead === c.name}
                   onChange={() => chooseLead(c.name)}
-                  className="w-4 h-4 accent-[#36c0c9]"
+                  className="peer sr-only"
                 />
+                {lead === c.name ? (
+                  <CircleDot className="w-5 h-5 text-[#36c0c9] shrink-0" aria-hidden="true" />
+                ) : (
+                  <Circle className="w-5 h-5 text-slate-300 shrink-0" aria-hidden="true" />
+                )}
                 <span className="flex flex-col min-w-0">
                   <span className="text-sm font-medium text-[#0d212c]">{c.name}</span>
                   <span className="text-xs text-[#64748b] truncate">{c.role}</span>

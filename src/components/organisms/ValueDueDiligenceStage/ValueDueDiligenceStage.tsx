@@ -11,6 +11,7 @@ import React, { useState } from 'react'
 import { Check, CheckCircle2, FileText, X } from 'lucide-react'
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog'
 import { FilePicker } from '@/components/molecules/FilePicker'
+import { StageFooter } from '@/components/molecules/StageFooter'
 import { StrategyDecisionModal } from '@/components/organisms/StrategyDecisionModal'
 import { TddReport } from '@/components/organisms/TddReport'
 import { ThinkingMode } from '@/components/organisms/ThinkingMode'
@@ -167,7 +168,7 @@ export const ValueDueDiligenceStage: React.FC<ValueDueDiligenceStageProps> = ({
       )}
 
       {isSponsor && needsDecision && (
-        <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
+        <StageFooter>
           <span className="text-sm text-[#475569]">
             Review the business case, then record your decision.
           </span>
@@ -189,7 +190,7 @@ export const ValueDueDiligenceStage: React.FC<ValueDueDiligenceStageProps> = ({
               Proceed
             </button>
           </div>
-        </div>
+        </StageFooter>
       )}
 
       {modal && (
