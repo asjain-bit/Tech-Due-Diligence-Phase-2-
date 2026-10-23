@@ -2,14 +2,13 @@
 
 /**
  * AlignmentPack — Organism
- * Generated once the signed NDA is uploaded. Laid out like the initial assessment brief, with a
- * side panel and sections, and pulls together everything known about the case so far: the brief,
+ * Generated once the signed NDA is uploaded. One continuous document that pulls together everything known about the case so far: the brief,
  * the Director's decision, the Internal Interest summary, the Strategy assessment, the NDA and the
  * open questions.
  * Used in: NdaDiscoveryStage
  */
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import {
   Activity,
   AlertCircle,
@@ -20,7 +19,6 @@ import {
   HeartHandshake,
   HelpCircle,
   Scale,
-  Send,
   ShieldCheck,
   Sparkles,
   Target,
@@ -55,27 +53,13 @@ export const buildOpenQuestions = (request: PartnershipRequest): string[] => {
   return questions
 }
 
-const NAV = [
-  { id: 'summary', label: 'Executive Summary', icon: Sparkles },
-  { id: 'company', label: 'Company Information', icon: Building2 },
-  { id: 'proposal', label: 'Collaboration Proposal', icon: HeartHandshake },
-  { id: 'maturity', label: 'Solution Maturity', icon: Activity },
-  { id: 'checks', label: 'Agent Checks', icon: ShieldCheck },
-  { id: 'decision', label: 'Director Decision', icon: Scale },
-  { id: 'interest', label: 'Internal Interest', icon: Users },
-  { id: 'strategy', label: 'Strategy Assessment', icon: Target },
-  { id: 'nda', label: 'NDA', icon: FileSignature },
-  { id: 'questions', label: 'Open Questions', icon: HelpCircle },
-  { id: 'timeline', label: 'Key Dates', icon: Clock },
-]
-
 const Section: React.FC<{
   id: string
   title: string
   icon: React.ComponentType<{ className?: string }>
   children: React.ReactNode
 }> = ({ id, title, icon: Icon, children }) => (
-  <section id={`pack-${id}`} className="scroll-mt-6 py-8 first:pt-0 flex flex-col gap-4">
+  <section id={`pack-${id}`} className="py-8 first:pt-0 flex flex-col gap-4">
     <div className="flex items-center gap-2.5">
       <Icon className="w-5 h-5 text-[#36c0c9]" />
       <h3 className="text-base font-semibold text-[#0d212c]">{title}</h3>
@@ -128,50 +112,13 @@ export const AlignmentPack: React.FC<AlignmentPackProps> = ({
   const strategy = strategyResponseOf(request)
   const sponsors = request.sponsors
   const versions = request.nda?.versions ?? []
-  const signed = versions[versions.length - 1]
+  const signed = [...versions].reverse().find((v) => v.signed)
   const actions = useMemo(() => buildAgentActions(request), [request])
   const sections = useMemo(
     () => buildPreRead(request, strategy?.documents ?? []),
     [request, strategy?.documents]
   )
   const answers = responded.flatMap((r) => (r.answers ?? []).map((x) => ({ ...x, by: r.name })))
-  const nav = extraSection
-    ? [...NAV, { id: extraSection.id, label: extraSection.label, icon: Users }]
-    : NAV
-  const [active, setActive] = useState(nav[0].id)
-  const recipients = [
-    'Director',
-    sponsors ? `Sponsors: ${[sponsors.lead, ...sponsors.co].join(', ')}` : 'Sponsors',
-    'Strategy Team',
-  ]
-
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const top = entries
-          .filter((e) => e.isIntersecting)
-          .sort((x, y) => x.boundingClientRect.top - y.boundingClientRect.top)[0]
-        if (top) setActive(top.target.id.replace('pack-', ''))
-      },
-      { rootMargin: '-10% 0px -70% 0px' }
-    )
-    nav.forEach((item) => {
-      const el = document.getElementById(`pack-${item.id}`)
-      if (el) observer.observe(el)
-    })
-    return () => observer.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(extraSection)])
-
-  const scrollTo = (id: string) => {
-    setActive(id)
-    const el = document.getElementById(`pack-${id}`)
-    if (el && typeof el.scrollIntoView === 'function') {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
-
   return (
     <section
       aria-labelledby="alignment-pack-heading"
@@ -190,49 +137,10 @@ export const AlignmentPack: React.FC<AlignmentPackProps> = ({
             Generated {request.alignmentPackOn ?? 'today'}
           </span>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#475569]">
-            <Send className="w-3.5 h-3.5" aria-hidden="true" />
-            Sent to
-          </span>
-          {recipients.map((r) => (
-            <Chip key={r} tone="slate">
-              {r}
-            </Chip>
-          ))}
-        </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8 w-full items-start">
-        <nav
-          aria-label="Alignment pack sections"
-          className="w-full lg:w-64 shrink-0 bg-slate-50/70 rounded-xl p-2 flex flex-col gap-1 border border-[#e2e8f0]/60 lg:sticky lg:top-4"
-        >
-          {nav.map((item) => {
-            const Icon = item.icon
-            const isActive = active === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-current={isActive ? 'true' : undefined}
-                onClick={() => scrollTo(item.id)}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer ${
-                  isActive
-                    ? 'bg-[#36c0c9]/10 text-[#0f766e] font-semibold border border-[#36c0c9]/30'
-                    : 'border border-transparent text-[#64748b] hover:bg-white/60 hover:text-[#0d212c]'
-                }`}
-              >
-                <Icon
-                  className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#36c0c9]' : 'text-slate-400'}`}
-                />
-                <span className="truncate">{item.label}</span>
-              </button>
-            )
-          })}
-        </nav>
-
-        <div className="flex-1 min-w-0 w-full flex flex-col divide-y divide-[#f1f5f9]">
+      <div className="w-full">
+        <div className="flex flex-col divide-y divide-[#f1f5f9]">
           <Section id="summary" title="Executive Summary" icon={Sparkles}>
             <div className="rounded-xl border border-[#e2e8f0] p-5 flex flex-col gap-4">
               <div className="flex items-center gap-2 flex-wrap">

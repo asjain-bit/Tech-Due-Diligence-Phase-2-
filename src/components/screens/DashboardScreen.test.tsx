@@ -453,9 +453,13 @@ describe('DashboardScreen', () => {
     const stepper = within(screen.getByRole('navigation', { name: 'Review progress' }))
     expect(stepper.getAllByRole('button').map((b) => b.textContent)).toEqual([
       expect.stringContaining('Initial Assessment Brief'),
-      expect.stringContaining('Pre-read Summary'),
+      expect.stringContaining('Internal Canvas'),
+      expect.stringContaining('Strategic Alignment'),
+      expect.stringContaining('NDA & Discovery'),
+      expect.stringContaining('Value & Due Diligence'),
     ])
-    expect(stepper.getByRole('button', { name: /Pre-read Summary/ })).toBeDisabled()
+    expect(stepper.getByRole('button', { name: /Strategic Alignment/ })).toBeDisabled()
+    expect(stepper.getByRole('button', { name: /NDA & Discovery/ })).toBeDisabled()
     // A fixed footer with a Next button
     const bar = screen.getByRole('button', { name: 'Next' }).parentElement!
     expect(bar.className).toContain('sticky')
@@ -479,9 +483,9 @@ describe('DashboardScreen', () => {
     await user.click(within(popup).getByRole('button', { name: 'Add documents' }))
     await user.click(screen.getByRole('button', { name: /Generate Summary/ }))
 
-    // The simple animation runs below the vendor details card
+    // The simple animation runs with the workflow stages above it
     expect(screen.getByText('GENERATING')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'AlphaHealth BioTech' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Review progress' })).toBeInTheDocument()
     finishThinking()
 
     expect(
@@ -721,6 +725,13 @@ describe('Internal Interest outcomes', () => {
     expect(within(popup).getByText('Dr. Zainab')).toBeInTheDocument()
     expect(within(popup).queryByRole('checkbox')).not.toBeInTheDocument()
     await user.click(within(popup).getByRole('button', { name: 'Send Request' }))
+    // Approved: straight on to NDA & Discovery
+    expect(screen.getByRole('heading', { level: 2, name: 'NDA & Discovery' })).toBeInTheDocument()
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Review progress' })).getByRole('button', {
+        name: /Strategic Alignment/,
+      })
+    )
     expect(screen.getByText('Approval: Proceed')).toBeInTheDocument()
     expect(
       screen.getByText(/Conditions: Proceed on the condition that the vendor commits to UAE/)
@@ -737,7 +748,18 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
 
   it('takes the Director from the NDA template, through the signed copy, to the alignment pack', async () => {
     const user = setup()
-    render(<Shared profile={directorProfile} initial={[...INITIAL_PARTNERSHIP_REQUESTS]} />)
+    const approved = INITIAL_PARTNERSHIP_REQUESTS.map((r) =>
+      r.id === 'req-002'
+        ? {
+            ...r,
+            stageApprovals: {
+              ...r.stageApprovals,
+              strategy: { status: 'approved' as const, by: 'Dr. Zainab', date: 'Done' },
+            },
+          }
+        : r
+    )
+    render(<Shared profile={directorProfile} initial={approved} />)
     await openCase(user, 'AlphaHealth BioTech')
     expect(screen.getByRole('heading', { level: 2, name: 'NDA & Discovery' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'NDA Execution Form' })).toBeInTheDocument()
@@ -750,17 +772,17 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     await user.upload(screen.getByLabelText('Signed NDA file'), new File(['x'], 'signed.pdf'))
     await user.click(screen.getByRole('button', { name: 'Upload' }))
 
-    // The template is replaced by the signed copy, version shown along with the title
+    // The template is replaced by the signed copy: version 2, the template kept as version 1
     expect(screen.getByRole('heading', { name: 'Signed NDA Execution Form' })).toBeInTheDocument()
-    expect(screen.getByLabelText('NDA version')).toHaveValue('1')
+    expect(screen.getByLabelText('NDA version')).toHaveValue('2')
     await user.click(screen.getByRole('button', { name: /Proceed/ }))
 
-    // The alignment pack, with Next to the last stage
+    // The same animation as everywhere else, then the alignment pack
+    expect(screen.getByText('GENERATING')).toBeInTheDocument()
+    finishThinking()
     expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /Next/ }))
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Value & Due Diligence' })
-    ).toBeInTheDocument()
+    // The Director waits for the sponsor to move the case on
+    expect(screen.getByRole('button', { name: /Next/ })).toBeDisabled()
     await user.click(screen.getByRole('tab', { name: 'Audit Log' }))
     const titles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
     expect(titles).toEqual(
@@ -778,12 +800,40 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     expect(screen.getByText('In Due Diligence')).toBeInTheDocument()
   })
 
-  it('has the Sponsor decide on the business case, then generates the TDD report', async () => {
+  it('moves the Sponsor from the alignment pack to the value stage, which stays locked until then', async () => {
     const user = setup()
     render(<Shared profile={sponsorProfile} initial={[...INITIAL_PARTNERSHIP_REQUESTS]} />)
     await user.click(screen.getByText('GenomicX MENA FZ-LLC'))
     const stepper = within(screen.getByRole('navigation', { name: 'Review progress' }))
     expect(stepper.getAllByRole('button')).toHaveLength(5)
+    expect(stepper.getByRole('button', { name: /Value & Due Diligence/ })).toBeDisabled()
+    expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Next/ }))
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Value & Due Diligence' })
+    ).toBeInTheDocument()
+    expect(stepper.getByRole('button', { name: /NDA & Discovery/ })).toHaveTextContent('Completed')
+  })
+
+  it('has the Sponsor decide on the business case, then generates the TDD report', async () => {
+    const user = setup()
+    const atValue = INITIAL_PARTNERSHIP_REQUESTS.map((r) =>
+      r.id === 'req-003'
+        ? {
+            ...r,
+            discovery: { notes: [], transcripts: [], recordings: [], proceededOn: '17 Oct 2026' },
+            value: {
+              callConfirmedOn: '19 Oct 2026',
+              businessCase: { name: 'case.pdf', uploadedOn: '20 Oct', uploadedBy: 'Parag Agarwal' },
+            },
+          }
+        : r
+    )
+    render(<Shared profile={sponsorProfile} initial={atValue} />)
+    await user.click(screen.getByText('GenomicX MENA FZ-LLC'))
+    const stepper = within(screen.getByRole('navigation', { name: 'Review progress' }))
     expect(
       screen.getByRole('heading', { level: 2, name: 'Value & Due Diligence' })
     ).toBeInTheDocument()

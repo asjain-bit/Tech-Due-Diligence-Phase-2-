@@ -57,7 +57,7 @@ const CASE_ACTION_TOASTS: Partial<Record<CaseAction['type'], string>> = {
   closeCase: 'The case has been closed.',
   assignSponsors: 'Sponsors assigned. Strategic Alignment is next.',
   uploadNda: 'Signed NDA uploaded. The alignment pack has been generated.',
-  confirmDiscovery: 'Discovery call confirmed.',
+  proceedToValue: 'Moved on to Value & Due Diligence.',
   confirmValueCall: 'Value assessment call confirmed.',
   businessCase: 'Business case uploaded.',
   valueDecision: 'Your decision has been recorded.',
@@ -107,8 +107,8 @@ const DescriptionCell: React.FC<{ text: string }> = ({ text }) => {
 const sponsorActionNeeded = (r: PartnershipRequest) =>
   r.status !== 'Exited' &&
   r.status !== 'Closed' &&
-  ((Boolean(r.alignmentPackOn) && !r.discovery?.confirmedOn) ||
-    (Boolean(r.discovery?.confirmedOn) && !r.value?.decision))
+  ((Boolean(r.alignmentPackOn) && !r.discovery?.proceededOn) ||
+    (Boolean(r.discovery?.proceededOn) && !r.value?.decision))
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   userProfile,

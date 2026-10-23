@@ -18,7 +18,7 @@ const ADMIN_NAME = 'Nadia Al-Farsi'
 const DIRECTOR_ACTOR = `${DIRECTOR_NAME} (Director)`
 const ADMIN_ACTOR = `${ADMIN_NAME} (Partnership Admin)`
 const INTERNAL_ACTOR = 'Mariam Al-Zaabi (Internal Interest)'
-const STRATEGY_ACTOR = 'Omar Al-Hashemi (Strategy Team)'
+const STRATEGY_ACTOR = 'Dr. Zainab (Strategy Team)'
 const SPONSOR_NAME = 'Rashid Al-Nuaimi'
 const SPONSOR_ACTOR = `${SPONSOR_NAME} (Sponsor)`
 const AGENT_ACTOR = 'Triage Agent'
@@ -360,7 +360,7 @@ export const submitReview = (
         ...r.stageApprovals,
         strategy: {
           status: declined ? 'declined' : 'approved',
-          by: 'Omar Al-Hashemi',
+          by: 'Dr. Zainab',
           date: 'Just now',
         },
       },
@@ -583,49 +583,73 @@ export const assignSponsors = (
 
 /* ---------- NDA & Discovery ---------- */
 
-/** Director uploads a signed NDA copy. The first one generates the alignment pack. */
+/** The unsigned NDA template, kept as version 1 once a signed copy replaces it */
+const NDA_TEMPLATE_FILE = 'ADHDS_NDA_Execution_Form_v1.0.docx'
+
+/**
+ * Director uploads a signed NDA copy. The first one keeps the unsigned template as version 1 and
+ * becomes version 2, and generates the alignment pack.
+ */
 export const uploadSignedNda = (r: PartnershipRequest, fileName: string): PartnershipRequest => {
-  const versions = r.nda?.versions ?? []
-  const version = versions.length + 1
-  const withNda: PartnershipRequest = {
-    ...r,
-    nda: {
-      versions: [
-        ...versions,
-        { version, fileName, uploadedOn: todayLabel(), uploadedBy: DIRECTOR_NAME },
-      ],
-    },
-  }
-  const logged = appendAudit(withNda, {
-    title: version === 1 ? 'Signed NDA uploaded' : `NDA version ${version} uploaded`,
-    description: fileName,
-    actor: DIRECTOR_ACTOR,
-    kind: 'approval',
-  })
-  if (version > 1) return logged
-  return appendAudit(
+  const existing = r.nda?.versions ?? []
+  const first = existing.length === 0
+  const today = todayLabel()
+  const base = first
+    ? [
+        {
+          version: 1,
+          signed: false,
+          fileName: NDA_TEMPLATE_FILE,
+          uploadedOn: today,
+          uploadedBy: DIRECTOR_NAME,
+        },
+      ]
+    : existing
+  const version = base.length + 1
+  const logged = appendAudit(
     {
-      ...logged,
-      alignmentPackOn: todayLabel(),
-      daysInStage: 0,
-      workflowStages: setStages(r.workflowStages, 4, 5),
+      ...r,
+      nda: {
+        versions: [
+          ...base,
+          { version, signed: true, fileName, uploadedOn: today, uploadedBy: DIRECTOR_NAME },
+        ],
+      },
     },
+    {
+      title: first ? 'Signed NDA uploaded' : `NDA version ${version} uploaded`,
+      description: fileName,
+      actor: DIRECTOR_ACTOR,
+      kind: 'approval',
+    }
+  )
+  if (!first) return logged
+  return appendAudit(
+    { ...logged, alignmentPackOn: today, daysInStage: 0 },
     {
       title: 'Alignment pack generated',
       description:
-        'Brief, interest summary and strategy assessment merged with open questions. Sent to the Director, sponsors and the Strategy Team.',
+        'Brief, interest summary and strategy assessment merged with open questions, shared with the Director, sponsors and the Strategy Team.',
       actor: AGENT_ACTOR,
       kind: 'agent',
     }
   )
 }
 
+export type DiscoveryFileKind = 'notes' | 'transcripts' | 'recordings'
+
+const DISCOVERY_AUDIT: Record<DiscoveryFileKind, string> = {
+  notes: 'Meeting notes uploaded',
+  transcripts: 'Transcript uploaded',
+  recordings: 'Recording uploaded',
+}
+
 export const addDiscoveryFile = (
   r: PartnershipRequest,
-  kind: 'notes' | 'recordings',
+  kind: DiscoveryFileKind,
   name: string
 ): PartnershipRequest => {
-  const discovery = r.discovery ?? { notes: [], recordings: [] }
+  const discovery = { notes: [], transcripts: [], recordings: [], ...r.discovery }
   return appendAudit(
     {
       ...r,
@@ -634,30 +658,34 @@ export const addDiscoveryFile = (
         [kind]: [...discovery[kind], { name, uploadedOn: todayLabel(), uploadedBy: SPONSOR_NAME }],
       },
     },
-    {
-      title: kind === 'notes' ? 'Discovery notes uploaded' : 'Discovery recording uploaded',
-      description: name,
-      actor: SPONSOR_ACTOR,
-      kind: 'user',
-    }
+    { title: DISCOVERY_AUDIT[kind], description: name, actor: SPONSOR_ACTOR, kind: 'user' }
   )
 }
 
-export const confirmDiscoveryCall = (r: PartnershipRequest): PartnershipRequest =>
-  appendAudit(
-    {
-      ...r,
-      daysInStage: 0,
-      discovery: { notes: [], recordings: [], ...r.discovery, confirmedOn: todayLabel() },
-      workflowStages: setStages(r.workflowStages, 4, 5),
-    },
-    {
-      title: 'Discovery call confirmed',
-      description: 'The discovery call has taken place.',
-      actor: SPONSOR_ACTOR,
-      kind: 'user',
-    }
-  )
+/** The sponsor moves on to Value & Due Diligence, with or without extra context uploaded */
+export const proceedToValue = (r: PartnershipRequest): PartnershipRequest =>
+  r.discovery?.proceededOn
+    ? r
+    : appendAudit(
+        {
+          ...r,
+          daysInStage: 0,
+          discovery: {
+            notes: [],
+            transcripts: [],
+            recordings: [],
+            ...r.discovery,
+            proceededOn: todayLabel(),
+          },
+          workflowStages: setStages(r.workflowStages, 4, 5),
+        },
+        {
+          title: 'Moved to Value & Due Diligence',
+          description: 'The sponsor reviewed the alignment pack and moved the case on.',
+          actor: SPONSOR_ACTOR,
+          kind: 'user',
+        }
+      )
 
 /* ---------- Value & Due Diligence ---------- */
 
@@ -742,8 +770,8 @@ export type CaseAction =
   | { type: 'closeCase'; reason: string }
   | { type: 'assignSponsors'; lead: string; co: string[] }
   | { type: 'uploadNda'; fileName: string }
-  | { type: 'discoveryFile'; kind: 'notes' | 'recordings'; name: string }
-  | { type: 'confirmDiscovery' }
+  | { type: 'discoveryFile'; kind: DiscoveryFileKind; name: string }
+  | { type: 'proceedToValue' }
   | { type: 'confirmValueCall' }
   | { type: 'businessCase'; name: string }
   | { type: 'valueDecision'; status: 'proceeded' | 'rejected'; reason: string }
@@ -761,8 +789,8 @@ export const applyCaseAction = (r: PartnershipRequest, action: CaseAction): Part
       return uploadSignedNda(r, action.fileName)
     case 'discoveryFile':
       return addDiscoveryFile(r, action.kind, action.name)
-    case 'confirmDiscovery':
-      return confirmDiscoveryCall(r)
+    case 'proceedToValue':
+      return proceedToValue(r)
     case 'confirmValueCall':
       return confirmValueCall(r)
     case 'businessCase':

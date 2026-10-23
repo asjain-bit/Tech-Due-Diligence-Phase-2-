@@ -52,10 +52,12 @@ import {
 import { PreReadSummary } from '@/components/organisms/PreReadSummary'
 import { StrategyDecisionModal } from '@/components/organisms/StrategyDecisionModal'
 import {
+  isQuestionnaireComplete,
   ReviewQuestionnaire,
   type QuestionAnswerValue,
 } from '@/components/organisms/ReviewQuestionnaire'
 import { VendorFormResponse } from '@/components/organisms/VendorFormResponse'
+import { sampleAnswersFor } from '@/lib/sampleAnswers'
 import { DEFAULT_QUESTIONNAIRE_ID, getQuestionnaire } from '@/types/questionnaires'
 import type { PartnershipDetailProps, DetailTab } from './PartnershipDetail.types'
 import {
@@ -219,6 +221,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const patchAnswer = (id: string, patch: Partial<QuestionAnswerValue>) =>
     setQuestionAnswers((prev) => ({ ...prev, [id]: { ...(prev[id] ?? { answer: '' }), ...patch } }))
 
+  // Clicking any answer box fills the whole questionnaire with realistic answers
+  const prefillQuestionnaire = () => {
+    if (questionnaireSubmitted) return
+    if (Object.values(questionAnswers).some((a) => a.answer.trim())) return
+    const samples = sampleAnswersFor(reviewQuestions)
+    setQuestionAnswers(
+      Object.fromEntries(reviewQuestions.map((q) => [q.id, { answer: samples[q.id] }]))
+    )
+  }
+
   const handleConfirmSubmitQuestionnaire = () => {
     const answers: QuestionAnswer[] = reviewQuestions.map((q) => ({
       questionId: q.id,
@@ -275,8 +287,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       ]
     : isStrategyTeam
       ? [
+          // The Strategy lead sees every stage; their own work is the pre-read, in Strategic Alignment
           { id: 'brief', label: 'Initial Assessment Brief' },
-          { id: 'preread', label: 'Pre-read Summary' },
+          { id: 'canvas', label: 'Internal Canvas' },
+          { id: 'preread', label: 'Strategic Alignment' },
+          { id: 'nda', label: 'NDA & Discovery' },
+          { id: 'value', label: 'Value & Due Diligence' },
         ]
       : isAdmin
         ? [{ id: 'brief', label: 'Initial Assessment Brief' }]
@@ -349,11 +365,19 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     setCompletedSteps((prev) => (prev.includes(id) ? prev : [...prev, id]))
 
   const isStepCompleted = (id: StepId) => {
+    if (isStrategyTeam) {
+      // The case only reaches the Strategy lead once the Internal Interest stage is behind it
+      if (id === 'canvas') return true
+      if (id === 'preread') return strategyDone
+      if (id === 'nda') return Boolean(request.discovery?.proceededOn)
+      if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
+      return completedSteps.includes(id)
+    }
     if (!isDirectorView) return completedSteps.includes(id)
     if (id === 'brief') return briefApproved || isRejected
     if (id === 'canvas') return internalApproved
     if (id === 'alignment') return strategyApproved
-    if (id === 'nda') return Boolean(request.alignmentPackOn)
+    if (id === 'nda') return Boolean(request.discovery?.proceededOn)
     if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
     return false
   }
@@ -377,13 +401,33 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       else if (state === 'current' && d.id === 'alignment' && strategyDeclined) caption = 'Declined'
       else if (state === 'current' && sent) caption = 'Awaiting approval'
     }
+    // Later stages stay locked for the Strategy lead until the Director has acted
+    if (isStrategyTeam && (d.id === 'nda' || d.id === 'value') && !completed) {
+      const unlocked =
+        d.id === 'nda' ? Boolean(request.alignmentPackOn) : Boolean(request.discovery?.proceededOn)
+      return { id: d.id, label: d.label, state: unlocked ? 'current' : 'upcoming', caption }
+    }
+    if (isStrategyTeam && d.id === 'preread' && strategyDone) {
+      caption = strategyOutcome === 'Reject' ? 'Declined' : 'Approved'
+    }
     return { id: d.id, label: d.label, state, caption }
   })
 
   const [activeStep, setActiveStep] = useState<StepId>(() => {
+    // The Strategy lead's own work is the pre-read; later stages are theirs to view only
+    if (isStrategyTeam) return strategyDone ? 'preread' : 'brief'
     const open = stepDefs.find((d) => !isStepCompleted(d.id))
     return (open ?? stepDefs[stepDefs.length - 1]).id
   })
+
+  // Once the Strategy Team has approved, the Director moves straight on to the NDA stage
+  const strategyApprovedBefore = React.useRef(strategyApproved)
+  React.useEffect(() => {
+    if (!strategyApprovedBefore.current && strategyApproved && activeStep === 'alignment') {
+      setActiveStep('nda')
+    }
+    strategyApprovedBefore.current = strategyApproved
+  }, [strategyApproved, activeStep])
 
   const goToStep = (id: string) => {
     const target = stepperSteps.find((st) => st.id === id)
@@ -402,7 +446,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const [runDone, setRunDone] = useState(!animateAgentRun || wasSeen)
   const [readyTeams, setReadyTeams] = useState({
     strategy: !animateAgentRun || strategySent || isSponsor,
-    internal: !animateAgentRun || internalSent || isSponsor,
+    internal: !animateAgentRun || internalSent || isSponsor || isStrategyTeam,
   })
 
   // While the agent finds the reviewers, the animation owns the page and only the tabs stay
@@ -806,6 +850,15 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
   // The agent thinks first when a case is opened
   if (!runDone) return <ThinkingMode onComplete={handleRunComplete} />
+
+  // The vendor card tops the first step; later steps use the space for the workflow stages
+  const showHeaderCard = !(isDirectorView || isStrategyTeam) || activeStep === 'brief'
+  // The NDA stage fills the page height so only its own content scrolls
+  const fixedStage =
+    activeTab === 'review' &&
+    activeStep === 'nda' &&
+    (isDirectorView || isStrategyTeam) &&
+    !reviewersLoading
 
   const stageChip = (state: 'awaiting' | 'approved' | 'declined') => (
     <span
@@ -1300,7 +1353,11 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   )
 
   return (
-    <div className={`flex flex-col gap-6 w-full text-[#0d212c] ${className}`.trim()}>
+    <div
+      className={`flex flex-col gap-6 w-full text-[#0d212c] ${
+        fixedStage ? 'h-[calc(100vh-6.75rem)] min-h-[34rem] overflow-hidden' : ''
+      } ${className}`.trim()}
+    >
       {/* Top Back Link */}
       {!reviewersLoading && (
         <div>
@@ -1338,7 +1395,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         ))}
       </div>
 
-      {activeTab !== 'audit' && !reviewersLoading && (
+      {activeTab !== 'audit' && !reviewersLoading && showHeaderCard && (
         <>
           {/* Header card: title and status, with the key facts directly below */}
           <div className="bg-white rounded-2xl border border-[#e2e8f0] px-5 py-4 shadow-xs flex items-start justify-between gap-4">
@@ -1399,28 +1456,24 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                       </span>
                     </span>
                   )}
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-slate-400">Submitted on:</span>
+                    <span className="font-medium text-[#0d212c]">{request.submittedOn}</span>
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col items-end justify-between gap-2 self-stretch shrink-0">
-              {adminCanChange && request.adminDecision ? (
-                <button
-                  type="button"
-                  onClick={() => setAdminModal('reassign')}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition"
-                >
-                  <Pencil className="w-4 h-4" aria-hidden="true" />
-                  Edit
-                </button>
-              ) : (
-                <span />
-              )}
-              <span className="flex items-center gap-1.5 text-xs text-[#64748b]">
-                <span className="text-slate-400">Submitted on:</span>
-                <span className="font-medium text-[#0d212c]">{request.submittedOn}</span>
-              </span>
-            </div>
+            {adminCanChange && request.adminDecision && (
+              <button
+                type="button"
+                onClick={() => setAdminModal('reassign')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer transition shrink-0"
+              >
+                <Pencil className="w-4 h-4" aria-hidden="true" />
+                Edit
+              </button>
+            )}
           </div>
         </>
       )}
@@ -1456,14 +1509,18 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         className={
           reviewersLoading
             ? 'flex flex-col'
-            : 'bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col gap-6'
+            : `bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs flex flex-col gap-6 ${
+                fixedStage ? 'flex-1 min-h-0' : ''
+              }`
         }
       >
         {/* TAB: REVIEW — step-by-step workflow, later steps unlock one at a time */}
         {activeTab === 'review' && (
           <div
             ref={stepperRef}
-            className="flex flex-col gap-8 w-full animate-in fade-in duration-200 scroll-mt-4"
+            className={`flex flex-col gap-8 w-full animate-in fade-in duration-200 scroll-mt-4 ${
+              fixedStage ? 'flex-1 min-h-0' : ''
+            }`}
           >
             {stepperSteps.length > 1 && (!isNonDirector || isStrategyTeam) && !reviewersLoading && (
               <WorkflowStepper steps={stepperSteps} activeId={activeStep} onSelect={goToStep} />
@@ -1471,7 +1528,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             <div
               key={activeStep}
-              className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+              className={`animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+                fixedStage ? 'flex-1 min-h-0' : ''
+              }`}
             >
               {/* STEP: Initial Assessment Brief */}
               {activeStep === 'brief' && (
@@ -1482,28 +1541,11 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   showVerdict={isDirectorView || isAdmin}
                   onViewVendorResponse={() => setShowVendorForm(true)}
                   onOpenAnalysis={() => setShowAnalysis(true)}
-                  footer={
-                    isInternalTeam ? (
-                      <div className="flex items-center justify-end">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            completeStep('brief')
-                            setActiveStep('questionnaire')
-                          }}
-                          className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
-                        >
-                          Continue to Questionnaire
-                          <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                      </div>
-                    ) : undefined
-                  }
                 />
               )}
 
               {/* STEP: Internal Canvas (Director and sponsor) */}
-              {isDirectorView &&
+              {(isDirectorView || isStrategyTeam) &&
                 activeStep === 'canvas' &&
                 (!readyTeams.internal ? (
                   <ReviewersLoading
@@ -1515,11 +1557,13 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   <div className="flex flex-col gap-6 w-full">
                     {stepHeader(
                       'Internal Canvas',
-                      internalSent
-                        ? 'Waiting for approval from the Internal Interest team. Follow each reviewer below.'
-                        : isDirector
-                          ? 'Choose the Internal Interest reviewers and the questions they will answer, then send the request.'
-                          : 'The Director has not sent this to the Internal Interest team yet.',
+                      internalApproved
+                        ? 'The Internal Interest team has responded. The reviewers are listed below.'
+                        : internalSent
+                          ? 'Waiting for approval from the Internal Interest team. Follow each reviewer below.'
+                          : isDirector
+                            ? 'Choose the Internal Interest reviewers and the questions they will answer, then send the request.'
+                            : 'The Director has not sent this to the Internal Interest team yet.',
                       canEditInternal ? (
                         <button
                           type="button"
@@ -1619,27 +1663,30 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 ))}
 
               {/* STEP: NDA & Discovery */}
-              {isDirectorView && activeStep === 'nda' && (
+              {(isDirectorView || isStrategyTeam) && activeStep === 'nda' && (
                 <NdaDiscoveryStage
                   request={request}
-                  role={isSponsor ? 'sponsor' : 'director'}
+                  role={isSponsor ? 'sponsor' : isStrategyTeam ? 'viewer' : 'director'}
                   onAction={(action) => onCaseAction?.(request.id, action)}
                   onNext={() => setActiveStep('value')}
                 />
               )}
 
               {/* STEP: Value & Due Diligence */}
-              {isDirectorView && activeStep === 'value' && (
+              {(isDirectorView || isStrategyTeam) && activeStep === 'value' && (
                 <ValueDueDiligenceStage
                   request={request}
-                  role={isSponsor ? 'sponsor' : 'director'}
+                  role={isSponsor ? 'sponsor' : isStrategyTeam ? 'viewer' : 'director'}
                   onAction={(action) => onCaseAction?.(request.id, action)}
                 />
               )}
 
               {/* STEP: Questionnaire (Internal Interest Team) */}
               {isInternalTeam && activeStep === 'questionnaire' && (
-                <div className="flex flex-col gap-6 w-full max-w-4xl animate-in fade-in duration-150">
+                <div
+                  onFocusCapture={prefillQuestionnaire}
+                  className="flex flex-col gap-6 w-full animate-in fade-in duration-150"
+                >
                   <div className="flex flex-col gap-1">
                     <h2 className="text-base font-semibold text-[#0d212c]">
                       {request.sentQuestionnaire?.name ?? 'Internal Evaluation Questionnaire'}
@@ -1655,7 +1702,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     answers={questionAnswers}
                     onChange={patchAnswer}
                     readOnly={questionnaireSubmitted}
-                    onSubmit={() => setShowQuestionnaireConfirmModal(true)}
+                    hideSubmit
                   />
                 </div>
               )}
@@ -2659,6 +2706,47 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           </div>
         </div>
       )}
+
+      {/* INTERNAL INTEREST: continue on the brief, always in view */}
+      {isInternalTeam && activeTab !== 'audit' && activeStep === 'brief' && (
+        <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
+          <span className="text-sm text-[#475569]">
+            Review the brief, then continue to the questionnaire.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              completeStep('brief')
+              setActiveStep('questionnaire')
+            }}
+            className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
+          >
+            Continue to Questionnaire
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {/* INTERNAL INTEREST: submit the questionnaire, disabled until it is complete */}
+      {isInternalTeam &&
+        activeTab !== 'audit' &&
+        activeStep === 'questionnaire' &&
+        !questionnaireSubmitted && (
+          <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 px-6 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] flex items-center justify-between gap-4 flex-wrap">
+            <span className="text-sm text-[#475569]">
+              Answer every mandatory question to submit.
+            </span>
+            <button
+              type="button"
+              disabled={!isQuestionnaireComplete(reviewQuestions, questionAnswers)}
+              onClick={() => setShowQuestionnaireConfirmModal(true)}
+              className="h-10 px-6 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
+            >
+              <Check className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+              Submit
+            </button>
+          </div>
+        )}
 
       {/* STRATEGY TEAM: Next on the brief, always in view */}
       {isStrategyTeam && activeTab !== 'audit' && activeStep === 'brief' && !strategyDone && (

@@ -13,11 +13,20 @@ import type { ReviewQuestionnaireProps } from './ReviewQuestionnaire.types'
 
 const MAX = 600
 
+/** Every mandatory question has an answer */
+export const isQuestionnaireComplete = (
+  questions: ReviewQuestionnaireProps['questions'],
+  answers: ReviewQuestionnaireProps['answers']
+) =>
+  questions.length > 0 &&
+  questions.filter((q) => q.mandatory).every((q) => Boolean(answers[q.id]?.answer.trim()))
+
 export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
   questions,
   answers,
   onChange,
   readOnly = false,
+  hideSubmit = false,
   onSubmit,
   className = '',
 }) => {
@@ -85,7 +94,7 @@ export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
         })}
       </ol>
 
-      {!readOnly && (
+      {!readOnly && !hideSubmit && (
         <div className="flex items-center justify-end pt-6 border-t border-[#f1f5f9]">
           <button
             type="button"

@@ -6,7 +6,9 @@ import {
   getStageLabel,
   hasDirectorDecided,
   buildInfoEmail,
+  addDiscoveryFile,
   applyInternalScenario,
+  proceedToValue,
   uploadSignedNda,
   holdRequest,
   nextCaseCode,
@@ -440,10 +442,53 @@ describe('applyInternalScenario', () => {
 })
 
 describe('signed NDA', () => {
-  it('moves the case on to Value Assessment when the first signed copy arrives', () => {
-    const next = uploadSignedNda(INITIAL_PARTNERSHIP_REQUESTS[1], 'signed.pdf')
+  const awaiting = INITIAL_PARTNERSHIP_REQUESTS[1]
+
+  it('keeps the unsigned template as version 1 and the signed copy as version 2', () => {
+    const next = uploadSignedNda(awaiting, 'signed.pdf')
+    expect(next.nda?.versions).toEqual([
+      expect.objectContaining({ version: 1, signed: false }),
+      expect.objectContaining({ version: 2, signed: true, fileName: 'signed.pdf' }),
+    ])
     expect(next.alignmentPackOn).toBeDefined()
+    expect(next.auditLog.map((e) => e.title).slice(-2)).toEqual([
+      'Signed NDA uploaded',
+      'Alignment pack generated',
+    ])
+  })
+
+  it('adds later copies as new versions without generating the pack again', () => {
+    const first = uploadSignedNda(awaiting, 'signed.pdf')
+    const second = uploadSignedNda(first, 'signed_again.pdf')
+    expect(second.nda?.versions).toHaveLength(3)
+    expect(second.nda?.versions[2]).toMatchObject({ version: 3, signed: true })
+    expect(second.alignmentPackOn).toBe(first.alignmentPackOn)
+    expect(second.auditLog.filter((e) => e.title === 'Alignment pack generated')).toHaveLength(1)
+  })
+})
+
+describe('discovery context and moving on', () => {
+  const packed = uploadSignedNda(INITIAL_PARTNERSHIP_REQUESTS[1], 'signed.pdf')
+
+  it('adds meeting notes, transcripts and recordings', () => {
+    let next = addDiscoveryFile(packed, 'notes', 'notes.docx')
+    next = addDiscoveryFile(next, 'transcripts', 'call.txt')
+    next = addDiscoveryFile(next, 'recordings', 'call.mp4')
+    expect(next.discovery?.notes[0].name).toBe('notes.docx')
+    expect(next.discovery?.transcripts?.[0].name).toBe('call.txt')
+    expect(next.discovery?.recordings[0].name).toBe('call.mp4')
+    expect(next.auditLog.map((e) => e.title).slice(-3)).toEqual([
+      'Meeting notes uploaded',
+      'Transcript uploaded',
+      'Recording uploaded',
+    ])
+  })
+
+  it('moves on to Value & Due Diligence with or without any context, once', () => {
+    const next = proceedToValue(packed)
+    expect(next.discovery?.proceededOn).toBeDefined()
     expect(next.workflowStages.find((st) => st.id === 4)?.status).toBe('completed')
     expect(next.workflowStages.find((st) => st.id === 5)?.status).toBe('in_progress')
+    expect(proceedToValue(next)).toBe(next)
   })
 })

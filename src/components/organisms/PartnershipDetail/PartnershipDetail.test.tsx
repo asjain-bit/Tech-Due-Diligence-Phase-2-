@@ -16,6 +16,25 @@ const internalProfile = profile('evaluator', 'Internal Interest Team')
 const strategyProfile = profile('strategy-fit', 'Strategy Team')
 const adminProfile = profile('partnership-admin', 'Partnership Admin')
 
+/** AlphaHealth once Dr. Zainab has decided */
+const STRATEGY_DONE: PartnershipRequest = {
+  ...INITIAL_PARTNERSHIP_REQUESTS[1],
+  stageApprovals: {
+    internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Done' },
+    strategy: { status: 'approved', by: 'Dr. Zainab', date: 'Done' },
+  },
+}
+
+/** GenomicX once the sponsor has moved it on and the business case is in */
+const AT_VALUE: PartnershipRequest = {
+  ...INITIAL_PARTNERSHIP_REQUESTS[2],
+  discovery: { notes: [], transcripts: [], recordings: [], proceededOn: '17 Oct 2026' },
+  value: {
+    callConfirmedOn: '19 Oct 2026',
+    businessCase: { name: 'case.pdf', uploadedOn: '20 Oct 2026', uploadedBy: 'Parag Agarwal' },
+  },
+}
+
 describe('PartnershipDetail', () => {
   const mockRequest = INITIAL_PARTNERSHIP_REQUESTS[0]
   const adminCase = INITIAL_PARTNERSHIP_REQUESTS[4]
@@ -561,7 +580,7 @@ describe('PartnershipDetail', () => {
 
     it('shows the reviewers’ own answers and the Strategy Team decision with its pre-read', async () => {
       const user = userEvent.setup()
-      renderDetail({ request: INITIAL_PARTNERSHIP_REQUESTS[1] })
+      renderDetail({ request: STRATEGY_DONE })
       expect(stepper().getAllByText('Approved')).toHaveLength(2)
       await user.click(stepper().getByRole('button', { name: /Strategic Alignment/ }))
 
@@ -827,10 +846,9 @@ describe('PartnershipDetail', () => {
   })
 
   describe('Internal Interest Team', () => {
-    it('has no workflow stages, then answers the default questions into a view-only form', async () => {
+    it('has no workflow stages, with Continue in a fixed footer on the brief', async () => {
       const user = userEvent.setup()
       renderDetail({ userProfile: internalProfile })
-
       expect(screen.queryByRole('navigation', { name: 'Review progress' })).not.toBeInTheDocument()
       // No verdict and no vendor contact details
       expect(screen.queryByRole('heading', { name: 'Agent Verdict' })).not.toBeInTheDocument()
@@ -839,14 +857,39 @@ describe('PartnershipDetail', () => {
       expect(screen.queryByText('sarah@medtechinnovations.com')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Close' }))
 
+      const next = screen.getByRole('button', { name: /Continue to Questionnaire/i })
+      expect(next.parentElement?.className).toContain('sticky')
+      expect(next.parentElement?.className).toContain('bottom-0')
+    })
+
+    it('fills every answer when one is clicked, then submits from a fixed footer into a view-only form', async () => {
+      const user = userEvent.setup()
+      renderDetail({ userProfile: internalProfile })
       await user.click(screen.getByRole('button', { name: /Continue to Questionnaire/i }))
       expect(screen.getByText('Internal Evaluation Questionnaire')).toBeInTheDocument()
       expect(screen.queryByText(/Research needed|Attachment/)).not.toBeInTheDocument()
+      // Full width: nothing narrows the questions
+      expect(
+        screen
+          .getByRole('heading', { name: /Internal Evaluation Questionnaire/ })
+          .closest('.max-w-4xl')
+      ).toBeNull()
+
       const boxes = screen.getAllByRole('textbox')
       expect(boxes).toHaveLength(5)
       const submit = screen.getByRole('button', { name: 'Submit' })
+      expect(submit.parentElement?.className).toContain('sticky')
       expect(submit).toBeDisabled()
-      for (const box of boxes) await user.type(box, 'An answer')
+      expect(screen.getByText('0 of 5 mandatory answered')).toBeInTheDocument()
+
+      await user.click(boxes[2])
+      boxes.forEach((b) => expect(b).not.toHaveValue(''))
+      expect(screen.getByText('5 of 5 mandatory answered')).toBeInTheDocument()
+      expect(submit).toBeEnabled()
+      // Clearing one answer disables Submit again
+      await user.clear(boxes[0])
+      expect(submit).toBeDisabled()
+      await user.type(boxes[0], 'Our own answer')
       await user.click(submit)
 
       const confirm = screen.getByRole('dialog', { name: 'Submit questionnaire?' })
@@ -857,7 +900,11 @@ describe('PartnershipDetail', () => {
         'internal',
         expect.objectContaining({
           answers: expect.arrayContaining([
-            expect.objectContaining({ questionId: 'q1', answer: 'An answer' }),
+            expect.objectContaining({ questionId: 'q1', answer: 'Our own answer' }),
+            expect.objectContaining({
+              questionId: 'q2',
+              answer: expect.stringContaining('Time to first antibiotic dose'),
+            }),
           ]),
         })
       )
@@ -898,7 +945,7 @@ describe('PartnershipDetail', () => {
   })
 
   describe('Strategy Team', () => {
-    it('opens on the brief, with no animation, the workflow stages and a fixed Next', () => {
+    it('opens on the brief, with no animation, every workflow stage and a fixed Next', () => {
       renderDetail({ userProfile: strategyProfile, animateAgentRun: true })
       expect(screen.queryByText('ANALYZING')).not.toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Company Information' })).toBeInTheDocument()
@@ -910,9 +957,16 @@ describe('PartnershipDetail', () => {
           .map((b) => b.textContent)
       ).toEqual([
         expect.stringContaining('Initial Assessment Brief'),
-        expect.stringContaining('Pre-read Summary'),
+        expect.stringContaining('Internal Canvas'),
+        expect.stringContaining('Strategic Alignment'),
+        expect.stringContaining('NDA & Discovery'),
+        expect.stringContaining('Value & Due Diligence'),
       ])
-      expect(stepper().getByRole('button', { name: /Pre-read Summary/ })).toBeDisabled()
+      // Their own work and everything after it stays locked until the brief has been read
+      ;[/Strategic Alignment/, /NDA & Discovery/, /Value & Due Diligence/].forEach((name) =>
+        expect(stepper().getByRole('button', { name })).toBeDisabled()
+      )
+      expect(stepper().getByRole('button', { name: /Internal Canvas/ })).toBeEnabled()
       const bar = screen.getByRole('button', { name: 'Next' }).parentElement!
       expect(bar.className).toContain('sticky')
       expect(bar.className).toContain('bottom-0')
@@ -926,21 +980,25 @@ describe('PartnershipDetail', () => {
       expect(screen.queryByRole('button', { name: /Skip/i })).not.toBeInTheDocument()
       expect(screen.queryByRole('list', { name: 'Documents added' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+      expect(stepper().getByRole('button', { name: /Strategic Alignment/ })).toHaveAttribute(
+        'aria-current',
+        'step'
+      )
       // The brief is still one click away in the stages
       await user.click(stepper().getByRole('button', { name: /Initial Assessment Brief/ }))
       expect(screen.getByRole('heading', { name: 'Company Information' })).toBeInTheDocument()
     })
 
-    it('generates the pre-read below the vendor card with the simple animation, then decides with a confirmation', async () => {
+    it('generates the pre-read with the simple animation under the stages, then decides with a confirmation', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderDetail({ userProfile: strategyProfile })
       await user.click(screen.getByRole('button', { name: 'Next' }))
       await user.click(screen.getByRole('button', { name: /Generate Summary/ }))
 
-      // The vendor card and tabs stay; the animation sits below them
+      // The tabs and workflow stages stay; the animation sits below them
       expect(screen.getByText('GENERATING')).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'MedTech Innovations' })).toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Review progress' })).toBeInTheDocument()
       expect(screen.getByRole('tablist')).toBeInTheDocument()
       expect(screen.queryByRole('list', { name: 'Pre-read summary' })).not.toBeInTheDocument()
       runTimers(1100, 8)
@@ -1026,11 +1084,9 @@ describe('PartnershipDetail', () => {
       expect(screen.getByText('Proceeded')).toBeInTheDocument()
     })
 
-    it('shows a decided case as a read-only pre-read straight away, with both stages done', () => {
-      renderDetail({
-        userProfile: strategyProfile,
-        request: INITIAL_PARTNERSHIP_REQUESTS[1],
-      })
+    it('keeps everything after the decision view-only and locked until the Director acts', async () => {
+      const user = userEvent.setup()
+      renderDetail({ userProfile: strategyProfile, request: STRATEGY_DONE })
       expect(
         within(screen.getByRole('list', { name: 'Pre-read summary' })).getAllByRole('heading', {
           level: 3,
@@ -1038,24 +1094,78 @@ describe('PartnershipDetail', () => {
       ).toHaveLength(6)
       expect(screen.queryByRole('button', { name: 'Proceed' })).not.toBeInTheDocument()
       expect(screen.getByText('Proceeded')).toBeInTheDocument()
-      expect(stepper().getByRole('button', { name: /Pre-read Summary/ })).toBeEnabled()
+      // The NDA stage opens only once the Director has uploaded the signed NDA
+      expect(stepper().getByRole('button', { name: /NDA & Discovery/ })).toBeDisabled()
+      expect(stepper().getByRole('button', { name: /Value & Due Diligence/ })).toBeDisabled()
+      // The Internal Canvas is there to read, with no way to change it
+      await user.click(stepper().getByRole('button', { name: /Internal Canvas/ }))
+      expect(screen.queryByLabelText(/Simulate the team/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Send Request' })).not.toBeInTheDocument()
+      expect(screen.getByRole('table')).toBeInTheDocument()
+    })
+
+    it('unlocks the NDA stage for viewing once the Director has signed, never showing the template', async () => {
+      const user = userEvent.setup()
+      renderDetail({
+        userProfile: strategyProfile,
+        request: INITIAL_PARTNERSHIP_REQUESTS[2],
+      })
+      expect(stepper().getByRole('button', { name: /NDA & Discovery/ })).toBeEnabled()
+      expect(stepper().getByRole('button', { name: /Value & Due Diligence/ })).toBeDisabled()
+      await user.click(stepper().getByRole('button', { name: /NDA & Discovery/ }))
+      expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /Download/ })).not.toBeInTheDocument()
+      expect(screen.queryByText('Upload meeting notes')).not.toBeInTheDocument()
+      // Just a Next that waits for the sponsor
+      expect(screen.getByRole('button', { name: /Next/ })).toBeDisabled()
     })
   })
 
   describe('Sponsor', () => {
     const sponsorProfile = profile('sponsor', 'Sponsor')
 
-    it('follows the same five steps as the Director, with the verdict and vendor details', () => {
+    it('follows the same five steps as the Director, opening on the alignment pack, not the vendor card', () => {
       renderDetail({ userProfile: sponsorProfile, request: INITIAL_PARTNERSHIP_REQUESTS[2] })
       expect(stepper().getAllByRole('button')).toHaveLength(5)
-      expect(screen.getByText('Referred by:')).toBeInTheDocument()
-      // No Director actions
-      expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
+      // The vendor card only tops the first step
+      expect(screen.queryByText('Referred by:')).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Send Request' })).not.toBeInTheDocument()
+      // Value & Due Diligence stays locked until the sponsor moves on
+      expect(stepper().getByRole('button', { name: /Value & Due Diligence/ })).toBeDisabled()
+    })
+
+    it('shows the vendor card on the brief only, with Submitted on after Referred by', async () => {
+      const user = userEvent.setup()
+      renderDetail({ userProfile: sponsorProfile, request: INITIAL_PARTNERSHIP_REQUESTS[2] })
+      await user.click(stepper().getByRole('button', { name: /Initial Assessment Brief/ }))
+      const card = screen
+        .getByRole('heading', { name: INITIAL_PARTNERSHIP_REQUESTS[2].companyName })
+        .closest('.rounded-2xl') as HTMLElement
+      const text = card.textContent ?? ''
+      expect(text.indexOf('Referred by:')).toBeGreaterThan(-1)
+      expect(text.indexOf('Submitted on:')).toBeGreaterThan(text.indexOf('Referred by:'))
+    })
+
+    it('adds optional context after Next, can skip it, and only then moves on', async () => {
+      const user = userEvent.setup()
+      renderDetail({ userProfile: sponsorProfile, request: INITIAL_PARTNERSHIP_REQUESTS[2] })
+      await user.click(screen.getByRole('button', { name: /Next/ }))
+      expect(screen.getByRole('heading', { name: 'Add context' })).toBeInTheDocument()
+      await user.upload(screen.getByLabelText('Upload transcript'), new File(['x'], 'call.txt'))
+      expect(onCaseAction).toHaveBeenCalledWith(INITIAL_PARTNERSHIP_REQUESTS[2].id, {
+        type: 'discoveryFile',
+        kind: 'transcripts',
+        name: 'call.txt',
+      })
+      await user.click(screen.getByRole('button', { name: 'Skip' }))
+      expect(onCaseAction).toHaveBeenCalledWith(INITIAL_PARTNERSHIP_REQUESTS[2].id, {
+        type: 'proceedToValue',
+      })
     })
 
     it('opens on the stage the case has reached, where the sponsor decides', () => {
-      renderDetail({ userProfile: sponsorProfile, request: INITIAL_PARTNERSHIP_REQUESTS[2] })
+      renderDetail({ userProfile: sponsorProfile, request: AT_VALUE })
       expect(
         screen.getByRole('heading', { level: 2, name: 'Value & Due Diligence' })
       ).toBeInTheDocument()
@@ -1063,17 +1173,26 @@ describe('PartnershipDetail', () => {
       expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument()
     })
 
+    it('keeps the NDA and alignment pack view-only once the sponsor has moved on', async () => {
+      const user = userEvent.setup()
+      renderDetail({ userProfile: sponsorProfile, request: AT_VALUE })
+      await user.click(stepper().getByRole('button', { name: /NDA & Discovery/ }))
+      expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
+      // No Next-to-context: it goes straight on to the value stage
+      await user.click(screen.getByRole('button', { name: /Next/ }))
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Value & Due Diligence' })
+      ).toBeInTheDocument()
+    })
+
     it('sends the sponsor actions through onCaseAction', async () => {
       const user = userEvent.setup()
       renderDetail({
         userProfile: sponsorProfile,
-        request: {
-          ...INITIAL_PARTNERSHIP_REQUESTS[2],
-          value: { ...INITIAL_PARTNERSHIP_REQUESTS[2].value, businessCase: undefined },
-        },
+        request: { ...AT_VALUE, value: { callConfirmedOn: '19 Oct 2026' } },
       })
       await user.upload(screen.getByLabelText('Upload business case'), new File(['x'], 'case.pdf'))
-      expect(onCaseAction).toHaveBeenCalledWith(INITIAL_PARTNERSHIP_REQUESTS[2].id, {
+      expect(onCaseAction).toHaveBeenCalledWith(AT_VALUE.id, {
         type: 'businessCase',
         name: 'case.pdf',
       })
@@ -1081,7 +1200,7 @@ describe('PartnershipDetail', () => {
 
     it('shows the Director the same stages, with the NDA actions but not the sponsor ones', async () => {
       const user = userEvent.setup()
-      renderDetail({ request: INITIAL_PARTNERSHIP_REQUESTS[2] })
+      renderDetail({ request: AT_VALUE })
       expect(
         screen.getByRole('heading', { level: 2, name: 'Value & Due Diligence' })
       ).toBeInTheDocument()
@@ -1092,6 +1211,72 @@ describe('PartnershipDetail', () => {
       expect(screen.getByRole('heading', { name: 'Alignment Pack' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /Back to signed NDA/ }))
       expect(screen.getByRole('button', { name: 'Upload new version' })).toBeInTheDocument()
+    })
+  })
+
+  describe('Moving on once the Strategy Team approves', () => {
+    it('takes the Director from Strategic Alignment to NDA & Discovery', () => {
+      const awaiting: PartnershipRequest = {
+        ...INITIAL_PARTNERSHIP_REQUESTS[1],
+        stageApprovals: { internal: STRATEGY_DONE.stageApprovals!.internal },
+      }
+      const { rerender } = renderDetail({ request: awaiting })
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Strategic Alignment' })
+      ).toBeInTheDocument()
+      rerender(
+        <PartnershipDetail
+          request={STRATEGY_DONE}
+          allRequests={INITIAL_PARTNERSHIP_REQUESTS}
+          onBack={onBack}
+          onProceed={onProceed}
+          onReject={onReject}
+          animateAgentRun={false}
+        />
+      )
+      expect(screen.getByRole('heading', { level: 2, name: 'NDA & Discovery' })).toBeInTheDocument()
+    })
+
+    it('opens the Strategy Team lead on the new case, with nothing decided yet', () => {
+      renderDetail({
+        userProfile: strategyProfile,
+        request: INITIAL_PARTNERSHIP_REQUESTS[1],
+      })
+      expect(screen.getByRole('heading', { name: 'Company Information' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument()
+    })
+  })
+
+  describe('Layout across the workflow stages', () => {
+    it('shows the vendor card on the first step only, and the stages take its place later', async () => {
+      const user = userEvent.setup()
+      renderDetail({ request: STRATEGY_DONE })
+      // STRATEGY_DONE opens on NDA & Discovery: no vendor card, the stages are on top
+      expect(
+        screen.queryByRole('heading', { name: STRATEGY_DONE.companyName })
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Review progress' })).toBeInTheDocument()
+      await user.click(stepper().getByRole('button', { name: /Internal Canvas/ }))
+      expect(
+        screen.queryByRole('heading', { name: STRATEGY_DONE.companyName })
+      ).not.toBeInTheDocument()
+      await user.click(stepper().getByRole('button', { name: /Initial Assessment Brief/ }))
+      expect(screen.getByRole('heading', { name: STRATEGY_DONE.companyName })).toBeInTheDocument()
+    })
+
+    it('puts Submitted on after Referred by in the card', () => {
+      renderDetail()
+      const card = screen
+        .getByRole('heading', { name: 'MedTech Innovations' })
+        .closest('.rounded-2xl') as HTMLElement
+      const text = card.textContent ?? ''
+      expect(text.indexOf('Submitted on:')).toBeGreaterThan(text.indexOf('Referred by:'))
+    })
+
+    it('fills the page height on the NDA stage so only its content scrolls', () => {
+      const { container } = renderDetail({ request: STRATEGY_DONE })
+      expect((container.firstChild as HTMLElement).className).toContain('h-[calc(100vh-6.75rem)]')
+      expect((container.firstChild as HTMLElement).className).toContain('overflow-hidden')
     })
   })
 })

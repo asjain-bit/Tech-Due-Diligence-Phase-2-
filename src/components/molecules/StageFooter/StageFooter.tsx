@@ -4,12 +4,17 @@ import type { StageFooterProps } from './StageFooter.types'
 /**
  * StageFooter — Molecule
  * The action bar fixed to the bottom of a workflow stage card: it spans the card, stays in view
- * while the content above scrolls, and holds the stage's acknowledgement and next step.
+ * while the content above scrolls, and holds the stage's acknowledgement and next step. In a
+ * stage that fills the page height the content scrolls inside it and this bar never moves.
  * Used in: NdaDiscoveryStage, ValueDueDiligenceStage
  */
-export const StageFooter: React.FC<StageFooterProps> = ({ children, className = '' }) => (
+export const StageFooter: React.FC<StageFooterProps> = ({
+  children,
+  compact = false,
+  className = '',
+}) => (
   <div
-    className={`sticky bottom-0 z-30 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 mt-8 px-6 sm:px-8 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] rounded-b-2xl flex items-center justify-between gap-4 flex-wrap ${className}`.trim()}
+    className={`sticky bottom-0 z-30 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 ${compact ? 'mt-4' : 'mt-8'} px-6 sm:px-8 py-3.5 bg-white border-t border-[#e2e8f0] shadow-[0_-4px_12px_rgba(15,23,42,0.06)] rounded-b-2xl flex items-center justify-between gap-4 flex-wrap ${className}`.trim()}
   >
     {children}
   </div>

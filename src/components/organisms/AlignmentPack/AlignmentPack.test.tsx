@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import { AlignmentPack, buildOpenQuestions } from './AlignmentPack'
 import { INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
@@ -7,10 +7,12 @@ import { INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
 const request = INITIAL_PARTNERSHIP_REQUESTS[2]
 
 describe('AlignmentPack', () => {
-  it('is laid out like the brief, with a side panel and a section for everything so far', () => {
+  it('is one continuous document, with no side navigation and no recipients', () => {
     render(<AlignmentPack request={request} />)
-    const nav = within(screen.getByRole('navigation', { name: 'Alignment pack sections' }))
-    expect(nav.getAllByRole('button').map((b) => b.textContent)).toEqual([
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+    expect(screen.queryByText('Sent to')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Sponsors: /)).not.toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
       'Executive Summary',
       'Company Information',
       'Collaboration Proposal',
@@ -23,7 +25,6 @@ describe('AlignmentPack', () => {
       'Open Questions',
       'Key Dates',
     ])
-    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(11)
   })
 
   it('fills the sections with what happened so far', () => {
@@ -34,33 +35,22 @@ describe('AlignmentPack', () => {
       screen.getByText(/Parag Agarwal is the lead sponsor, with Najla Al Mansoori/)
     ).toBeInTheDocument()
     expect(screen.getByText('Conditions to proceed')).toBeInTheDocument()
+    // The NDA section names the latest signed copy, not the unsigned template
     expect(screen.getByText('GenomicX_Signed_NDA_v1.pdf')).toBeInTheDocument()
+    expect(screen.getByText('v2')).toBeInTheDocument()
     expect(screen.getByText('Agent: Proceed')).toBeInTheDocument()
     expect(screen.getByRole('table')).toHaveTextContent('Response date')
   })
 
-  it('says who it was sent to', () => {
-    render(<AlignmentPack request={request} />)
-    expect(screen.getByText('Director')).toBeInTheDocument()
-    expect(screen.getByText(/Sponsors: Parag Agarwal, Najla Al Mansoori/)).toBeInTheDocument()
-    expect(screen.getByText('Strategy Team')).toBeInTheDocument()
-  })
-
-  it('adds an extra section to the end and the side panel', () => {
+  it('adds an extra section at the end', () => {
     render(
       <AlignmentPack
         request={request}
-        extraSection={{ id: 'discovery', label: 'Discovery Call', content: <p>Extra content</p> }}
+        extraSection={{ id: 'context', label: 'Meeting Notes', content: <p>Extra content</p> }}
       />
     )
-    expect(
-      within(screen.getByRole('navigation', { name: 'Alignment pack sections' })).getByRole(
-        'button',
-        {
-          name: 'Discovery Call',
-        }
-      )
-    ).toBeInTheDocument()
+    const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(headings[headings.length - 1]).toBe('Meeting Notes')
     expect(screen.getByText('Extra content')).toBeInTheDocument()
   })
 

@@ -49,6 +49,8 @@ export interface SponsorAssignment {
 
 export interface NdaVersion {
   version: number
+  /** False for the unsigned template copy that version 1 keeps */
+  signed: boolean
   fileName: string
   uploadedOn: string
   uploadedBy: string
@@ -230,8 +232,10 @@ export interface PartnershipRequest {
   alignmentPackOn?: string
   discovery?: {
     notes: CaseFile[]
+    transcripts?: CaseFile[]
     recordings: CaseFile[]
-    confirmedOn?: string
+    /** When the sponsor moved the case on to Value & Due Diligence */
+    proceededOn?: string
   }
   value?: {
     callConfirmedOn?: string
@@ -589,21 +593,13 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
         kind: 'user',
         timestamp: '12 Oct 2026, 03:00 PM',
       },
-      {
-        id: 'seed-9',
-        title: 'Strategy Team approved',
-        description: 'Proceed with a condition.',
-        actor: 'Dr. Zainab (Strategy Team)',
-        kind: 'approval',
-        timestamp: '13 Oct 2026, 04:30 PM',
-      },
     ],
     sponsors: { lead: 'Riza Sayeed', co: [] },
     internalOutcome: { scenario: 'single' },
     sent: { internal: true, strategy: true },
+    // Waiting for Dr. Zainab, so the Strategy Team has the whole review still to do
     stageApprovals: {
       internal: { status: 'approved', by: 'Mariam Al-Zaabi', date: 'Done' },
-      strategy: { status: 'approved', by: 'Dr. Zainab', date: 'Done' },
     },
     companyName: 'AlphaHealth BioTech',
     vendorName: 'Dr. Tariq Mansoor',
@@ -628,8 +624,8 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
     workflowStages: [
       { id: 1, title: 'Submission', subheading: '10 Oct 2026', status: 'completed' },
       { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
-      { id: 3, title: 'Screening & Fit', subheading: 'Completed', status: 'completed' },
-      { id: 4, title: 'NDA & Discovery', subheading: 'In Progress', status: 'in_progress' },
+      { id: 3, title: 'Screening & Fit', subheading: 'In Progress', status: 'in_progress' },
+      { id: 4, title: 'NDA & Discovery', subheading: 'Not Started', status: 'not_started' },
       { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
       { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
       { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
@@ -790,6 +786,14 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
       versions: [
         {
           version: 1,
+          signed: false,
+          fileName: 'ADHDS_NDA_Execution_Form_v1.0.docx',
+          uploadedOn: '13 Oct 2026',
+          uploadedBy: 'Zaid Al Ali',
+        },
+        {
+          version: 2,
+          signed: true,
           fileName: 'GenomicX_Signed_NDA_v1.pdf',
           uploadedOn: '14 Oct 2026',
           uploadedBy: 'Zaid Al Ali',
@@ -805,6 +809,7 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
           uploadedBy: 'Parag Agarwal',
         },
       ],
+      transcripts: [],
       recordings: [
         {
           name: 'Discovery_Call_Recording.mp4',
@@ -812,15 +817,6 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
           uploadedBy: 'Parag Agarwal',
         },
       ],
-      confirmedOn: '16 Oct 2026',
-    },
-    value: {
-      callConfirmedOn: '19 Oct 2026',
-      businessCase: {
-        name: 'GenomicX_Business_Case.pdf',
-        uploadedOn: '20 Oct 2026',
-        uploadedBy: 'Parag Agarwal',
-      },
     },
     sent: { internal: true, strategy: true },
     stageApprovals: {
@@ -851,8 +847,8 @@ export const INITIAL_PARTNERSHIP_REQUESTS: PartnershipRequest[] = [
       { id: 1, title: 'Submission', subheading: '01 Oct 2026', status: 'completed' },
       { id: 2, title: 'Intake & Triage', subheading: 'Completed', status: 'completed' },
       { id: 3, title: 'Screening & Fit', subheading: 'Completed', status: 'completed' },
-      { id: 4, title: 'NDA & Discovery', subheading: 'Completed', status: 'completed' },
-      { id: 5, title: 'Value Assessment', subheading: 'In Progress', status: 'in_progress' },
+      { id: 4, title: 'NDA & Discovery', subheading: 'In Progress', status: 'in_progress' },
+      { id: 5, title: 'Value Assessment', subheading: 'Not Started', status: 'not_started' },
       { id: 6, title: 'Due Diligence', subheading: 'Not Started', status: 'not_started' },
       { id: 7, title: 'Term Sheet & Pilot', subheading: 'Not Started', status: 'not_started' },
     ],
