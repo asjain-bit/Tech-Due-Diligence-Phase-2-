@@ -245,10 +245,12 @@ export interface PartnershipRequest {
     callConfirmedOn?: string
     businessCase?: CaseFile
     decision?: { status: 'proceeded' | 'rejected'; reason?: string; date: string }
-    /** The technical due diligence report the sponsor uploaded */
-    tddReport?: CaseFile
-    /** Set when the report is uploaded; completes the stage */
+    /** When the agent filled in the TDD report */
     tddGeneratedOn?: string
+    /** The sponsor's final answer after the TDD report */
+    finalDecision?: { status: 'sponsored' | 'declined'; date: string }
+    /** Set when the sponsor confirms: completes the case */
+    sponsoredOn?: string
   }
 }
 

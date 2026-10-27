@@ -45,7 +45,7 @@ describe('role KPIs', () => {
 
   it('counts the sponsor cases, with no overdue count while there are no deadlines', () => {
     const cases: PartnershipRequest[] = [
-      { ...base, value: { tddGeneratedOn: '22 Oct 2026' } },
+      { ...base, value: { sponsoredOn: '22 Oct 2026' } },
       { ...base, value: {} },
       { ...base, value: {} },
       { ...base, status: 'Closed' },

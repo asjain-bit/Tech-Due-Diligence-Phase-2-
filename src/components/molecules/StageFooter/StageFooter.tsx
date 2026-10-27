@@ -6,7 +6,7 @@ import type { StageFooterProps } from './StageFooter.types'
  * The action bar fixed to the bottom of a workflow stage card: it spans the card, stays in view
  * while the content above scrolls, and holds the stage's acknowledgement and next step. In a
  * stage that fills the page height the content scrolls inside it and this bar never moves.
- * Used in: NdaDiscoveryStage, ValueDueDiligenceStage
+ * Used in: NdaStage, ValueDueDiligenceStage
  */
 export const StageFooter: React.FC<StageFooterProps> = ({
   children,

@@ -4,7 +4,7 @@
  * NdaExecutionForm — Organism
  * The ADHDS NDA Execution Form (Parts A to D) as a read-only template, with the case details
  * filled in. The original Word file can be downloaded; this view is not editable.
- * Used in: NdaDiscoveryStage
+ * Used in: NdaStage
  */
 
 import React from 'react'

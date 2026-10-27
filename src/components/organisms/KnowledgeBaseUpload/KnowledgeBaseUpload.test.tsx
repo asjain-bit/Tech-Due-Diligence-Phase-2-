@@ -23,14 +23,7 @@ describe('KnowledgeBaseUpload', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Upload supporting documents')).toBeInTheDocument()
     expect(screen.getByText('PDF, DOCX, XLSX · Max 20 MB per file')).toBeInTheDocument()
-    expect(
-      screen.getByText('Only documents selected for this assessment will be used.')
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'The agent will analyse the uploaded documents to generate the pre-read summary.'
-      )
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Only the documents selected here will be used\./)).toBeInTheDocument()
     // Nothing is pre-selected
     expect(screen.queryByRole('list', { name: 'Knowledge base documents' })).not.toBeInTheDocument()
   })

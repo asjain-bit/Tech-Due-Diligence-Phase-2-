@@ -8,7 +8,7 @@
  */
 
 import React from 'react'
-import { Check } from 'lucide-react'
+import {} from 'lucide-react'
 import type { ReviewQuestionnaireProps } from './ReviewQuestionnaire.types'
 
 const MAX = 600
@@ -102,7 +102,6 @@ export const ReviewQuestionnaire: React.FC<ReviewQuestionnaireProps> = ({
             onClick={onSubmit}
             className="px-6 py-2.5 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-1.5"
           >
-            <Check className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
             <span>Submit</span>
           </button>
         </div>

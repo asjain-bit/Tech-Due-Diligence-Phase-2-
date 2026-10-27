@@ -19,7 +19,6 @@ import {
   LineChart,
   List,
   PhoneCall,
-  RefreshCw,
   Hash,
 } from 'lucide-react'
 import {
@@ -361,7 +360,6 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
                     onClick={recalculate}
                     className="h-9 px-4 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer transition"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
                     Recalculate
                   </button>
                 </div>

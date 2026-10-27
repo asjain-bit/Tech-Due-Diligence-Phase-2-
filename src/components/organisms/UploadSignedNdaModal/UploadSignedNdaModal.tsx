@@ -4,7 +4,7 @@
  * UploadSignedNdaModal — Organism
  * Popup for the signed NDA: drag and drop or browse, one PDF or Word file up to 20 MB, shown
  * with its size before it is uploaded. The upload becomes the next version of the NDA.
- * Used in: NdaDiscoveryStage
+ * Used in: NdaStage
  */
 
 import React, { useEffect, useId, useRef, useState } from 'react'

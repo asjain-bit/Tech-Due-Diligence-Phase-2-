@@ -8,7 +8,7 @@
  */
 
 import React, { useState } from 'react'
-import { ArrowRight, FileText, FileUp, Info, Sparkles, X } from 'lucide-react'
+import { FileUp, Info, X } from 'lucide-react'
 import { AddDocumentsModal } from '@/components/organisms/AddDocumentsModal'
 import {
   fileTypeLabel,
@@ -21,6 +21,7 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
   files,
   onFilesChange,
   onGenerate,
+  onCancel,
   className = '',
 }) => {
   const [adding, setAdding] = useState(false)
@@ -35,7 +36,7 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
         </p>
       </div>
 
-      <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-6 py-12 flex flex-col items-center gap-3 text-center">
+      <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-6 py-14 flex flex-col items-center gap-3 text-center">
         <span className="w-14 h-14 rounded-full bg-[#e6fffa] text-[#00a8b0] flex items-center justify-center">
           <FileUp className="w-7 h-7" aria-hidden="true" />
         </span>
@@ -51,7 +52,7 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="h-10 px-6 rounded-lg border border-[#00a8b0] bg-white text-sm font-semibold text-[#008a8a] hover:bg-[#f0fdfa] cursor-pointer transition"
+          className="h-12 px-8 rounded-xl border border-[#00a8b0] bg-white text-sm font-semibold text-[#008a8a] hover:bg-[#f0fdfa] cursor-pointer transition"
         >
           Browse files
         </button>
@@ -64,17 +65,23 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
             Knowledge base documents{' '}
             <span className="font-normal text-[#64748b]">({files.length})</span>
           </h3>
-          <ul aria-label="Knowledge base documents" className="flex flex-col gap-2">
+          <ul
+            aria-label="Knowledge base documents"
+            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"
+          >
             {files.map((f) => (
               <li
                 key={f.name}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[#e2e8f0] bg-white"
+                className="flex items-center gap-3 px-3 py-3 rounded-xl border border-[#e2e8f0] bg-white"
               >
-                <FileTypeIcon name={f.name} className="w-6 h-6" />
+                <span className="w-11 h-11 rounded-lg border border-[#e2e8f0] flex items-center justify-center shrink-0">
+                  <FileTypeIcon name={f.name} className="w-6 h-6" />
+                </span>
                 <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-sm font-semibold text-[#0d212c] truncate">{f.name}</span>
+                  <span className="text-xs font-semibold text-[#0d212c] truncate" title={f.name}>
+                    {f.name}
+                  </span>
                   <span className="text-xs text-[#64748b]">
-                    {f.source ? `${f.source} · ` : ''}
                     {fileTypeLabel(f.name)} · {formatFileSize(f.size)}
                   </span>
                 </div>
@@ -82,7 +89,7 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
                   type="button"
                   onClick={() => onFilesChange(files.filter((x) => x.name !== f.name))}
                   aria-label={`Remove ${f.name}`}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 cursor-pointer transition"
+                  className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 cursor-pointer transition shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -92,26 +99,30 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-6 flex-wrap text-sm text-[#64748b]">
-        <span className="inline-flex items-center gap-2">
-          <Info className="w-4 h-4 shrink-0" aria-hidden="true" />
-          Only documents selected for this assessment will be used.
-        </span>
-        <span className="inline-flex items-start gap-2 max-w-sm">
-          <FileText className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
-          The agent will analyse the uploaded documents to generate the pre-read summary.
+      <div className="flex items-center gap-3 rounded-xl bg-[#f1f5f9] px-5 py-4 text-sm text-[#475569]">
+        <Info className="w-5 h-5 shrink-0 text-[#0284c7]" aria-hidden="true" />
+        <span>
+          Only the documents selected here will be used. The agent will analyse the uploaded
+          documents to generate the pre-read summary.
         </span>
       </div>
 
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-12 px-8 rounded-xl border border-[#e2e8f0] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 cursor-pointer transition"
+          >
+            Cancel
+          </button>
+        )}
         <button
           type="button"
           onClick={onGenerate}
-          className="h-11 px-6 rounded-lg bg-[#00a8b0] hover:bg-[#009199] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-2"
+          className="h-12 px-8 rounded-xl bg-[#00a8b0] hover:bg-[#009199] text-sm font-semibold text-white shadow-xs cursor-pointer transition"
         >
-          <Sparkles className="w-4 h-4" aria-hidden="true" />
           Generate Summary
-          <ArrowRight className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 

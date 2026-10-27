@@ -12,6 +12,8 @@ export interface ConfirmDialogProps {
   confirmDisabled?: boolean
   /** Single-button notice: only the confirm button (closing still calls onCancel) */
   hideCancel?: boolean
+  /** A destructive action: the icon and the confirm button turn red */
+  danger?: boolean
   onConfirm: () => void
   onCancel: () => void
 }

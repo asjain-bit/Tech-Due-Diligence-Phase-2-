@@ -76,7 +76,8 @@ const CASE_ACTION_TOASTS: Partial<Record<CaseAction['type'], string>> = {
   confirmValueCall: 'Value assessment call confirmed.',
   businessCase: 'Business case uploaded.',
   valueDecision: 'Your decision has been recorded.',
-  uploadTddReport: 'The TDD report has been uploaded.',
+  generateTdd: 'The TDD report has been generated.',
+  finalSponsor: 'Your answer has been recorded.',
 }
 
 const PAGE_SIZE = 7
@@ -87,7 +88,8 @@ const STAGE_OPTIONS = [
     'Initial Assessment Brief',
     'Internal Canvas',
     'Strategic Alignment',
-    'NDA & Discovery',
+    'NDA',
+    'Discovery Call',
     'Value & Due Diligence',
   ].map((v) => ({ value: v, label: v })),
 ]

@@ -78,7 +78,7 @@ describe('UsageInsightsScreen', () => {
     const user = userEvent.setup()
     const base = INITIAL_PARTNERSHIP_REQUESTS[2]
     const cases = [
-      { ...base, id: 'a', companyName: 'Done Co', value: { tddGeneratedOn: 'x' } },
+      { ...base, id: 'a', companyName: 'Done Co', value: { sponsoredOn: 'x' } },
       ...Array.from({ length: 5 }, (_, i) => ({ ...base, id: `p${i}`, companyName: `Live ${i}` })),
       { ...base, id: 'c', companyName: 'Ended Co', status: 'Closed' as const },
     ]

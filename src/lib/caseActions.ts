@@ -65,7 +65,8 @@ export const getStageLabel = (r: PartnershipRequest): string => {
   if (r.queue === 'admin' || !briefApproved) return 'Initial Assessment Brief'
   if (r.stageApprovals?.internal?.status !== 'approved') return 'Internal Canvas'
   if (r.stageApprovals?.strategy?.status !== 'approved') return 'Strategic Alignment'
-  if (!r.discovery?.proceededOn) return 'NDA & Discovery'
+  if (!r.alignmentPackOn) return 'NDA'
+  if (!r.discovery?.proceededOn) return 'Discovery Call'
   return 'Value & Due Diligence'
 }
 
@@ -787,27 +788,59 @@ export const decideValue = (
   )
 }
 
-/** The sponsor uploads the technical due diligence report, which completes the stage */
-export const uploadTddReport = (r: PartnershipRequest, name: string): PartnershipRequest =>
+/** The TDD report is filled in by the agent once the sponsor has proceeded */
+export const generateTddReport = (r: PartnershipRequest): PartnershipRequest =>
   r.value?.tddGeneratedOn
     ? r
     : appendAudit(
+        { ...r, value: { ...r.value, tddGeneratedOn: todayLabel() } },
         {
-          ...r,
-          value: {
-            ...r.value,
-            tddReport: { name, uploadedOn: todayLabel(), uploadedBy: SPONSOR_NAME },
-            tddGeneratedOn: todayLabel(),
-          },
-          workflowStages: setStages(r.workflowStages, 6, 7),
-        },
-        {
-          title: 'TDD report uploaded',
-          description: name,
-          actor: SPONSOR_ACTOR,
-          kind: 'user',
+          title: 'TDD report generated',
+          description: 'Technical due diligence report ready for the sponsor.',
+          actor: AGENT_ACTOR,
+          kind: 'agent',
         }
       )
+
+/** The sponsor's final answer after the TDD report: sponsor the partnership, or decline it */
+export const finalizeSponsorship = (
+  r: PartnershipRequest,
+  sponsor: boolean
+): PartnershipRequest => {
+  if (r.value?.sponsoredOn || r.value?.finalDecision) return r
+  const finalDecision = { status: sponsor ? 'sponsored' : 'declined', date: todayLabel() } as const
+  if (!sponsor) {
+    return appendAudit(
+      {
+        ...r,
+        value: { ...r.value, finalDecision },
+        status: 'Closed',
+        daysInStage: 0,
+        closedReason: 'The sponsor chose not to sponsor this partnership.',
+      },
+      {
+        title: 'Sponsorship declined',
+        description: 'The sponsor chose not to sponsor this partnership.',
+        actor: SPONSOR_ACTOR,
+        kind: 'critical',
+      }
+    )
+  }
+  return appendAudit(
+    {
+      ...r,
+      value: { ...r.value, finalDecision, sponsoredOn: todayLabel() },
+      daysInStage: 0,
+      workflowStages: setStages(r.workflowStages, 7),
+    },
+    {
+      title: 'Partnership sponsored',
+      description: 'The sponsor confirmed they will sponsor this partnership.',
+      actor: SPONSOR_ACTOR,
+      kind: 'approval',
+    }
+  )
+}
 
 /** Every change the late stages and the Internal Interest outcome can make to a case */
 export type CaseAction =
@@ -820,7 +853,8 @@ export type CaseAction =
   | { type: 'confirmValueCall' }
   | { type: 'businessCase'; name: string }
   | { type: 'valueDecision'; status: 'proceeded' | 'rejected'; reason: string }
-  | { type: 'uploadTddReport'; name: string }
+  | { type: 'generateTdd' }
+  | { type: 'finalSponsor'; sponsor: boolean }
 
 export const applyCaseAction = (r: PartnershipRequest, action: CaseAction): PartnershipRequest => {
   switch (action.type) {
@@ -842,7 +876,9 @@ export const applyCaseAction = (r: PartnershipRequest, action: CaseAction): Part
       return uploadBusinessCase(r, action.name)
     case 'valueDecision':
       return decideValue(r, action.status, action.reason)
-    case 'uploadTddReport':
-      return uploadTddReport(r, action.name)
+    case 'generateTdd':
+      return generateTddReport(r)
+    case 'finalSponsor':
+      return finalizeSponsorship(r, action.sponsor)
   }
 }

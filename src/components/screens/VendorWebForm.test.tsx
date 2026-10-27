@@ -97,15 +97,13 @@ describe('VendorWebForm', () => {
     expect(screen.getByLabelText(/^Company Name \*/)).toHaveValue('')
   })
 
-  it('does not submit while required fields are empty', async () => {
+  it('keeps Submit disabled until every required field is filled', async () => {
     const user = userEvent.setup()
     const onSubmitCase = vi.fn()
     render(<VendorWebForm onSubmitCase={onSubmitCase} />)
-    await user.click(screen.getByRole('button', { name: /Submit request/i }))
-    expect(screen.getByRole('alert')).toHaveTextContent('Please fill in the required fields')
-    expect(screen.getAllByText('This field is required').length).toBeGreaterThan(5)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(onSubmitCase).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /Submit request/i })).toBeDisabled()
+    await fillThin(user)
+    expect(screen.getByRole('button', { name: /Submit request/i })).toBeEnabled()
   })
 
   it('selects several focus areas from the dropdown', async () => {
@@ -235,12 +233,9 @@ describe('VendorWebForm', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('signs out', async () => {
-    const user = userEvent.setup()
-    const onSignOut = vi.fn()
-    render(<VendorWebForm onSubmitCase={vi.fn()} onSignOut={onSignOut} />)
-    await user.click(screen.getByRole('button', { name: /Sign out/i }))
-    expect(onSignOut).toHaveBeenCalled()
+  it('has no Sign out button', () => {
+    render(<VendorWebForm onSubmitCase={vi.fn()} onSignOut={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: /Sign out/i })).not.toBeInTheDocument()
   })
 
   it('stacks vendor name, job title and company name in their own rows with placeholders', () => {
@@ -266,11 +261,6 @@ describe('VendorWebForm', () => {
     expect(footer.contains(screen.getByRole('main'))).toBe(false)
   })
 
-  it('shows Sign out in red', () => {
-    render(<VendorWebForm onSubmitCase={vi.fn()} onSignOut={vi.fn()} />)
-    expect(screen.getByRole('button', { name: /Sign out/i }).className).toContain('text-red-600')
-  })
-
   it('keeps Run AI check disabled until the required fields are filled, and explains it in a tooltip', async () => {
     const user = userEvent.setup()
     render(<VendorWebForm onSubmitCase={vi.fn()} />)
@@ -290,11 +280,13 @@ describe('VendorWebForm', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Keep editing' }))
     expect(onSignOut).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Cancel this request?' })).getByRole('button', {
-        name: 'Yes, cancel',
-      })
+    const confirm = within(screen.getByRole('dialog', { name: 'Cancel this request?' })).getByRole(
+      'button',
+      { name: 'Yes, cancel' }
     )
+    // A destructive choice is red, not the primary colour
+    expect(confirm.className).toContain('bg-red-600')
+    await user.click(confirm)
     expect(onSignOut).toHaveBeenCalled()
   })
 })

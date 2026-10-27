@@ -12,5 +12,7 @@ export interface KnowledgeBaseUploadProps {
   onFilesChange: (files: KnowledgeBaseFile[]) => void
   /** Generates the pre-read summary, with or without documents */
   onGenerate: () => void
+  /** Leaves the pre-read without generating it */
+  onCancel?: () => void
   className?: string
 }

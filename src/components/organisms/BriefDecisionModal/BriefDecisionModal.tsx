@@ -16,11 +16,23 @@ import type { BriefDecisionChoice, BriefDecisionModalProps } from './BriefDecisi
 
 const MAX = 500
 
-const OPTIONS: { value: BriefDecisionChoice; label: string; reasonPlaceholder: string }[] = [
-  { value: 'approve', label: 'Proceed', reasonPlaceholder: 'Add a note for the record...' },
+const OPTIONS: {
+  value: BriefDecisionChoice
+  label: string
+  reasonPlaceholder: string
+  /** The agent recommendation this option matches */
+  recommends?: 'proceed' | 'reject'
+}[] = [
+  {
+    value: 'approve',
+    label: 'Proceed',
+    recommends: 'proceed',
+    reasonPlaceholder: 'Add a note for the record...',
+  },
   {
     value: 'reject',
     label: 'Reject',
+    recommends: 'reject',
     reasonPlaceholder: 'Explain the key reasons for rejecting...',
   },
   { value: 'request_info', label: 'Request more info', reasonPlaceholder: '' },
@@ -86,7 +98,16 @@ export const BriefDecisionModal: React.FC<BriefDecisionModalProps> = ({
                 name="brief-decision"
                 checked={choice === o.value}
                 onChange={() => setChoice(o.value)}
-                label={o.label}
+                label={
+                  <span className="flex items-center gap-2">
+                    {o.label}
+                    {agentRecommendation === o.recommends && (
+                      <span className="px-2 py-0.5 rounded-full bg-[#e0f2fe] text-[#0369a1] text-[11px] font-medium">
+                        Agent recommended
+                      </span>
+                    )}
+                  </span>
+                }
                 className={`px-3.5 py-3 rounded-xl border transition ${
                   choice === o.value
                     ? 'border-[#36c0c9] bg-[#f0fdfa]'
@@ -94,11 +115,6 @@ export const BriefDecisionModal: React.FC<BriefDecisionModalProps> = ({
                 }`}
               />
             ))}
-            {agentRecommendation && (
-              <span className="text-xs text-[#0369a1]">
-                Agent recommends: {agentRecommendation === 'proceed' ? 'Proceed' : 'Reject'}
-              </span>
-            )}
           </fieldset>
 
           {choice === '' ? null : isInfo ? (

@@ -20,6 +20,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   children,
   confirmDisabled = false,
   hideCancel = false,
+  danger = false,
   onConfirm,
   onCancel,
 }) => {
@@ -50,7 +51,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        <div className="w-14 h-14 rounded-2xl bg-[#ecf8f9] text-[#36c0c9] flex items-center justify-center">
+        <div
+          className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+            danger ? 'bg-red-50 text-red-600' : 'bg-[#ecf8f9] text-[#36c0c9]'
+          }`}
+        >
           <Icon className="w-7 h-7" />
         </div>
 
@@ -77,7 +82,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             type="button"
             disabled={confirmDisabled}
             onClick={onConfirm}
-            className="h-12 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-lg shadow-[#36c0c9]/25 transition cursor-pointer"
+            className={`h-12 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-lg transition cursor-pointer ${
+              danger
+                ? 'bg-red-600 hover:bg-red-700 shadow-red-600/25'
+                : 'bg-[#36c0c9] hover:bg-[#2fb0b9] shadow-[#36c0c9]/25'
+            }`}
           >
             {confirmLabel}
           </button>

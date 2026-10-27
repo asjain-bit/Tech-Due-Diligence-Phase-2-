@@ -73,13 +73,13 @@ export const strategyLeadKpis = (requests: PartnershipRequest[]): RoleKpi[] => {
 }
 
 /**
- * Counts for the sponsor's own cases. Due diligence is complete once the TDD report is uploaded.
+ * Counts for the sponsor's own cases. Due diligence is complete once the sponsor confirms they will sponsor the partnership.
  * The data has no due diligence deadlines yet, so Overdue can only count tasks that carry one:
  * until such a field exists it stays at 0.
  */
 export const sponsorKpis = (requests: PartnershipRequest[]): RoleKpi[] => {
-  const completed = requests.filter((r) => Boolean(r.value?.tddGeneratedOn))
-  const pending = requests.filter((r) => !r.value?.tddGeneratedOn && !isTerminal(r))
+  const completed = requests.filter((r) => Boolean(r.value?.sponsoredOn))
+  const pending = requests.filter((r) => !r.value?.sponsoredOn && !isTerminal(r))
   return [
     {
       title: 'Assigned Requests',
@@ -158,15 +158,12 @@ export const directorKpis = (requests: PartnershipRequest[]): RoleKpi[] => {
     {
       title: 'NDA & Discovery',
       caption: 'In the current stage.',
-      value: open.filter((r) => stage(r) === 'NDA & Discovery').length,
+      value: open.filter((r) => stage(r) === 'NDA' || stage(r) === 'Discovery Call').length,
     },
     {
       title: 'Alignment Pack',
       caption: 'Awaiting preparation or review.',
-      value: open.filter(
-        (r) =>
-          stage(r) === 'NDA & Discovery' && Boolean(r.alignmentPackOn) && !r.discovery?.proceededOn
-      ).length,
+      value: open.filter((r) => stage(r) === 'Discovery Call').length,
     },
   ]
 }

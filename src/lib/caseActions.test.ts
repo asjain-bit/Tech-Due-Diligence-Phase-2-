@@ -10,6 +10,8 @@ import {
   applyInternalScenario,
   assignSponsors,
   buildSplitCases,
+  finalizeSponsorship,
+  generateTddReport,
   applyCaseAction,
   proceedToValue,
   uploadSignedNda,
@@ -76,10 +78,13 @@ describe('getStageLabel', () => {
       ...afterInternal,
       stageApprovals: { internal: approved, strategy: approved },
     }
-    expect(getStageLabel(afterStrategy)).toBe('NDA & Discovery')
+    expect(getStageLabel(afterStrategy)).toBe('NDA')
+    // The signed NDA and alignment pack move it on to the discovery call
+    const withPack = { ...afterStrategy, alignmentPackOn: 'today' }
+    expect(getStageLabel(withPack)).toBe('Discovery Call')
     expect(
       getStageLabel({
-        ...afterStrategy,
+        ...withPack,
         discovery: { notes: [], recordings: [], proceededOn: 'today' },
       })
     ).toBe('Value & Due Diligence')
@@ -533,5 +538,34 @@ describe('split cases', () => {
     expect(children.every((c) => c.splitFrom === parent.id && c.id !== parent.id)).toBe(true)
     expect(children[0].companyName).toBe(parent.companyName)
     expect(buildSplitCases(assignSponsors(parent, { lead: 'Riza Sayeed', co: [] }))).toEqual([])
+  })
+})
+
+describe('sponsor final answer', () => {
+  const atReport = {
+    ...INITIAL_PARTNERSHIP_REQUESTS[2],
+    value: { decision: { status: 'proceeded' as const, date: 'x' } },
+  }
+
+  it('fills in the TDD report once, without completing the case', () => {
+    const next = generateTddReport(atReport)
+    expect(next.value?.tddGeneratedOn).toBeTruthy()
+    expect(next.value?.sponsoredOn).toBeUndefined()
+    expect(generateTddReport(next)).toBe(next)
+  })
+
+  it('completes the case when the sponsor says yes', () => {
+    const next = finalizeSponsorship(generateTddReport(atReport), true)
+    expect(next.value?.sponsoredOn).toBeTruthy()
+    expect(next.value?.finalDecision?.status).toBe('sponsored')
+    expect(next.status).not.toBe('Closed')
+    expect(next.auditLog[next.auditLog.length - 1].title).toBe('Partnership sponsored')
+  })
+
+  it('closes the case when the sponsor says no', () => {
+    const next = finalizeSponsorship(generateTddReport(atReport), false)
+    expect(next.status).toBe('Closed')
+    expect(next.value?.sponsoredOn).toBeUndefined()
+    expect(next.value?.finalDecision?.status).toBe('declined')
   })
 })

@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { ValueDueDiligenceStage } from './ValueDueDiligenceStage'
@@ -90,40 +90,68 @@ describe('ValueDueDiligenceStage', () => {
     expect(screen.getByText('Waiting for the lead sponsor to decide.')).toBeInTheDocument()
   })
 
-  it('has the sponsor upload the TDD report after a proceed', async () => {
+  const proceeded = {
+    ...withCase,
+    value: {
+      ...withCase.value,
+      decision: { status: 'proceeded' as const, date: '21 Oct 2026' },
+    },
+  }
+
+  it('fills in the TDD report by itself after a proceed, with the simple animation', () => {
+    vi.useFakeTimers()
+    const onAction = vi.fn()
+    render(<ValueDueDiligenceStage request={proceeded} role="sponsor" onAction={onAction} />)
+    expect(screen.getByText('GENERATING')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Upload TDD report')).not.toBeInTheDocument()
+    for (let i = 0; i < 5; i++) act(() => vi.advanceTimersByTime(1100))
+    expect(onAction).toHaveBeenCalledWith({ type: 'generateTdd' })
+    vi.useRealTimers()
+  })
+
+  it('asks the sponsor for the final answer once the report is in', async () => {
     const user = userEvent.setup()
     const onAction = vi.fn()
     const request = {
-      ...withCase,
-      value: {
-        ...withCase.value,
-        decision: { status: 'proceeded' as const, date: '21 Oct 2026' },
-      },
+      ...proceeded,
+      value: { ...proceeded.value, tddGeneratedOn: '22 Oct 2026' },
     }
-    render(<ValueDueDiligenceStage request={request} role="sponsor" onAction={onAction} />)
-    expect(screen.queryByText('GENERATING')).not.toBeInTheDocument()
-    await user.upload(screen.getByLabelText('Upload TDD report'), file('tdd.pdf'))
-    expect(onAction).toHaveBeenCalledWith({ type: 'uploadTddReport', name: 'tdd.pdf' })
-  })
-
-  it('shows the uploaded TDD report, and a rejected case as closed', () => {
     const { unmount } = render(
+      <ValueDueDiligenceStage request={request} role="sponsor" onAction={onAction} />
+    )
+    expect(screen.getByRole('list', { name: 'TDD report' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Yes, sponsor' }))
+    expect(onAction).toHaveBeenCalledWith({ type: 'finalSponsor', sponsor: true })
+    await user.click(screen.getByRole('button', { name: 'No, do not sponsor' }))
+    expect(onAction).toHaveBeenCalledWith({ type: 'finalSponsor', sponsor: false })
+    unmount()
+    // The Director just waits, then sees the answer
+    const { unmount: again } = render(
+      <ValueDueDiligenceStage request={request} role="director" onAction={vi.fn()} />
+    )
+    expect(screen.getByText('Waiting for the sponsor to answer.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Yes, sponsor' })).not.toBeInTheDocument()
+    again()
+    render(
       <ValueDueDiligenceStage
         request={{
-          ...withCase,
+          ...request,
           value: {
-            ...withCase.value,
-            decision: { status: 'proceeded', date: '21 Oct 2026' },
-            tddReport: { name: 'tdd.pdf', uploadedOn: '22 Oct 2026', uploadedBy: 'Rashid' },
-            tddGeneratedOn: '22 Oct 2026',
+            ...request.value,
+            finalDecision: { status: 'sponsored', date: '23 Oct 2026' },
+            sponsoredOn: '23 Oct 2026',
           },
         }}
-        role="director"
+        role="sponsor"
         onAction={vi.fn()}
       />
     )
-    expect(screen.getByText('tdd.pdf')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Upload TDD report')).not.toBeInTheDocument()
+    expect(screen.getByText('Sponsored on 23 Oct 2026')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Yes, sponsor' })).not.toBeInTheDocument()
+  })
+
+  it('shows a rejected case as closed', () => {
+    const { unmount } = render(<div />)
     unmount()
     render(
       <ValueDueDiligenceStage

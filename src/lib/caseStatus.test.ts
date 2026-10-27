@@ -25,7 +25,7 @@ describe('getDisplayStatus', () => {
     }
     expect(getDisplayStatus(awaitingStrategy, 'strategy')).toBe('Pending')
     expect(getDisplayStatus(awaitingStrategy, 'director')).toBe('In Progress')
-    // NDA & Discovery is the Director's; Value & Due Diligence is the sponsor's
+    // NDA and the discovery call are the Director's; Value & Due Diligence is the sponsor's
     expect(getDisplayStatus(genomic, 'director')).toBe('Pending')
     const atValue: PartnershipRequest = {
       ...genomic,
@@ -53,7 +53,7 @@ describe('getDisplayStatus', () => {
     const done: PartnershipRequest = {
       ...genomic,
       discovery: { notes: [], recordings: [], proceededOn: 'x' },
-      value: { tddGeneratedOn: 'x' },
+      value: { sponsoredOn: 'x' },
     }
     expect(getDisplayStatus(done, 'sponsor')).toBe('Completed')
     expect(getDisplayStatus(done, 'admin')).toBe('Completed')

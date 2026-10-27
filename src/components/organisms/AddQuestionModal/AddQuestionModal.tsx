@@ -83,7 +83,7 @@ export const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ initial, onS
 
         <Checkbox checked={mandatory} onChange={setMandatory} label="Required question" />
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e2e8f0]">
+        <div className="flex items-center justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={onClose}

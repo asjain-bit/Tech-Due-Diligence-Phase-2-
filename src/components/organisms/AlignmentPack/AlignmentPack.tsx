@@ -5,7 +5,7 @@
  * Generated once the signed NDA is uploaded. One continuous document that pulls together everything known about the case so far: the brief,
  * the Director's decision, the Internal Interest summary, the Strategy assessment, the NDA and the
  * open questions.
- * Used in: NdaDiscoveryStage
+ * Used in: NdaStage
  */
 
 import React, { useMemo } from 'react'

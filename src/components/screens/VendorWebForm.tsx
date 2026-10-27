@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Loader2,
-  LogOut,
   Send,
   Sparkles,
 } from 'lucide-react'
@@ -274,16 +273,6 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
         <img src="/dark-logo.png" alt="M42 logo" className="h-7 w-auto object-contain" />
         <span className="text-sm font-semibold text-[#0d212c]">Partnership request</span>
       </div>
-      {onSignOut && (
-        <button
-          type="button"
-          onClick={onSignOut}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 cursor-pointer transition"
-        >
-          <LogOut className="w-4 h-4" aria-hidden="true" />
-          Sign out
-        </button>
-      )}
     </header>
   )
 
@@ -323,10 +312,10 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#f8fafc] text-[#0d212c] font-sans antialiased">
+    <div className="h-dvh flex flex-col overflow-hidden bg-[#f8fafc] text-[#0d212c] font-sans antialiased">
       {header}
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="relative flex-1 min-h-0 overflow-y-auto">
         <main
           onFocusCapture={handleFocusCapture}
           className="w-full max-w-[1400px] mx-auto px-6 lg:px-10 py-8 flex flex-col gap-6"
@@ -620,8 +609,9 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
             </button>
             <button
               type="button"
+              disabled={missing.length > 0}
               onClick={handleSubmit}
-              className="h-11 px-6 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition"
+              className="h-11 px-6 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition disabled:opacity-50 disabled:hover:bg-[#36c0c9] disabled:cursor-not-allowed"
             >
               Submit request
             </button>
@@ -687,6 +677,8 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
 
       {cancelling && (
         <ConfirmDialog
+          danger
+          icon={AlertCircle}
           title="Cancel this request?"
           description="You will lose the information you have filled in. Are you sure you want to cancel and exit?"
           cancelLabel="Keep editing"

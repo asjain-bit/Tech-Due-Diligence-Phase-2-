@@ -41,7 +41,7 @@ const waitingOn = (r: PartnershipRequest, role: StatusRole): boolean => {
       // The Director sends each team request, and runs the NDA and discovery work
       if (stage === 'Internal Canvas') return !r.sent?.internal
       if (stage === 'Strategic Alignment') return !r.sent?.strategy && !r.stageApprovals?.strategy
-      return stage === 'NDA & Discovery'
+      return stage === 'NDA' || stage === 'Discovery Call'
     case 'internal': {
       const reviewer = (
         r.internalInterests?.length ? r.internalInterests : DEFAULT_INTERNAL_INTERESTS
@@ -51,7 +51,7 @@ const waitingOn = (r: PartnershipRequest, role: StatusRole): boolean => {
     case 'strategy':
       return stage === 'Strategic Alignment' && !r.stageApprovals?.strategy
     case 'sponsor':
-      return stage === 'Value & Due Diligence'
+      return stage === 'Value & Due Diligence' && !r.value?.sponsoredOn
   }
 }
 
@@ -62,6 +62,6 @@ const waitingOn = (r: PartnershipRequest, role: StatusRole): boolean => {
 export const getDisplayStatus = (r: PartnershipRequest, role: StatusRole): DisplayStatus => {
   if (isTerminal(r) || r.queue === 'closed') return 'Closed'
   if (r.status === 'Information Requested') return 'RFI'
-  if (r.value?.tddGeneratedOn) return 'Completed'
+  if (r.value?.sponsoredOn) return 'Completed'
   return waitingOn(r, role) ? 'Pending' : 'In Progress'
 }

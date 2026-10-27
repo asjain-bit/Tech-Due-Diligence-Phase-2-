@@ -24,17 +24,17 @@ const renderModal = (props: Partial<BriefDecisionModalProps> = {}) => {
 }
 
 const choose = (user: ReturnType<typeof userEvent.setup>, option: string) =>
-  user.click(screen.getByRole('radio', { name: option }))
+  user.click(screen.getByRole('radio', { name: new RegExp(`^${option}`) }))
 
 describe('BriefDecisionModal', () => {
   it('starts with Decision radio buttons for Proceed, Reject and Request more info', () => {
     renderModal()
     const radios = screen.getAllByRole('radio')
-    expect(radios.map((r) => (r as HTMLInputElement).closest('label')?.textContent)).toEqual([
-      'Proceed',
-      'Reject',
-      'Request more info',
-    ])
+    expect(
+      radios.map((r) =>
+        (r as HTMLInputElement).closest('label')?.textContent?.replace('Agent recommended', '')
+      )
+    ).toEqual(['Proceed', 'Reject', 'Request more info'])
     expect(radios.every((r) => !(r as HTMLInputElement).checked)).toBe(true)
     // Nothing else until a decision is chosen
     expect(screen.queryByLabelText(/^Reason/)).not.toBeInTheDocument()
@@ -98,7 +98,11 @@ describe('BriefDecisionModal', () => {
   it('hints the agent recommendation, scrolls its body and closes', async () => {
     const user = userEvent.setup()
     const { onClose } = renderModal({ agentRecommendation: 'reject' })
-    expect(screen.getByText('Agent recommends: Reject')).toBeInTheDocument()
+    // The recommendation is a chip on the matching option itself
+    const reject = screen.getByRole('radio', { name: /^Reject/ }).closest('label')!
+    expect(within(reject).getByText('Agent recommended')).toBeInTheDocument()
+    const proceed = screen.getByRole('radio', { name: /^Proceed/ }).closest('label')!
+    expect(within(proceed).queryByText('Agent recommended')).not.toBeInTheDocument()
     expect(screen.getByRole('dialog').className).toContain('max-h-[90vh]')
     await user.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalled()

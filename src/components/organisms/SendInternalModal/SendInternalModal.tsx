@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect, useId, useState } from 'react'
-import { ArrowLeft, ArrowRight, Calendar, Check, Send, X } from 'lucide-react'
+import { ArrowLeft, Calendar, Check, Send, X } from 'lucide-react'
 import { QuestionnaireEditor } from '@/components/organisms/QuestionnaireEditor'
 import type { QuestionnaireVersion } from '@/components/organisms/QuestionnaireEditor/QuestionnaireEditor.types'
 import type { QuestionnaireQuestion } from '@/types/partnership.types'
@@ -218,7 +218,6 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
                 className="h-10 px-5 rounded-lg font-semibold text-sm transition bg-[#36c0c9] hover:bg-[#2fb0b9] text-white cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 Next
-                <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </button>
             ) : (
               <button

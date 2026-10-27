@@ -3,8 +3,6 @@
 import React, { useState } from 'react'
 import {
   ArrowLeft,
-  ArrowRight,
-  Check,
   X,
   User,
   Calendar,
@@ -23,7 +21,6 @@ import {
   ArrowLeftRight,
   Clock,
   Eye,
-  Pencil,
 } from 'lucide-react'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import {
@@ -36,7 +33,8 @@ import { AuditLog } from '@/components/organisms/AuditLog'
 import { ConfirmDialog } from '@/components/molecules/ConfirmDialog'
 import { SendInternalModal } from '@/components/organisms/SendInternalModal'
 import { ThinkingMode } from '@/components/organisms/ThinkingMode'
-import { NdaDiscoveryStage } from '@/components/organisms/NdaDiscoveryStage'
+import { NdaStage } from '@/components/organisms/NdaStage'
+import { DiscoveryCallStage } from '@/components/organisms/DiscoveryCallStage'
 import { ValueDueDiligenceStage } from '@/components/organisms/ValueDueDiligenceStage'
 import { SponsorAssignModal } from '@/components/organisms/SponsorAssignModal'
 import { PrototypeScenarioSelect } from '@/components/molecules/PrototypeScenarioSelect'
@@ -183,7 +181,8 @@ const PRE_READ_CHECKS = [
 
 const MAX_STRATEGY_MEMBERS = 5
 
-type StepId = 'brief' | 'canvas' | 'alignment' | 'nda' | 'value' | 'questionnaire' | 'preread'
+type StepId =
+  'brief' | 'canvas' | 'alignment' | 'nda' | 'discovery' | 'value' | 'questionnaire' | 'preread'
 
 export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   request,
@@ -215,6 +214,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   const isDirectorView = isDirector || isSponsor
   /** Everyone who follows the whole flow; the Admin sees every stage but cannot act in them */
   const isFlowView = isDirectorView || isAdmin
+  /** The Director acts in the NDA and discovery stages, the sponsor in the last one; others read */
+  const stageRole: 'director' | 'sponsor' | 'viewer' = isSponsor
+    ? 'sponsor'
+    : isDirector
+      ? 'director'
+      : 'viewer'
 
   // Delete note state
   const [deleteNote, setDeleteNote] = useState('')
@@ -293,7 +298,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         { id: 'brief', label: 'Initial Assessment Brief' },
         { id: 'questionnaire', label: 'Internal Canvas' },
         { id: 'alignment', label: 'Strategic Alignment' },
-        { id: 'nda', label: 'NDA & Discovery' },
+        { id: 'nda', label: 'NDA' },
+        { id: 'discovery', label: 'Discovery Call' },
         { id: 'value', label: 'Value & Due Diligence' },
       ]
     : isStrategyTeam
@@ -302,14 +308,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           { id: 'brief', label: 'Initial Assessment Brief' },
           { id: 'canvas', label: 'Internal Canvas' },
           { id: 'preread', label: 'Strategic Alignment' },
-          { id: 'nda', label: 'NDA & Discovery' },
+          { id: 'nda', label: 'NDA' },
+          { id: 'discovery', label: 'Discovery Call' },
           { id: 'value', label: 'Value & Due Diligence' },
         ]
       : [
           { id: 'brief', label: 'Initial Assessment Brief' },
           { id: 'canvas', label: 'Internal Canvas' },
           { id: 'alignment', label: 'Strategic Alignment' },
-          { id: 'nda', label: 'NDA & Discovery' },
+          { id: 'nda', label: 'NDA' },
+          { id: 'discovery', label: 'Discovery Call' },
           { id: 'value', label: 'Value & Due Diligence' },
         ]
 
@@ -386,22 +394,25 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       // The case only reaches the Strategy lead once the Internal Interest stage is behind it
       if (id === 'canvas') return true
       if (id === 'preread') return strategyDone
-      if (id === 'nda') return Boolean(request.discovery?.proceededOn)
-      if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
+      if (id === 'nda') return Boolean(request.alignmentPackOn)
+      if (id === 'discovery') return Boolean(request.discovery?.proceededOn)
+      if (id === 'value') return Boolean(request.value?.sponsoredOn)
       return completedSteps.includes(id)
     }
     if (isInternalTeam) {
       if (id === 'alignment') return strategyApproved
-      if (id === 'nda') return Boolean(request.discovery?.proceededOn)
-      if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
+      if (id === 'nda') return Boolean(request.alignmentPackOn)
+      if (id === 'discovery') return Boolean(request.discovery?.proceededOn)
+      if (id === 'value') return Boolean(request.value?.sponsoredOn)
       if (id === 'questionnaire') return completedSteps.includes(id) || internalApproved
     }
     if (!isFlowView) return completedSteps.includes(id)
     if (id === 'brief') return briefApproved || isRejected
     if (id === 'canvas') return internalApproved
     if (id === 'alignment') return strategyApproved
-    if (id === 'nda') return Boolean(request.discovery?.proceededOn)
-    if (id === 'value') return Boolean(request.value?.tddGeneratedOn)
+    if (id === 'nda') return Boolean(request.alignmentPackOn)
+    if (id === 'discovery') return Boolean(request.discovery?.proceededOn)
+    if (id === 'value') return Boolean(request.value?.sponsoredOn)
     return false
   }
 
@@ -417,7 +428,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           : 'upcoming'
     let caption: string | undefined
     if (state === 'current' && d.id === 'brief') caption = 'To review'
-    if ((d.id === 'nda' || d.id === 'value') && completed) caption = 'Completed'
+    if ((d.id === 'nda' || d.id === 'discovery' || d.id === 'value') && completed)
+      caption = 'Completed'
     if (d.id === 'canvas' || d.id === 'alignment') {
       const sent = d.id === 'canvas' ? internalSent : strategySent
       if (completed) caption = 'Approved'
@@ -425,9 +437,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       else if (state === 'current' && sent) caption = 'Awaiting approval'
     }
     // Later stages stay locked for the Strategy lead until the Director has acted
-    if (isStrategyTeam && (d.id === 'nda' || d.id === 'value') && !completed) {
+    if (isStrategyTeam && ['nda', 'discovery', 'value'].includes(d.id) && !completed) {
+      // NDA needs the Director's upload; the discovery call follows it, then the sponsor's stage
       const unlocked =
-        d.id === 'nda' ? Boolean(request.alignmentPackOn) : Boolean(request.discovery?.proceededOn)
+        d.id === 'value'
+          ? Boolean(request.discovery?.proceededOn)
+          : Boolean(request.alignmentPackOn)
       return { id: d.id, label: d.label, state: unlocked ? 'current' : 'upcoming', caption }
     }
     if (isStrategyTeam && d.id === 'preread' && strategyDone) {
@@ -874,7 +889,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   // The NDA stage fills the page height so only its own content scrolls
   const fixedStage =
     activeTab === 'review' &&
-    activeStep === 'nda' &&
+    (activeStep === 'nda' || activeStep === 'discovery') &&
     (isFlowView || isStrategyTeam) &&
     !reviewersLoading
 
@@ -1192,14 +1207,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Deadline</th>
                     <th className="py-3 px-4">Decision</th>
-                    <th className="py-3 px-4">Type</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </>
                 ) : (
                   <>
                     <th className="py-3 px-4">Recommended</th>
                     <th className="py-3 px-4">Expertise</th>
-                    <th className="py-3 px-4">Type</th>
                     {canEditStrategy && <th className="py-3 px-4 text-right">Actions</th>}
                   </>
                 )}
@@ -1208,7 +1221,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <tbody className="divide-y divide-[#e2e8f0]">
               {strategyMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-[#64748b]">
+                  <td colSpan={5} className="py-12 text-center text-[#64748b]">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Users className="w-6 h-6 text-slate-300" />
                       <div className="text-xs font-medium text-[#0d212c]">
@@ -1262,13 +1275,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           {renderDecisionBadge(person.decision)}
                         </td>
 
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                            <UserPlus className="w-3 h-3 text-slate-500" />
-                            <span>Manually Added</span>
-                          </span>
-                        </td>
-
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <button
                             type="button"
@@ -1293,13 +1299,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         <td className="py-3.5 px-4 text-xs text-[#475569] whitespace-nowrap">
                           <span className="inline-flex px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-normal">
                             {person.expertise}
-                          </span>
-                        </td>
-
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                            <UserPlus className="w-3 h-3 text-slate-500" />
-                            <span>Manually Added</span>
                           </span>
                         </td>
 
@@ -1494,7 +1493,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   onClick={() => setAdminModal('reassign')}
                   className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition inline-flex items-center gap-1.5"
                 >
-                  <Pencil className="w-4 h-4" aria-hidden="true" />
                   Edit
                 </button>
               )}
@@ -1596,7 +1594,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           onClick={() => setSendTeam('internal')}
                           className={sendButtonClass(stakeholders.length === 0)}
                         >
-                          <Send className="w-4 h-4" aria-hidden="true" />
                           <span>Send Request</span>
                         </button>
                       ) : isDirector && internalSent && !strategySent ? (
@@ -1649,6 +1646,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                                 <th className="py-3 px-4 font-medium">Sponsor</th>
                                 <th className="py-3 px-4 font-medium">Stage</th>
                                 <th className="py-3 px-4 font-medium">Created</th>
+                                <th className="py-3 px-4 font-medium text-right">Case</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-[#f1f5f9]">
@@ -1661,6 +1659,15 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                                   <td className="py-3 px-4 text-[#0d212c]">{getStageLabel(c)}</td>
                                   <td className="py-3 px-4 text-[#64748b]">
                                     {c.auditLog[c.auditLog.length - 1]?.timestamp}
+                                  </td>
+                                  <td className="py-3 px-4 text-right">
+                                    {/* No redirection yet: the link only marks where it will go */}
+                                    <button
+                                      type="button"
+                                      className="text-xs font-medium text-[#008a8a] hover:text-[#006e6e] cursor-pointer"
+                                    >
+                                      View case
+                                    </button>
                                   </td>
                                 </tr>
                               ))}
@@ -1700,7 +1707,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           onClick={() => setSendTeam('strategy')}
                           className={sendButtonClass(strategyMembers.length === 0)}
                         >
-                          <Send className="w-4 h-4" aria-hidden="true" />
                           <span>Send Request</span>
                         </button>
                       ) : (
@@ -1723,11 +1729,21 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   </div>
                 ))}
 
-              {/* STEP: NDA & Discovery */}
+              {/* STEP: NDA */}
               {(isFlowView || isStrategyTeam) && activeStep === 'nda' && (
-                <NdaDiscoveryStage
+                <NdaStage
                   request={request}
-                  role={isSponsor ? 'sponsor' : isStrategyTeam ? 'viewer' : 'director'}
+                  role={stageRole}
+                  onAction={(action) => onCaseAction?.(request.id, action)}
+                  onNext={() => setActiveStep('discovery')}
+                />
+              )}
+
+              {/* STEP: Discovery Call */}
+              {(isFlowView || isStrategyTeam) && activeStep === 'discovery' && (
+                <DiscoveryCallStage
+                  request={request}
+                  role={stageRole}
                   onAction={(action) => onCaseAction?.(request.id, action)}
                   onNext={() => setActiveStep('value')}
                 />
@@ -1737,7 +1753,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               {(isFlowView || isStrategyTeam) && activeStep === 'value' && (
                 <ValueDueDiligenceStage
                   request={request}
-                  role={isSponsor ? 'sponsor' : isStrategyTeam ? 'viewer' : 'director'}
+                  role={stageRole}
                   onAction={(action) => onCaseAction?.(request.id, action)}
                 />
               )}
@@ -1774,6 +1790,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   {preReadStage === 'upload' && (
                     <KnowledgeBaseUpload
                       files={kbFiles}
+                      onCancel={() => setActiveStep('brief')}
                       onFilesChange={setKbFiles}
                       onGenerate={() => setPreReadStage('generating')}
                     />
@@ -2736,7 +2753,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
             >
               Next
-              <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -2757,7 +2773,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
           >
             Continue to Questionnaire
-            <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       )}
@@ -2777,7 +2792,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               onClick={() => setShowQuestionnaireConfirmModal(true)}
               className="h-10 px-6 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
             >
-              <Check className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
               Submit
             </button>
           </div>
@@ -2798,7 +2812,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
           >
             Next
-            <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       )}
@@ -2827,7 +2840,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                 onClick={() => setStrategyModal('proceed')}
                 className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
               >
-                <Check className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
                 Proceed
               </button>
             </div>
@@ -2854,7 +2866,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               onClick={() => setAdminModal('proceed')}
               className="h-10 px-5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-sm font-semibold text-white shadow-xs cursor-pointer transition flex items-center gap-1.5"
             >
-              <Check className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
               Proceed
             </button>
           </div>

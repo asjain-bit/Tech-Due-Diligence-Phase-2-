@@ -88,7 +88,7 @@ export const groupAssessmentsByStatus = (
         const closed = r.status === 'Closed' || r.status === 'Exited' || r.queue === 'closed'
         const status: AssessmentStatus = closed
           ? 'Closed'
-          : r.value?.tddGeneratedOn
+          : r.value?.sponsoredOn
             ? 'Completed'
             : 'In Progress'
         return status === title

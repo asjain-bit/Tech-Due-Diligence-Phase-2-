@@ -3,7 +3,7 @@
 /**
  * FilePicker — Molecule
  * Dashed drop area with a Browse button. Files are handed over by name only (prototype).
- * Used in: NdaDiscoveryStage, ValueDueDiligenceStage
+ * Used in: NdaStage, ValueDueDiligenceStage
  */
 
 import React, { useRef, useState } from 'react'
