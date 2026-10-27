@@ -10,7 +10,7 @@ describe('usage maths', () => {
   it('reproduces the reference week', () => {
     const week = USAGE_WEEKS[2]
     expect(Math.round(manualCost(week, DEFAULT_ASSUMPTIONS))).toBe(4200)
-    expect(Math.round(aiCost(week, DEFAULT_ASSUMPTIONS))).toBe(154)
+    expect(Math.round(aiCost(week, DEFAULT_ASSUMPTIONS))).toBe(155)
   })
 })
 
@@ -21,8 +21,11 @@ describe('UsageInsightsScreen', () => {
     expect(screen.getByText('20')).toBeInTheDocument()
     expect(screen.getByText('20 assessment calls')).toBeInTheDocument()
     expect(screen.getByText('18.6M')).toBeInTheDocument()
-    expect(screen.getByText('$154')).toBeInTheDocument()
+    expect(screen.getByText('$155')).toBeInTheDocument()
     expect(screen.getByLabelText('Week')).toHaveValue('2')
+    expect(screen.getByText('Web Search Credits')).toBeInTheDocument()
+    expect(screen.getByText('2,500')).toBeInTheDocument()
+    expect(screen.getByText('Search, extract & page reads')).toBeInTheDocument()
   })
 
   it('moves between weeks with the arrows and the selector', async () => {
@@ -60,9 +63,14 @@ describe('UsageInsightsScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Summary' }))
     expect(screen.getByText('$4,200')).toBeInTheDocument()
     expect(screen.getByText('27x')).toBeInTheDocument()
-    expect(screen.getByText('$4,046')).toBeInTheDocument()
+    expect(screen.getByText('$4,045')).toBeInTheDocument()
+    // Nothing to recalculate until something changes, and an emptied field stays empty
+    expect(screen.getByRole('button', { name: /Recalculate/i })).toBeDisabled()
     await user.clear(hours)
+    expect(hours).toHaveValue(null)
+    expect(screen.getByRole('button', { name: /Recalculate/i })).toBeDisabled()
     await user.type(hours, '2')
+    expect(screen.getByRole('button', { name: /Recalculate/i })).toBeEnabled()
     // Nothing changes until Recalculate
     expect(screen.getByText('$4,200')).toBeInTheDocument()
     vi.useFakeTimers({ shouldAdvanceTime: true })

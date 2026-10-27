@@ -40,7 +40,7 @@ export const USAGE_WEEKS: UsageWeek[] = [
     calls: 20,
     tokensM: 18.6,
     embeddingTokensM: 9,
-    searchCredits: 2400,
+    searchCredits: 2500,
   },
   {
     short: 'Oct 19 – 25',

@@ -75,7 +75,7 @@ describe('DashboardScreen', () => {
 
     expectKpis([
       ['Pending', 'Waiting on your action.'],
-      ['Completed This Month', 'Requests completed this month.'],
+      ['Completed', 'Completed this month.'],
       ['SLA Breached', 'Requests past their SLA.'],
       ['Closed', 'Closed or exited requests.'],
     ])
@@ -147,7 +147,7 @@ describe('DashboardScreen', () => {
     expect(screen.getByRole('button', { name: /All requests/ })).toHaveTextContent('5')
     expectKpis([
       ['Pending', 'New requests to assess.'],
-      ['Reviewed This Month', 'Decisions recorded this month.'],
+      ['Reviewed', 'Decisions recorded this month.'],
       ['Proceeded', 'Forwarded to Director.'],
       ['Closed', 'Closed at admin review.'],
     ])
@@ -351,9 +351,9 @@ describe('DashboardScreen', () => {
 
     // Four KPI cards, scoped to the reviewer's own questionnaires
     expectKpis([
-      ['Pending Responses', 'Assigned questionnaires awaiting submission.'],
-      ['Completed This Month', 'Requests completed this month.'],
-      ['Proceed Recommendations', 'Requests you responded to with Proceed.'],
+      ['Pending', 'Assigned questionnaires awaiting submission.'],
+      ['Completed', 'Completed this month.'],
+      ['Proceeded', 'Requests you responded to with Proceed.'],
       ['SLA Breached', 'Requests past their SLA.'],
     ])
 
@@ -375,9 +375,9 @@ describe('DashboardScreen', () => {
     render(<DashboardScreen userProfile={strategyProfile} />)
 
     expectKpis([
-      ['Pending Reviews', 'Strategic assessments awaiting your verdict.'],
-      ['Completed This Month', 'Requests completed this month.'],
-      ['Proceed Recommendations', 'Requests you responded to with Proceed.'],
+      ['Pending', 'Strategic assessments awaiting your verdict.'],
+      ['Completed', 'Completed this month.'],
+      ['Proceeded', 'Requests you responded to with Proceed.'],
       ['SLA Breached', 'Requests past their SLA.'],
     ])
 
@@ -803,9 +803,9 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
     expectKpis([
       ['Pending', 'Waiting on your action.'],
-      ['Completed This Month', 'Partnerships you sponsored this month.'],
+      ['Completed', 'Sponsored this month.'],
       ['SLA Breached', 'Requests past their SLA.'],
-      ['Assigned Requests', 'Requests under your ownership.'],
+      ['Closed', 'Closed or exited requests.'],
     ])
   })
 

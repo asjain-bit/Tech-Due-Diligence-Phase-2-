@@ -37,17 +37,17 @@ export const internalInterestKpis = (
   now = new Date()
 ): RoleKpi[] => [
   {
-    title: 'Pending Responses',
+    title: 'Pending',
     caption: 'Assigned questionnaires awaiting submission.',
     value: pendingFor(requests, 'internal'),
   },
   {
-    title: 'Completed This Month',
-    caption: 'Requests completed this month.',
+    title: 'Completed',
+    caption: 'Completed this month.',
     value: requests.filter((r) => completedThisMonth(r, now)).length,
   },
   {
-    title: 'Proceed Recommendations',
+    title: 'Proceeded',
     caption: 'Requests you responded to with Proceed.',
     value: requests.filter(
       (r) =>
@@ -64,17 +64,17 @@ export const internalInterestKpis = (
 /** Counts for the Strategy Lead; pass the cases sent to the Strategy team */
 export const strategyLeadKpis = (requests: PartnershipRequest[], now = new Date()): RoleKpi[] => [
   {
-    title: 'Pending Reviews',
+    title: 'Pending',
     caption: 'Strategic assessments awaiting your verdict.',
     value: pendingFor(requests, 'strategy'),
   },
   {
-    title: 'Completed This Month',
-    caption: 'Requests completed this month.',
+    title: 'Completed',
+    caption: 'Completed this month.',
     value: requests.filter((r) => completedThisMonth(r, now)).length,
   },
   {
-    title: 'Proceed Recommendations',
+    title: 'Proceeded',
     caption: 'Requests you responded to with Proceed.',
     value: requests.filter((r) => r.stageApprovals?.strategy?.status === 'approved').length,
   },
@@ -93,8 +93,8 @@ export const sponsorKpis = (requests: PartnershipRequest[], now = new Date()): R
     value: pendingFor(requests, 'sponsor'),
   },
   {
-    title: 'Completed This Month',
-    caption: 'Partnerships you sponsored this month.',
+    title: 'Completed',
+    caption: 'Sponsored this month.',
     value: requests.filter((r) => completedThisMonth(r, now)).length,
   },
   {
@@ -103,9 +103,9 @@ export const sponsorKpis = (requests: PartnershipRequest[], now = new Date()): R
     value: breached(requests),
   },
   {
-    title: 'Assigned Requests',
-    caption: 'Requests under your ownership.',
-    value: requests.length,
+    title: 'Closed',
+    caption: 'Closed or exited requests.',
+    value: requests.filter((r) => getDisplayStatus(r, 'sponsor') === 'Closed').length,
   },
 ]
 
@@ -117,8 +117,8 @@ export const directorKpis = (requests: PartnershipRequest[], now = new Date()): 
     value: pendingFor(requests, 'director'),
   },
   {
-    title: 'Completed This Month',
-    caption: 'Requests completed this month.',
+    title: 'Completed',
+    caption: 'Completed this month.',
     value: requests.filter((r) => completedThisMonth(r, now)).length,
   },
   {
@@ -149,7 +149,7 @@ export const adminKpis = (requests: PartnershipRequest[], now = new Date()): Rol
       value: requests.filter((r) => r.queue === 'admin' && !r.adminDecision).length,
     },
     {
-      title: 'Reviewed This Month',
+      title: 'Reviewed',
       caption: 'Decisions recorded this month.',
       value: decidedThisMonth.length,
     },

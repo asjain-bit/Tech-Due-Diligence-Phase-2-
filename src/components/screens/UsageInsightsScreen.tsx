@@ -19,6 +19,7 @@ import {
   LineChart,
   List,
   PhoneCall,
+  Search,
   Hash,
 } from 'lucide-react'
 import {
@@ -206,8 +207,22 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
   const [ownAssumptions, setOwnAssumptions] = useState<UsageAssumptions>(DEFAULT_ASSUMPTIONS)
   // The numbers use the last recalculated inputs; the Admin edits a draft until then
   const assumptions = sharedAssumptions ?? ownAssumptions
-  const [draft, setDraft] = useState<UsageAssumptions>(assumptions)
-  useEffect(() => setDraft(assumptions), [assumptions])
+  // The inputs are edited as text, so a field can be emptied; the numbers only use applied values
+  const toDraft = (a: UsageAssumptions) =>
+    Object.fromEntries(Object.entries(a).map(([k, v]) => [k, String(v)])) as Record<
+      keyof UsageAssumptions,
+      string
+    >
+  const [draft, setDraft] = useState(() => toDraft(assumptions))
+  useEffect(() => setDraft(toDraft(assumptions)), [assumptions])
+  const parsed = Object.fromEntries(
+    Object.entries(draft).map(([k, v]) => [k, v.trim() === '' ? NaN : Number(v)])
+  ) as unknown as UsageAssumptions
+  const valid = Object.values(parsed).every((v) => Number.isFinite(v) && v >= 0)
+  // Recalculate only once something has changed, and every field has a value
+  const changed =
+    valid &&
+    (Object.keys(parsed) as (keyof UsageAssumptions)[]).some((k) => parsed[k] !== assumptions[k])
   const [view, setView] = useState<'chart' | 'table'>('chart')
   const [showAll, setShowAll] = useState(false)
 
@@ -219,7 +234,7 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
   const roi = ai > 0 ? manual / ai : 0
 
   const setValue = (key: keyof UsageAssumptions, raw: string) =>
-    setDraft((prev) => ({ ...prev, [key]: raw === '' ? 0 : Math.max(0, Number(raw)) }))
+    setDraft((prev) => ({ ...prev, [key]: raw }))
 
   // A short circular progress runs on the cost card, then the updated numbers show
   const [recalculating, setRecalculating] = useState(false)
@@ -228,9 +243,9 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
   const recalculate = () => {
     setRecalculating(true)
     timer.current = setTimeout(() => {
-      if (onRecalculate) onRecalculate(draft)
+      if (onRecalculate) onRecalculate(parsed)
       else {
-        setOwnAssumptions(draft)
+        setOwnAssumptions(parsed)
       }
       setRecalculating(false)
     }, 1500)
@@ -292,7 +307,7 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             title="Output Generated"
             value={String(week.calls)}
@@ -310,6 +325,12 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
             value={formatUsd(ai)}
             caption={`week of ${week.short}, 2026 · Text & Voice tokens`}
             icon={<Coins className="w-5 h-5 text-[#d97706] stroke-[2]" />}
+          />
+          <KpiCard
+            title="Web Search Credits"
+            value={week.searchCredits.toLocaleString('en-US')}
+            caption="Search, extract & page reads"
+            icon={<Search className="w-5 h-5 text-[#d97706] stroke-[2]" />}
           />
         </div>
       </section>
@@ -365,7 +386,7 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    disabled={recalculating}
+                    disabled={recalculating || !changed}
                     onClick={recalculate}
                     className="h-9 px-4 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:opacity-60 disabled:cursor-wait text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer transition"
                   >

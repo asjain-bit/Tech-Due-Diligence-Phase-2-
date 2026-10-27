@@ -51,12 +51,7 @@ describe('role KPIs', () => {
       { ...sent('Pending', '-'), slaStatus: 'Breached' as const, status: 'Closed' as const },
     ]
     const kpis = internalInterestKpis(cases, NOW)
-    expect(kpis.map((k) => k.title)).toEqual([
-      'Pending Responses',
-      'Completed This Month',
-      'Proceed Recommendations',
-      'SLA Breached',
-    ])
+    expect(kpis.map((k) => k.title)).toEqual(['Pending', 'Completed', 'Proceeded', 'SLA Breached'])
     // Pending: only the case still waiting on the reviewer; closed cases are not counted as breached
     expect(values(kpis)).toEqual([1, 1, 2, 1])
     expect(kpis[2].caption).toBe('Requests you responded to with Proceed.')
@@ -71,16 +66,11 @@ describe('role KPIs', () => {
       { ...breachedCase(), value: { sponsoredOn: '3 Oct 2026' } },
     ]
     const kpis = strategyLeadKpis(cases, NOW)
-    expect(kpis.map((k) => k.title)).toEqual([
-      'Pending Reviews',
-      'Completed This Month',
-      'Proceed Recommendations',
-      'SLA Breached',
-    ])
+    expect(kpis.map((k) => k.title)).toEqual(['Pending', 'Completed', 'Proceeded', 'SLA Breached'])
     expect(values(kpis)).toEqual([0, 1, 2, 1])
   })
 
-  it('counts the sponsor cases: pending, completed this month, SLA breached and assigned', () => {
+  it('counts the sponsor cases: pending, completed this month, SLA breached and closed', () => {
     const atValue = (over: Partial<PartnershipRequest> = {}): PartnershipRequest => ({
       ...base,
       status: 'In Progress',
@@ -101,13 +91,8 @@ describe('role KPIs', () => {
       { ...base, status: 'Closed' },
     ]
     const kpis = sponsorKpis(cases, NOW)
-    expect(kpis.map((k) => k.title)).toEqual([
-      'Pending',
-      'Completed This Month',
-      'SLA Breached',
-      'Assigned Requests',
-    ])
-    expect(values(kpis)).toEqual([2, 1, 1, 5])
+    expect(kpis.map((k) => k.title)).toEqual(['Pending', 'Completed', 'SLA Breached', 'Closed'])
+    expect(values(kpis)).toEqual([2, 1, 1, 1])
   })
 
   it('counts the Partnership Admin queue, decisions this month, forwarded and closed cases', () => {
@@ -157,12 +142,7 @@ describe('role KPIs', () => {
       mk({ status: 'Exited' }),
     ]
     const kpis = directorKpis(cases, NOW)
-    expect(kpis.map((k) => k.title)).toEqual([
-      'Pending',
-      'Completed This Month',
-      'SLA Breached',
-      'Closed',
-    ])
+    expect(kpis.map((k) => k.title)).toEqual(['Pending', 'Completed', 'SLA Breached', 'Closed'])
     expect(values(kpis)).toEqual([3, 1, 1, 2])
   })
 })
