@@ -1,4 +1,5 @@
 import { getStageLabel } from '@/lib/caseActions'
+import { needsDirectorDecision } from '@/lib/caseStatus'
 import { DEFAULT_INTERNAL_INTERESTS, type PartnershipRequest } from '@/types/partnership.types'
 
 export interface RoleKpi {
@@ -134,20 +135,6 @@ export const adminKpis = (requests: PartnershipRequest[], now = new Date()): Rol
       value: requests.filter((r) => r.adminDecision?.action === 'reject').length,
     },
   ]
-}
-
-/** Does the Director have to decide something on this case right now? */
-const needsDirectorDecision = (r: PartnershipRequest) => {
-  if (isTerminal(r) || r.queue !== 'director') return false
-  const briefPending = getStageLabel(r) === 'Initial Assessment Brief'
-  // The vendor owes information: nothing for the Director to do yet
-  if (briefPending) return r.status === 'Pending' && !r.decision
-  const scenario = r.internalOutcome?.scenario
-  const sponsorsToAssign = scenario === 'multiple' && !r.sponsors
-  const conflict =
-    r.stageApprovals?.internal?.status === 'approved' &&
-    r.stageApprovals?.strategy?.status === 'declined'
-  return scenario === 'not-ready' || sponsorsToAssign || conflict
 }
 
 /** Director: pass the cases in the Director's queue */

@@ -144,7 +144,8 @@ describe('VendorWebForm', () => {
     expect(screen.getByRole('status')).toHaveTextContent('AI check found 7 suggestions')
     const notes = screen.getAllByRole('note')
     expect(notes.length).toBe(7)
-    expect(screen.getByRole('button', { name: /Run AI check again/i })).toBeInTheDocument()
+    // Once per session: the button stays disabled afterwards
+    expect(screen.getByRole('button', { name: /Run AI check/i })).toBeDisabled()
 
     // Suggestions cannot be ignored
     expect(within(notes[0]).queryByRole('button')).not.toBeInTheDocument()
@@ -259,7 +260,7 @@ describe('VendorWebForm', () => {
   it('keeps the actions in a footer outside the scrolling form', () => {
     render(<VendorWebForm onSubmitCase={vi.fn()} />)
     const footer = screen.getByRole('contentinfo')
-    expect(within(footer).getByRole('button', { name: 'Run AI check' })).toBeInTheDocument()
+    expect(within(footer).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
     expect(within(footer).getByRole('button', { name: /Submit request/ })).toBeInTheDocument()
     expect(screen.getByRole('main').parentElement?.className).toContain('overflow-y-auto')
     expect(footer.contains(screen.getByRole('main'))).toBe(false)
@@ -268,5 +269,32 @@ describe('VendorWebForm', () => {
   it('shows Sign out in red', () => {
     render(<VendorWebForm onSubmitCase={vi.fn()} onSignOut={vi.fn()} />)
     expect(screen.getByRole('button', { name: /Sign out/i }).className).toContain('text-red-600')
+  })
+
+  it('keeps Run AI check disabled until the required fields are filled, and explains it in a tooltip', async () => {
+    const user = userEvent.setup()
+    render(<VendorWebForm onSubmitCase={vi.fn()} />)
+    const run = screen.getByRole('button', { name: /Run AI check/i })
+    expect(run).toBeDisabled()
+    expect(screen.getByRole('tooltip')).toHaveTextContent('once per session')
+    await fillThin(user)
+    expect(run).toBeEnabled()
+  })
+
+  it('asks before cancelling and then exits', async () => {
+    const user = userEvent.setup()
+    const onSignOut = vi.fn()
+    render(<VendorWebForm onSubmitCase={vi.fn()} onSignOut={onSignOut} />)
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    const dialog = screen.getByRole('dialog', { name: 'Cancel this request?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Keep editing' }))
+    expect(onSignOut).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Cancel this request?' })).getByRole('button', {
+        name: 'Yes, cancel',
+      })
+    )
+    expect(onSignOut).toHaveBeenCalled()
   })
 })

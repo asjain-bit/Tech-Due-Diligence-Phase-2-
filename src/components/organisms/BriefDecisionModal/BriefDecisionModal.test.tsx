@@ -24,18 +24,18 @@ const renderModal = (props: Partial<BriefDecisionModalProps> = {}) => {
 }
 
 const choose = (user: ReturnType<typeof userEvent.setup>, option: string) =>
-  user.selectOptions(screen.getByLabelText(/^Decision/), option)
+  user.click(screen.getByRole('radio', { name: option }))
 
 describe('BriefDecisionModal', () => {
-  it('starts with a Decision dropdown offering Proceed, Reject and Request more info', () => {
+  it('starts with Decision radio buttons for Proceed, Reject and Request more info', () => {
     renderModal()
-    const select = screen.getByLabelText(/^Decision/)
-    expect(select).toHaveValue('')
-    expect(
-      within(select)
-        .getAllByRole('option')
-        .map((o) => o.textContent)
-    ).toEqual(['Select a decision', 'Proceed', 'Reject', 'Request more info'])
+    const radios = screen.getAllByRole('radio')
+    expect(radios.map((r) => (r as HTMLInputElement).closest('label')?.textContent)).toEqual([
+      'Proceed',
+      'Reject',
+      'Request more info',
+    ])
+    expect(radios.every((r) => !(r as HTMLInputElement).checked)).toBe(true)
     // Nothing else until a decision is chosen
     expect(screen.queryByLabelText(/^Reason/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Proceed' })).toBeDisabled()

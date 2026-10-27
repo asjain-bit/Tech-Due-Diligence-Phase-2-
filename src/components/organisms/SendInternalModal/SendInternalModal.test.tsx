@@ -9,12 +9,7 @@ const renderModal = () => {
   const onSend = vi.fn()
   const onClose = vi.fn()
   render(
-    <SendInternalModal
-      members={DEFAULT_INTERNAL_INTERESTS}
-      defaultNote="Hi team"
-      onSend={onSend}
-      onClose={onClose}
-    />
+    <SendInternalModal members={DEFAULT_INTERNAL_INTERESTS} onSend={onSend} onClose={onClose} />
   )
   return { onSend, onClose }
 }
@@ -51,14 +46,14 @@ describe('SendInternalModal', () => {
     expect(screen.getByRole('dialog', { name: 'Select reviewers' })).toBeInTheDocument()
   })
 
-  it('swaps to the reviewers and a note once the questions are set', async () => {
+  it('swaps to the reviewers once the questions are set, with no note', async () => {
     const user = userEvent.setup()
     renderModal()
     await next(user)
     expect(screen.getByText(/Step 2 of 2/)).toBeInTheDocument()
     expect(screen.getByText('(5 selected)')).toBeInTheDocument()
     expect(screen.queryByLabelText('Questionnaire')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Note to Internal Interest')).toHaveValue('Hi team')
+    expect(screen.queryByLabelText('Note to Internal Interest')).not.toBeInTheDocument()
     expect(screen.getByText('SLA: 4 days to answer')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.getByLabelText('Questionnaire')).toBeInTheDocument()
@@ -84,7 +79,6 @@ describe('SendInternalModal', () => {
     expect(payload.questionnaire.questions).toHaveLength(2)
     // Deleting a question saved a second version
     expect(payload.questionnaire.version).toBe(2)
-    expect(payload.note).toBe('Hi team')
   })
 
   it('cannot move on without questions or send without reviewers', async () => {

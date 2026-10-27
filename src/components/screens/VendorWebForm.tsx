@@ -151,6 +151,8 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   const [caseId, setCaseId] = useState<string | null>(null)
   const [focusOpen, setFocusOpen] = useState(false)
   const [checkStep, setCheckStep] = useState(0)
+  const [hasRunCheck, setHasRunCheck] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   const set = <K extends keyof VendorFormValues>(field: K, value: VendorFormValues[K]) =>
     setValues((prev) => ({ ...prev, [field]: value }))
@@ -163,7 +165,16 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
   const suggestionFor = (field: keyof VendorFormValues) =>
     openSuggestions.find((s) => s.field === field)
 
+  // The AI check needs every required answer, and can be run once per session
+  const checkDisabled = missing.length > 0 || hasRunCheck || isChecking
+  const checkTip = hasRunCheck
+    ? 'You have already used your AI check. It can be run once per session.'
+    : missing.length > 0
+      ? 'Complete all required fields to run the AI check. It can be run once per session.'
+      : 'Runs once per session, so finish your answers first.'
+
   const handleRunCheck = () => {
+    setHasRunCheck(true)
     setCheckStep(0)
     setIsChecking(true)
   }
@@ -320,12 +331,34 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
           onFocusCapture={handleFocusCapture}
           className="w-full max-w-[1400px] mx-auto px-6 lg:px-10 py-8 flex flex-col gap-6"
         >
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight">Partnership request form</h1>
-            <p className="text-sm text-[#64748b] leading-relaxed">
-              Tell us about your company and solution. You can run an AI check before you submit to
-              see which answers could use more detail.
-            </p>
+          <div className="flex items-start justify-between gap-6 flex-wrap">
+            <div className="flex flex-col gap-1.5 max-w-3xl">
+              <h1 className="text-2xl font-semibold tracking-tight">Partnership request form</h1>
+              <p className="text-sm text-[#64748b] leading-relaxed">
+                Tell us about your company and solution. You can run an AI check to review your
+                responses and get suggestions before you submit, to make them more complete and
+                accurate.
+              </p>
+            </div>
+            <div className="relative group shrink-0">
+              <button
+                type="button"
+                onClick={handleRunCheck}
+                disabled={checkDisabled}
+                aria-describedby="run-check-tip"
+                className="h-11 px-5 rounded-xl bg-[#e6f7f8] hover:bg-[#d5f0f2] text-sm font-semibold text-[#0f766e] disabled:opacity-60 disabled:hover:bg-[#e6f7f8] disabled:cursor-not-allowed cursor-pointer transition flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-[#36c0c9]" aria-hidden="true" />
+                Run AI check
+              </button>
+              <div
+                id="run-check-tip"
+                role="tooltip"
+                className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute right-0 top-full mt-2 z-40 w-64 bg-[#0d212c] text-white text-[11px] font-medium leading-relaxed px-3 py-2 rounded-xl shadow-xl"
+              >
+                {checkTip}
+              </div>
+            </div>
           </div>
 
           {suggestions && (
@@ -577,33 +610,22 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
               Please fill in the required fields marked with *.
             </div>
           )}
-          {!isChecking && (
+          <div className="ml-auto flex items-center gap-3">
             <button
               type="button"
-              onClick={handleRunCheck}
-              disabled={isChecking}
-              className="px-5 py-2.5 rounded-lg border border-[#cbd5e1] bg-white text-sm font-semibold text-[#0d212c] hover:bg-slate-50 disabled:opacity-70 disabled:cursor-wait cursor-pointer transition flex items-center gap-2"
+              onClick={() => setCancelling(true)}
+              className="h-11 px-6 rounded-xl border border-[#cbd5e1] bg-white hover:bg-slate-50 text-sm font-semibold text-[#0d212c] cursor-pointer transition"
             >
-              {isChecking ? (
-                <Loader2 className="w-4 h-4 animate-spin text-[#36c0c9]" aria-hidden="true" />
-              ) : (
-                <Sparkles className="w-4 h-4 text-[#36c0c9]" aria-hidden="true" />
-              )}
-              {isChecking
-                ? 'Checking your answers…'
-                : suggestions
-                  ? 'Run AI check again'
-                  : 'Run AI check'}
+              Cancel
             </button>
-          )}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="ml-auto px-6 py-2.5 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition flex items-center gap-2"
-          >
-            Submit request
-            <Send className="w-4 h-4" aria-hidden="true" />
-          </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="h-11 px-6 rounded-xl bg-[#36c0c9] hover:bg-[#2fb0b9] text-white text-sm font-semibold shadow-xs cursor-pointer transition"
+            >
+              Submit request
+            </button>
+          </div>
         </div>
       </footer>
 
@@ -661,6 +683,21 @@ export const VendorWebForm: React.FC<VendorWebFormProps> = ({ onSubmitCase, onSi
             </ul>
           </div>
         </div>
+      )}
+
+      {cancelling && (
+        <ConfirmDialog
+          title="Cancel this request?"
+          description="You will lose the information you have filled in. Are you sure you want to cancel and exit?"
+          cancelLabel="Keep editing"
+          confirmLabel="Yes, cancel"
+          onConfirm={() => {
+            setCancelling(false)
+            if (onSignOut) onSignOut()
+            else reset()
+          }}
+          onCancel={() => setCancelling(false)}
+        />
       )}
 
       {confirming && (

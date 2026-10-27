@@ -46,15 +46,13 @@ describe('SponsorAssignModal', () => {
     expect(onClose).toHaveBeenCalledTimes(3)
   })
 
-  it('shows the chosen lead with a filled lucide radio icon in the primary colour', async () => {
+  it('shows the chosen lead with a primary filled radio and a white dot', async () => {
     const user = userEvent.setup()
     const { container } = render(
       <SponsorAssignModal candidates={candidates} onConfirm={vi.fn()} onClose={vi.fn()} />
     )
-    expect(container.querySelectorAll('svg.text-\\[\\#36c0c9\\].lucide-circle-dot')).toHaveLength(0)
+    expect(container.querySelectorAll('span.bg-\\[\\#36c0c9\\] span.bg-white')).toHaveLength(0)
     await user.click(screen.getByRole('radio', { name: /Riza Sayeed/ }))
-    expect(container.querySelectorAll('svg.lucide-circle-dot')).toHaveLength(1)
-    expect(container.querySelector('svg.lucide-circle-dot')).toHaveClass('text-[#36c0c9]')
-    expect(container.querySelectorAll('svg.lucide-circle')).toHaveLength(2)
+    expect(container.querySelectorAll('span.bg-\\[\\#36c0c9\\] span.bg-white')).toHaveLength(1)
   })
 })

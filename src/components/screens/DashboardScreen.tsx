@@ -12,6 +12,14 @@ import {
   Briefcase,
 } from 'lucide-react'
 import { SearchBar } from '@/components/molecules/SearchBar'
+import { Pagination } from '@/components/molecules/Pagination'
+import { TableFilterMenu } from '@/components/molecules/TableFilterMenu'
+import {
+  DISPLAY_STATUSES,
+  getDisplayStatus,
+  type DisplayStatus,
+  type StatusRole,
+} from '@/lib/caseStatus'
 import { StatusChip } from '@/components/atoms/StatusChip'
 import { PartnershipDetail } from '@/components/organisms/PartnershipDetail'
 import {
@@ -22,6 +30,7 @@ import {
 import {
   appendAudit,
   applyCaseAction,
+  buildSplitCases,
   getStageLabel,
   holdRequest,
   proceedRequest,
@@ -70,15 +79,37 @@ const CASE_ACTION_TOASTS: Partial<Record<CaseAction['type'], string>> = {
   uploadTddReport: 'The TDD report has been uploaded.',
 }
 
+const PAGE_SIZE = 7
+
+const STAGE_OPTIONS = [
+  { value: 'all', label: 'All stages' },
+  ...[
+    'Initial Assessment Brief',
+    'Internal Canvas',
+    'Strategic Alignment',
+    'NDA & Discovery',
+    'Value & Due Diligence',
+  ].map((v) => ({ value: v, label: v })),
+]
+const SLA_OPTIONS = [
+  { value: 'all', label: 'All SLA statuses' },
+  { value: 'On track', label: 'On track' },
+  { value: 'At risk', label: 'At risk' },
+  { value: 'Breached', label: 'Breached' },
+]
+const SORT_OPTIONS = [
+  { value: 'default', label: 'Default order' },
+  { value: 'newest', label: 'Newest submitted' },
+  { value: 'oldest', label: 'Oldest submitted' },
+  { value: 'company', label: 'Company A to Z' },
+  { value: 'days', label: 'Most days in stage' },
+]
+
 const SLA_TEXT_COLOR: Record<SlaStatus, string> = {
   'On track': 'text-[#16a34a]',
   'At risk': 'text-[#d97706]',
   Breached: 'text-[#dc2626]',
 }
-
-/** At Risk is not a status in the table: those cases are simply in progress */
-const tableStatus = (status: PartnershipRequest['status']) =>
-  status === 'At Risk' ? 'In Progress' : status
 
 /** Two lines of the solution description, with the full text in a tooltip */
 const DescriptionCell: React.FC<{ text: string }> = ({ text }) => {
@@ -144,31 +175,34 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   )
   const requests = sharedRequests ?? localRequests
   const setRequests = onRequestsChange ?? setLocalRequests
+  const statusRole: StatusRole = isAdmin
+    ? 'admin'
+    : isSponsor
+      ? 'sponsor'
+      : isInternalTeam
+        ? 'internal'
+        : isStrategyTeam
+          ? 'strategy'
+          : 'director'
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all')
+  const [stageFilter, setStageFilter] = useState('all')
+  const [slaFilter, setSlaFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('default')
+  const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selectedRequest = requests.find((r) => r.id === selectedId) ?? null
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  // Status categories for StatusChip (Pending, In Progress, At Risk, Exited)
-  const getStatusCategory = (status: string) => {
-    switch (status) {
-      case 'In Progress':
-        return 'info'
-      case 'Pending':
-        return 'warning'
-      case 'At Risk':
-        return 'error'
-      case 'Exited':
-        return 'neutral'
-      case 'Closed':
-        return 'neutral'
-      case 'Information Requested':
-        return 'neutral'
-      default:
-        return 'neutral'
-    }
-  }
+  // StatusChip colours for the five statuses
+  const getStatusCategory = (status: DisplayStatus) =>
+    ({
+      Pending: 'warning',
+      'In Progress': 'info',
+      Completed: 'success',
+      Closed: 'neutral',
+      RFI: 'error',
+    })[status] as 'warning' | 'info' | 'success' | 'neutral' | 'error'
 
   const notify = (message: string) => {
     setToastMessage(message)
@@ -239,7 +273,19 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   // Internal Interest outcome, sponsors, NDA, discovery, value and TDD
   const handleCaseAction = (requestId: string, action: CaseAction) => {
-    updateRequest(requestId, (r) => applyCaseAction(r, action))
+    setRequests((prev) => {
+      const next = prev.map((r) => (r.id === requestId ? applyCaseAction(r, action) : r))
+      const parent = next.find((r) => r.id === requestId)
+      // Several sponsors: every co-sponsor gets a duplicate case, once
+      if (
+        action.type === 'assignSponsors' &&
+        parent &&
+        !prev.some((r) => r.splitFrom === requestId)
+      ) {
+        return [...next, ...buildSplitCases(parent)]
+      }
+      return next
+    })
     const message = CASE_ACTION_TOASTS[action.type]
     if (message) notify(message)
   }
@@ -271,18 +317,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           (!isSponsor || Boolean(r.sponsors))
       )
 
-  const filteredRequests = scopedRequests.filter((req) => {
-    // Exited status hidden from internal and strategy teams
-    if (isNonDirector && req.status.toLowerCase() === 'exited') {
-      return false
-    }
+  const statusOf = (r: PartnershipRequest) => getDisplayStatus(r, statusRole)
 
-    const shownStatus = isNonDirector ? req.status : tableStatus(req.status)
-    const matchesFilter =
-      selectedStatusFilter === 'all' ||
-      shownStatus.toLowerCase() === selectedStatusFilter.toLowerCase()
-
-    if (!matchesFilter) return false
+  const matchingRequests = scopedRequests.filter((req) => {
+    // Exited cases are hidden from the internal and strategy teams
+    if (isNonDirector && req.status === 'Exited') return false
+    if (selectedStatusFilter !== 'all' && statusOf(req) !== selectedStatusFilter) return false
+    if (stageFilter !== 'all' && getStageLabel(req) !== stageFilter) return false
+    if (slaFilter !== 'all' && req.slaStatus !== slaFilter) return false
 
     if (!searchTerm.trim()) return true
     const q = searchTerm.toLowerCase()
@@ -296,54 +338,43 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     )
   })
 
-  // Filter options with dynamic counts (Pending, In progress, At Risk, Exited)
+  const time = (r: PartnershipRequest) => Date.parse(r.submittedOn) || 0
+  const sortedRequests = [...matchingRequests].sort((a, b) => {
+    if (sortBy === 'newest') return time(b) - time(a)
+    if (sortBy === 'oldest') return time(a) - time(b)
+    if (sortBy === 'company') return a.companyName.localeCompare(b.companyName)
+    if (sortBy === 'days') return b.daysInStage - a.daysInStage
+    return 0
+  })
+  const pageCount = Math.max(1, Math.ceil(sortedRequests.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount)
+  const filteredRequests = sortedRequests.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
+
   const visibleRequestsForCount = isNonDirector
-    ? scopedRequests.filter((r) => r.status.toLowerCase() !== 'exited')
+    ? scopedRequests.filter((r) => r.status !== 'Exited')
     : scopedRequests
 
+  // Status chips with live counts
   const filterOptions = [
     { key: 'all', label: 'All requests', count: visibleRequestsForCount.length },
-    {
-      key: 'pending',
-      label: 'Pending',
-      count: scopedRequests.filter((r) => r.status === 'Pending').length,
-    },
-    {
-      key: 'in progress',
-      label: 'In Progress',
-      count: scopedRequests.filter(
-        (r) => (isNonDirector ? r.status : tableStatus(r.status)) === 'In Progress'
-      ).length,
-    },
-    ...(isNonDirector
-      ? [
-          {
-            key: 'at risk',
-            label: 'At Risk',
-            count: scopedRequests.filter((r) => r.status === 'At Risk').length,
-          },
-        ]
-      : []),
-    ...(!isNonDirector
-      ? [
-          {
-            key: 'closed',
-            label: 'Closed',
-            count: scopedRequests.filter((r) => r.status === 'Closed').length,
-          },
-          {
-            key: 'exited',
-            label: 'Exited',
-            count: scopedRequests.filter((r) => r.status === 'Exited').length,
-          },
-          {
-            key: 'information requested',
-            label: 'Information Requested',
-            count: scopedRequests.filter((r) => r.status === 'Information Requested').length,
-          },
-        ]
-      : []),
+    ...DISPLAY_STATUSES.map((status) => ({
+      key: status,
+      label: status,
+      count: visibleRequestsForCount.filter((r) => statusOf(r) === status).length,
+    })),
   ]
+
+  const activeFilterCount =
+    [stageFilter, slaFilter].filter((v) => v !== 'all').length + (sortBy !== 'default' ? 1 : 0)
+  const clearFilters = () => {
+    setStageFilter('all')
+    setSlaFilter('all')
+    setSortBy('default')
+    setPage(1)
+  }
 
   // Detailed view rendering
   if (selectedRequest) {
@@ -435,7 +466,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             return (
               <button
                 key={chip.key}
-                onClick={() => setSelectedStatusFilter(chip.key)}
+                onClick={() => {
+                  setSelectedStatusFilter(chip.key)
+                  setPage(1)
+                }}
                 className={`px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition cursor-pointer flex items-center gap-2 ${
                   isSelected
                     ? 'bg-[#36c0c9] text-white font-semibold shadow-xs'
@@ -455,13 +489,40 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           })}
         </div>
 
-        <div className="w-full sm:w-72 shrink-0">
-          <SearchBar
-            value={searchTerm}
-            onChange={(val) => setSearchTerm(val)}
-            placeholder="Search partnership requests..."
-            showButton={false}
+        <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
+          <TableFilterMenu
+            stage={stageFilter}
+            stageOptions={STAGE_OPTIONS}
+            sla={slaFilter}
+            slaOptions={isNonDirector ? undefined : SLA_OPTIONS}
+            sort={sortBy}
+            sortOptions={SORT_OPTIONS}
+            onStageChange={(v) => {
+              setStageFilter(v)
+              setPage(1)
+            }}
+            onSlaChange={(v) => {
+              setSlaFilter(v)
+              setPage(1)
+            }}
+            onSortChange={(v) => {
+              setSortBy(v)
+              setPage(1)
+            }}
+            activeCount={activeFilterCount}
+            onClear={clearFilters}
           />
+          <div className="w-full sm:w-72">
+            <SearchBar
+              value={searchTerm}
+              onChange={(val) => {
+                setSearchTerm(val)
+                setPage(1)
+              }}
+              placeholder="Search partnership requests..."
+              showButton={false}
+            />
+          </div>
         </div>
       </div>
 
@@ -557,8 +618,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
                         <td className="py-4.5 px-4 text-xs font-normal">
                           <StatusChip
-                            label={req.status}
-                            status={getStatusCategory(req.status)}
+                            label={statusOf(req)}
+                            status={getStatusCategory(statusOf(req))}
                             dot={false}
                           />
                         </td>
@@ -583,8 +644,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
                         <td className="py-4.5 px-4 text-xs font-normal">
                           <StatusChip
-                            label={tableStatus(req.status)}
-                            status={getStatusCategory(tableStatus(req.status))}
+                            label={statusOf(req)}
+                            status={getStatusCategory(statusOf(req))}
                             dot={false}
                           />
                         </td>
@@ -626,6 +687,12 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={currentPage}
+          pageSize={PAGE_SIZE}
+          total={sortedRequests.length}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   )

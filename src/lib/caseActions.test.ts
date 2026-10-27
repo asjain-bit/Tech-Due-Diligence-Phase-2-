@@ -8,6 +8,9 @@ import {
   buildInfoEmail,
   addDiscoveryFile,
   applyInternalScenario,
+  assignSponsors,
+  buildSplitCases,
+  applyCaseAction,
   proceedToValue,
   uploadSignedNda,
   holdRequest,
@@ -408,14 +411,19 @@ describe('applyInternalScenario', () => {
     members: INITIAL_PARTNERSHIP_REQUESTS[0].internalInterests!,
   })
 
-  it('closes the case, as Closed, when no one responds', () => {
+  it('waits for the Director to close the case when no one responds', () => {
     const next = applyInternalScenario(sent, 'none')
-    expect(next.status).toBe('Closed')
-    expect(next.closedReason).toMatch(/No one from the Internal Interest team responded/)
+    expect(next.status).not.toBe('Closed')
     expect(
       next.internalInterests?.every((m) => m.status === 'Pending' && m.sponsor === undefined)
     ).toBe(true)
-    expect(getStageLabel(next)).toBe('Closed')
+    const closed = applyCaseAction(next, {
+      type: 'closeCase',
+      reason: 'No one from the Internal Interest team responded.',
+    })
+    expect(closed.status).toBe('Closed')
+    expect(closed.closedReason).toMatch(/No one from the Internal Interest team responded/)
+    expect(getStageLabel(closed)).toBe('Closed')
   })
 
   it('records decisions and sponsor answers separately, and waits when no one is ready', () => {
@@ -444,7 +452,10 @@ describe('applyInternalScenario', () => {
   })
 
   it('re-opens a closed case when another outcome is picked', () => {
-    const closed = applyInternalScenario(sent, 'none')
+    const closed = applyCaseAction(applyInternalScenario(sent, 'none'), {
+      type: 'closeCase',
+      reason: 'x',
+    })
     const reopened = applyInternalScenario(closed, 'single')
     expect(reopened.status).toBe('In Progress')
     expect(reopened.closedReason).toBeUndefined()
@@ -501,5 +512,26 @@ describe('discovery context and moving on', () => {
     expect(next.workflowStages.find((st) => st.id === 4)?.status).toBe('completed')
     expect(next.workflowStages.find((st) => st.id === 5)?.status).toBe('in_progress')
     expect(proceedToValue(next)).toBe(next)
+  })
+})
+
+describe('split cases', () => {
+  it('duplicates the case for every co-sponsor, linked to the original', () => {
+    const parent = assignSponsors(INITIAL_PARTNERSHIP_REQUESTS[1], {
+      lead: 'Riza Sayeed',
+      co: ['Parag Agarwal', 'Najla Al Mansoori'],
+    })
+    const children = buildSplitCases(parent)
+    expect(children.map((c) => c.requestCode)).toEqual([
+      `${parent.requestCode}-A`,
+      `${parent.requestCode}-B`,
+    ])
+    expect(children.map((c) => c.sponsors)).toEqual([
+      { lead: 'Parag Agarwal', co: [] },
+      { lead: 'Najla Al Mansoori', co: [] },
+    ])
+    expect(children.every((c) => c.splitFrom === parent.id && c.id !== parent.id)).toBe(true)
+    expect(children[0].companyName).toBe(parent.companyName)
+    expect(buildSplitCases(assignSponsors(parent, { lead: 'Riza Sayeed', co: [] }))).toEqual([])
   })
 })

@@ -30,7 +30,9 @@ describe('AdminActionModal (proceed)', () => {
     expect(screen.getByLabelText('Reason')).toBeInTheDocument()
 
     const proceed = screen.getByRole('button', { name: 'Proceed' })
-    expect(proceed).toBeDisabled()
+    // The agent's recommendation is selected from the start
+    expect(screen.getByRole('button', { name: /Request type/ })).toHaveTextContent('Partnership')
+    expect(proceed).toBeEnabled()
 
     await user.click(screen.getByRole('button', { name: /Request type/ }))
     const list = screen.getByRole('listbox', { name: 'Request type' })
@@ -43,7 +45,7 @@ describe('AdminActionModal (proceed)', () => {
         .querySelector('button')!
     )
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-    expect(proceed).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Request type/ })).toHaveTextContent('Procure')
 
     await user.click(proceed)
     expect(onConfirm).toHaveBeenCalledWith({ action: 'proceed', type: 'Procure', reason: '' })

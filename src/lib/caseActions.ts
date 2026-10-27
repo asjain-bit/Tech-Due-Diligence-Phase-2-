@@ -568,7 +568,13 @@ export const applyInternalScenario = (
     stageApprovals: { ...r.stageApprovals, internal: undefined },
   }
   if (scenario === 'none') {
-    return closeRequest(base, 'No one from the Internal Interest team responded.')
+    // The Director closes the case from the popup that follows
+    return appendAudit(base, {
+      title: 'No Internal Interest response',
+      description: 'No one from the Internal Interest team responded.',
+      actor: INTERNAL_ACTOR,
+      kind: 'user',
+    })
   }
   if (scenario === 'single') {
     return approveInternal(base, { lead: members[0].name, co: [] })
@@ -588,6 +594,31 @@ export const assignSponsors = (
   r: PartnershipRequest,
   sponsors: { lead: string; co: string[] }
 ): PartnershipRequest => approveInternal(r, sponsors)
+
+/**
+ * With several sponsors the case is split: every co-sponsor gets a duplicate of the case that
+ * carries the same details and history, and is linked back to the original.
+ */
+export const buildSplitCases = (parent: PartnershipRequest): PartnershipRequest[] =>
+  (parent.sponsors?.co ?? []).map((sponsor, i) => {
+    const code = `${parent.requestCode}-${String.fromCharCode(65 + i)}`
+    return appendAudit(
+      {
+        ...parent,
+        id: `${parent.id}-split-${i + 1}`,
+        requestCode: code,
+        splitFrom: parent.id,
+        sponsors: { lead: sponsor, co: [] },
+        daysInStage: 0,
+      },
+      {
+        title: 'Case split',
+        description: `Duplicate of ${parent.requestCode} for sponsor ${sponsor}.`,
+        actor: DIRECTOR_ACTOR,
+        kind: 'user',
+      }
+    )
+  })
 
 /* ---------- NDA & Discovery ---------- */
 

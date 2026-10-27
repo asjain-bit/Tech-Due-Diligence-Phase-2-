@@ -1,3 +1,6 @@
+import { getStageLabel } from '@/lib/caseActions'
+import type { PartnershipRequest } from '@/types/partnership.types'
+
 /** Prototype data and maths behind the Usage Insights page */
 
 export interface UsageWeek {
@@ -64,38 +67,31 @@ export interface StatusItem {
   stage: string
 }
 
-export const ASSESSMENTS_BY_STATUS: { title: string; items: StatusItem[] }[] = [
-  {
-    title: 'Completed',
-    items: [
-      { name: 'Cleveland Clinic Abu Dhabi | Clinical decision support', stage: 'Round 1' },
-      { name: 'Danat Al Emarat Hospital | PACS integration', stage: 'Round 2' },
-      { name: 'Healthpoint Hospital | Lab Telemedicine', stage: 'Initial Review' },
-      { name: 'Imperial College London Diabetes Centre', stage: 'Follow-up Audit' },
-      { name: 'Burjeel Hospital | Radiology triage', stage: 'Round 1' },
-      { name: 'NMC Healthcare | Remote monitoring', stage: 'Round 2' },
-    ],
-  },
-  {
-    title: 'Scheduled',
-    items: [
-      { name: 'Sheikh Shakhbout Medical City (SSMC)', stage: 'Stage 2 Audit' },
-      { name: 'Medica Diagnostic Center | UAE Data residency', stage: 'Round 2 - Compliance' },
-      { name: 'Cleveland Clinic Abu Dhabi | Third-party audit', stage: 'Round 1' },
-      { name: 'Danat Al Emarat Hospital | Clinical safety', stage: 'Round 2' },
-      { name: 'Mediclinic | Patient flow analytics', stage: 'Round 1' },
-      { name: 'Zulekha Hospital | Pharmacy automation', stage: 'Stage 1 Audit' },
-    ],
-  },
-  {
-    title: 'Finalised',
-    items: [
-      { name: 'Moorfields Eye Hospital Abu Dhabi | Retinal AI', stage: 'Round 1 - Technical' },
-      { name: 'M42 Genomic Sciences Center | Cohort analytics', stage: 'Stage 1 Discovery' },
-      { name: 'Global Health Telemetry Unit | Bus integration', stage: 'Final Review' },
-      { name: 'Healthpoint Hospital | ISO 27001 ISMS', stage: 'Final Signoff' },
-      { name: 'Abu Dhabi Stem Cells Center | Registry', stage: 'Final Review' },
-      { name: 'Diaverum | Dialysis scheduling', stage: 'Final Signoff' },
-    ],
-  },
-]
+export type AssessmentStatus = 'Completed' | 'In Progress' | 'Closed'
+
+/** The three groups on the Usage page, in order */
+export const ASSESSMENT_STATUSES: AssessmentStatus[] = ['Completed', 'In Progress', 'Closed']
+
+/**
+ * Groups the cases by where they stand overall: Completed once the technical due diligence report
+ * is in, Closed when the case ended, In Progress for everything still moving. Each item shows the
+ * workflow stage the case is in.
+ */
+export const groupAssessmentsByStatus = (
+  requests: PartnershipRequest[]
+): { title: AssessmentStatus; items: StatusItem[] }[] =>
+  ASSESSMENT_STATUSES.map((title) => ({
+    title,
+    items: requests
+      .filter((r) => r.queue !== 'admin')
+      .filter((r) => {
+        const closed = r.status === 'Closed' || r.status === 'Exited' || r.queue === 'closed'
+        const status: AssessmentStatus = closed
+          ? 'Closed'
+          : r.value?.tddGeneratedOn
+            ? 'Completed'
+            : 'In Progress'
+        return status === title
+      })
+      .map((r) => ({ name: r.companyName, stage: getStageLabel(r) })),
+  }))

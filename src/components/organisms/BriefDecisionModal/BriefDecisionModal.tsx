@@ -9,7 +9,8 @@
  */
 
 import React, { useEffect, useId, useState } from 'react'
-import { ChevronDown, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import { Radio } from '@/components/atoms/Radio'
 import { CopyButton } from '@/components/molecules/CopyButton'
 import type { BriefDecisionChoice, BriefDecisionModalProps } from './BriefDecisionModal.types'
 
@@ -75,39 +76,30 @@ export const BriefDecisionModal: React.FC<BriefDecisionModalProps> = ({
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6 sm:px-8 py-5 flex flex-col gap-5">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="brief-decision" className="text-xs font-semibold text-[#475569]">
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-xs font-semibold text-[#475569] mb-1">
               Decision <span className="text-red-500 font-semibold">*</span>
-            </label>
-            <div className="relative">
-              <select
-                id="brief-decision"
-                value={choice}
-                onChange={(e) => setChoice(e.target.value as BriefDecisionChoice | '')}
-                className={`w-full h-11 appearance-none pl-3.5 pr-10 rounded-xl border border-[#d6dee6] bg-white text-sm shadow-2xs transition hover:border-[#bcc7d3] focus:outline-none focus:border-[#a3b1c2] cursor-pointer ${
-                  choice === '' ? 'text-[#9aa8b5]' : 'text-[#0d212c]'
+            </legend>
+            {OPTIONS.map((o) => (
+              <Radio
+                key={o.value}
+                name="brief-decision"
+                checked={choice === o.value}
+                onChange={() => setChoice(o.value)}
+                label={o.label}
+                className={`px-3.5 py-3 rounded-xl border transition ${
+                  choice === o.value
+                    ? 'border-[#36c0c9] bg-[#f0fdfa]'
+                    : 'border-[#d6dee6] hover:bg-slate-50'
                 }`}
-              >
-                <option value="" disabled>
-                  Select a decision
-                </option>
-                {OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                aria-hidden="true"
-                className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
               />
-            </div>
+            ))}
             {agentRecommendation && (
               <span className="text-xs text-[#0369a1]">
                 Agent recommends: {agentRecommendation === 'proceed' ? 'Proceed' : 'Reject'}
               </span>
             )}
-          </div>
+          </fieldset>
 
           {choice === '' ? null : isInfo ? (
             <div className="flex flex-col gap-4" aria-label="Email to the vendor" role="group">

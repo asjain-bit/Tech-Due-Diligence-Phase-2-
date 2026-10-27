@@ -19,9 +19,9 @@ describe('AddQuestionModal', () => {
     expect(save).toBeEnabled()
 
     // Mandatory by default; can be made optional
-    expect(screen.getByRole('checkbox', { name: 'Mandatory question' })).toBeChecked()
-    await user.click(screen.getByRole('checkbox', { name: 'Mandatory question' }))
-    expect(screen.getByRole('checkbox', { name: 'Mandatory question' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Required question' })).toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: 'Required question' }))
+    expect(screen.getByRole('checkbox', { name: 'Required question' })).not.toBeChecked()
     await user.click(save)
     expect(onSave).toHaveBeenCalledWith({
       text: 'Describe your access controls',
@@ -42,7 +42,7 @@ describe('AddQuestionModal', () => {
     )
     expect(screen.getByRole('dialog', { name: 'Edit question' })).toBeInTheDocument()
     expect(screen.getByLabelText(/Question text/)).toHaveValue('Old text')
-    expect(screen.getByRole('checkbox', { name: 'Mandatory question' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Required question' })).not.toBeChecked()
     await user.clear(screen.getByLabelText(/Question text/))
     await user.type(screen.getByLabelText(/Question text/), 'New text')
     await user.click(screen.getByRole('button', { name: 'Save changes' }))

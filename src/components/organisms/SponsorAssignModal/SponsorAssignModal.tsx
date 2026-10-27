@@ -8,7 +8,8 @@
  */
 
 import React, { useEffect, useId, useState } from 'react'
-import { Circle, CircleDot, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import { Radio } from '@/components/atoms/Radio'
 import { Checkbox } from '@/components/atoms/Checkbox'
 import type { SponsorAssignModalProps } from './SponsorAssignModal.types'
 
@@ -65,27 +66,19 @@ export const SponsorAssignModal: React.FC<SponsorAssignModalProps> = ({
               Lead sponsor <span className="text-red-500">*</span>
             </legend>
             {candidates.map((c) => (
-              <label
+              <Radio
                 key={c.id}
-                className="flex items-center gap-3 p-3 rounded-xl border border-[#d6dee6] hover:bg-slate-50 cursor-pointer transition"
-              >
-                <input
-                  type="radio"
-                  name="lead-sponsor"
-                  checked={lead === c.name}
-                  onChange={() => chooseLead(c.name)}
-                  className="peer sr-only"
-                />
-                {lead === c.name ? (
-                  <CircleDot className="w-5 h-5 text-[#36c0c9] shrink-0" aria-hidden="true" />
-                ) : (
-                  <Circle className="w-5 h-5 text-slate-300 shrink-0" aria-hidden="true" />
-                )}
-                <span className="flex flex-col min-w-0">
-                  <span className="text-sm font-medium text-[#0d212c]">{c.name}</span>
-                  <span className="text-xs text-[#64748b] truncate">{c.role}</span>
-                </span>
-              </label>
+                name="lead-sponsor"
+                checked={lead === c.name}
+                onChange={() => chooseLead(c.name)}
+                className="p-3 rounded-xl border border-[#d6dee6] hover:bg-slate-50 transition"
+                label={
+                  <span className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium text-[#0d212c]">{c.name}</span>
+                    <span className="text-xs text-[#64748b] truncate">{c.role}</span>
+                  </span>
+                }
+              />
             ))}
           </fieldset>
 

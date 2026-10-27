@@ -19,6 +19,8 @@ const TYPES: { value: CaseType; hint: string }[] = [
   { value: 'M&A', hint: 'Acquire or invest in the vendor. Goes to Corporate Development.' },
 ]
 
+const LEVEL_RANK: Record<string, number> = { High: 3, Medium: 2, Low: 1 }
+
 const FIELD =
   'w-full rounded-lg border border-[#d6dee6] bg-white text-sm text-[#0d212c] placeholder:text-[#9aa8b5] transition hover:border-[#bcc7d3] focus:outline-none focus:border-[#a3b1c2]'
 
@@ -32,7 +34,13 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
 }) => {
   const isReassign = mode === 'reassign'
   const isProceed = mode === 'proceed' || isReassign
-  const [type, setType] = useState<CaseType | null>(initialType ?? null)
+  // Proceed starts on the type the agent recommends; the Admin can change it
+  const recommended = TYPES.map((t) => t.value).reduce((best, t) =>
+    LEVEL_RANK[typeConfidence[t]] > LEVEL_RANK[typeConfidence[best]] ? t : best
+  )
+  const [type, setType] = useState<CaseType | null>(
+    initialType ?? (mode === 'proceed' ? recommended : null)
+  )
   const [reason, setReason] = useState(initialReason)
   const [open, setOpen] = useState(false)
   const titleId = useId()
@@ -61,7 +69,7 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200"
       >
         <div className="flex items-center justify-between gap-3 pb-4 border-b border-[#e2e8f0]">
           <h3 id={titleId} className="text-xl font-semibold text-[#0d212c]">
@@ -86,7 +94,7 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
             <span id="request-type-label" className="text-sm font-semibold text-[#0d212c]">
               Request type <span className="text-red-500">*</span>
             </span>
-            <div>
+            <div className="relative">
               <button
                 type="button"
                 aria-haspopup="listbox"
@@ -114,7 +122,7 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
                 <ul
                   role="listbox"
                   aria-label="Request type"
-                  className="mt-1.5 w-full rounded-lg border border-[#e2e8f0] bg-white shadow-xs py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+                  className="absolute left-0 right-0 top-full mt-1.5 z-10 rounded-lg border border-[#e2e8f0] bg-white shadow-xl py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
                 >
                   {TYPES.map((t) => (
                     <li key={t.value} role="option" aria-selected={type === t.value}>
@@ -127,7 +135,14 @@ export const AdminActionModal: React.FC<AdminActionModalProps> = ({
                         className="w-full flex items-start justify-between gap-3 px-3.5 py-2.5 text-left hover:bg-slate-50 cursor-pointer"
                       >
                         <span className="flex flex-col gap-0.5">
-                          <span className="text-sm font-medium text-[#0d212c]">{t.value}</span>
+                          <span className="text-sm font-medium text-[#0d212c]">
+                            {t.value}
+                            {t.value === recommended && (
+                              <span className="ml-2 text-[11px] font-semibold text-[#0f766e]">
+                                Recommended
+                              </span>
+                            )}
+                          </span>
                           <span className="text-xs text-[#64748b]">{t.hint}</span>
                         </span>
                         <span className="flex items-center gap-2 shrink-0">

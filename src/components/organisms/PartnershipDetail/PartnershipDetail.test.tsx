@@ -298,7 +298,7 @@ describe('PartnershipDetail', () => {
     const decide = async (user: ReturnType<typeof userEvent.setup>, option: string) => {
       await user.click(screen.getByRole('button', { name: 'Next' }))
       const dialog = screen.getByRole('dialog', { name: 'Your decision' })
-      await user.selectOptions(within(dialog).getByLabelText(/^Decision/), option)
+      await user.click(within(dialog).getByRole('radio', { name: option }))
       return dialog
     }
 
@@ -363,7 +363,7 @@ describe('PartnershipDetail', () => {
       renderDetail()
       await user.click(screen.getByRole('button', { name: 'Next' }))
       const decision = screen.getByRole('dialog', { name: 'Your decision' })
-      await user.selectOptions(within(decision).getByLabelText(/^Decision/), 'Request more info')
+      await user.click(within(decision).getByRole('radio', { name: 'Request more info' }))
       // The email template is in the same popup, with a copy button on each field
       expect(within(decision).getAllByRole('button', { name: /^Copy / })).toHaveLength(3)
       expect((within(decision).getByLabelText('Message') as HTMLTextAreaElement).value).toContain(
@@ -507,18 +507,20 @@ describe('PartnershipDetail', () => {
       const user = userEvent.setup()
       renderDetail({ request: afterInternal() })
       expect(
-        screen.getByText('Choose the Strategy Team reviewer, then send the request.')
+        screen.getByText('Choose the Strategy Team reviewers, then send the request.')
       ).toBeInTheDocument()
       expect(screen.getByText('Dr. Zainab')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /Add Member/i })).toBeDisabled()
-      expect(screen.getByText('You can add 1 member for now.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Add Member/i })).toBeEnabled()
+      expect(screen.getByText('You can add up to 5 members.')).toBeInTheDocument()
+      // Strategy members are added by the Director, never AI recommended
+      expect(screen.queryByText('AI Recommended')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Send Request' }))
       const dialog = screen.getByRole('dialog')
       expect(within(dialog).getByText('Send to the Strategy Team')).toBeInTheDocument()
-      // The one reviewer is not a choice: no checkbox, and the note is tall enough not to scroll
+      // The reviewers are not a choice: no checkbox, and there is no note
       expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
-      expect(within(dialog).getByLabelText('Note to Strategy Team')).toHaveAttribute('rows', '9')
+      expect(within(dialog).queryByLabelText('Note to Strategy Team')).not.toBeInTheDocument()
       await user.click(within(dialog).getByRole('button', { name: 'Send Request' }))
       expect(onSendReview).toHaveBeenCalledWith(
         mockRequest.id,
@@ -649,9 +651,15 @@ describe('PartnershipDetail', () => {
       await user.click(screen.getByRole('button', { name: 'Proceed' }))
       const dialog = screen.getByRole('dialog', { name: 'Proceed with this case' })
       const proceed = within(dialog).getByRole('button', { name: 'Proceed' })
-      expect(proceed).toBeDisabled()
+      // The recommended type is already chosen
+      expect(within(dialog).getByRole('button', { name: /Request type/ })).toHaveTextContent(
+        'Partnership'
+      )
+      expect(proceed).toBeEnabled()
       await user.click(within(dialog).getByRole('button', { name: /Request type/ }))
-      expect(within(dialog).getByLabelText('Partnership confidence High')).toBeInTheDocument()
+      expect(
+        within(dialog).getAllByLabelText('Partnership confidence High').length
+      ).toBeGreaterThan(0)
       await user.click(
         within(dialog)
           .getByRole('option', { name: /Partnership/ })
@@ -784,15 +792,15 @@ describe('PartnershipDetail', () => {
       expect(within(modal).getByRole('button', { name: 'Reassign' })).toBeEnabled()
     })
 
-    it('shows the request type list in the flow of the popup, so it is never clipped', async () => {
+    it('opens the request type list as an overlay, without growing the popup', async () => {
       const user = userEvent.setup()
       renderDetail({ userProfile: adminProfile, request: routed('Partnership') })
       await user.click(screen.getByRole('button', { name: 'Edit' }))
       const modal = screen.getByRole('dialog', { name: 'Reassign request type' })
       await user.click(within(modal).getByRole('button', { name: /Request type/ }))
       const list = within(modal).getByRole('listbox', { name: 'Request type' })
-      expect(list.className).not.toContain('absolute')
-      expect(modal.className).toContain('max-h-[90vh]')
+      expect(list.className).toContain('absolute')
+      expect(modal.className).not.toContain('overflow-y-auto')
     })
 
     it('shows Edit as a primary button, after View vendor response', () => {
@@ -992,7 +1000,6 @@ describe('PartnershipDetail', () => {
       await user.click(screen.getByRole('button', { name: 'Next' }))
       expect(screen.getByRole('heading', { name: 'Prepare Pre-read Summary' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Skip/i })).not.toBeInTheDocument()
-      expect(screen.queryByRole('list', { name: 'Documents added' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
       expect(stepper().getByRole('button', { name: /Strategic Alignment/ })).toHaveAttribute(
         'aria-current',
@@ -1003,11 +1010,17 @@ describe('PartnershipDetail', () => {
       expect(screen.getByRole('heading', { name: 'Company Information' })).toBeInTheDocument()
     })
 
-    it('generates the pre-read with the simple animation under the stages, then decides with a confirmation', async () => {
+    it('generates the pre-read with the simple animation under the stages, then decides', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderDetail({ userProfile: strategyProfile })
       await user.click(screen.getByRole('button', { name: 'Next' }))
+      // The knowledge base already holds documents, shown before anything is uploaded
+      expect(
+        within(screen.getByRole('list', { name: 'Knowledge base documents' })).getAllByRole(
+          'listitem'
+        ).length
+      ).toBeGreaterThan(0)
       await user.click(screen.getByRole('button', { name: /Generate Summary/ }))
 
       // The tabs and workflow stages stay; the animation sits below them
@@ -1030,18 +1043,16 @@ describe('PartnershipDetail', () => {
           .map((b) => b.textContent)
       ).toEqual(['Reject', 'Proceed'])
 
-      // Reject needs a reason, then a confirmation before it is recorded
+      // Reject needs a reason, then it is recorded
       await user.click(within(bar).getByRole('button', { name: 'Reject' }))
       const popup = screen.getByRole('dialog', { name: 'Reject this partnership' })
       const reject = within(popup).getByRole('button', { name: 'Reject partnership' })
       expect(reject).toBeDisabled()
       await user.type(within(popup).getByLabelText(/^Reason/), 'No UAE hosting')
       await user.click(reject)
-      expect(onSubmitReview).not.toHaveBeenCalled()
-      const confirm = screen.getByRole('dialog', { name: 'Submit your decision?' })
-      expect(confirm).toHaveTextContent('Reject')
-      expect(confirm).toHaveTextContent('No UAE hosting')
-      await user.click(within(confirm).getByRole('button', { name: 'Submit' }))
+      // The reason popup is the only step
+      expect(screen.queryByRole('dialog', { name: 'Submit your decision?' })).toBeNull()
+      expect(onSubmitReview).toHaveBeenCalledTimes(1)
 
       expect(onSubmitReview).toHaveBeenCalledWith(
         mockRequest.id,
@@ -1057,7 +1068,7 @@ describe('PartnershipDetail', () => {
       expect(screen.getByText('Rejected')).toBeInTheDocument()
     })
 
-    it('proceeds without a reason after confirming, and records the documents added', async () => {
+    it('proceeds without a reason or a second popup, and records the documents added', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderDetail({ userProfile: strategyProfile })
@@ -1069,6 +1080,7 @@ describe('PartnershipDetail', () => {
       ])
       await user.click(screen.getByRole('button', { name: 'Add documents' }))
       await user.click(screen.getByRole('button', { name: 'Remove plan.pdf' }))
+      await user.click(screen.getByRole('button', { name: 'Remove M42_Roadmap_Register.xlsx' }))
       await user.click(screen.getByRole('button', { name: /Generate Summary/ }))
       runTimers(1100, 8)
 
@@ -1079,11 +1091,8 @@ describe('PartnershipDetail', () => {
           { name: 'Proceed' }
         )
       )
-      await user.click(
-        within(screen.getByRole('dialog', { name: 'Submit your decision?' })).getByRole('button', {
-          name: 'Submit',
-        })
-      )
+      // No second popup: the decision is recorded straight away
+      expect(screen.queryByRole('dialog', { name: 'Submit your decision?' })).toBeNull()
       expect(onSubmitReview).toHaveBeenCalledWith(
         mockRequest.id,
         'strategy',
@@ -1091,7 +1100,7 @@ describe('PartnershipDetail', () => {
           response: expect.objectContaining({
             finalDecision: 'Proceed',
             finalDecisionNote: '',
-            documents: ['deck.pptx'],
+            documents: expect.arrayContaining(['deck.pptx']),
           }),
         })
       )

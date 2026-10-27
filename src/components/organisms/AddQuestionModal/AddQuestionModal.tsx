@@ -3,7 +3,7 @@
 /**
  * AddQuestionModal — Organism
  * Small dialog for adding a question to the questionnaire the Director is sending, or
- * editing an existing one. A question is either mandatory or optional for the reviewer.
+ * editing an existing one. A question is either required or optional for the reviewer.
  * Used in: QuestionnaireEditor
  */
 
@@ -81,7 +81,7 @@ export const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ initial, onS
           />
         </div>
 
-        <Checkbox checked={mandatory} onChange={setMandatory} label="Mandatory question" />
+        <Checkbox checked={mandatory} onChange={setMandatory} label="Required question" />
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e2e8f0]">
           <button

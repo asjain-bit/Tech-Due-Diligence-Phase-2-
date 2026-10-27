@@ -224,6 +224,8 @@ export interface PartnershipRequest {
   sentQuestionnaire?: { name: string; version?: number; questions: QuestionnaireQuestion[] }
   /** Set once the Internal Interest outcome is known (or simulated) */
   internalOutcome?: { scenario: InternalScenario }
+  /** Set on a duplicate case created when several sponsors were assigned: the original case id */
+  splitFrom?: string
   /** Who sponsors the partnership internally; set when the Internal Canvas stage ends */
   sponsors?: SponsorAssignment
   /** Why the case was closed after the brief was approved */
@@ -380,7 +382,7 @@ export const DEFAULT_STRATEGY_MEMBERS: InternalInterestStakeholder[] = [
     status: 'Completed',
     deadline: '2-3 days',
     decision: 'Proceed',
-    source: 'ai',
+    source: 'manual',
     strategyResponse: {
       documents: ['MedTech_Innovations_Pitch_Deck.pptx', 'Vendor_Security_Questionnaire.docx'],
       finalDecision: 'Proceed',

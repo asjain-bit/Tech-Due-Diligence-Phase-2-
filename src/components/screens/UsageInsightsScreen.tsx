@@ -7,7 +7,7 @@
  * Used in: HomePage
  */
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Calendar,
   ChevronDown,
@@ -19,18 +19,20 @@ import {
   LineChart,
   List,
   PhoneCall,
+  RefreshCw,
   Hash,
 } from 'lucide-react'
 import {
   aiCost,
-  ASSESSMENTS_BY_STATUS,
   DEFAULT_ASSUMPTIONS,
   DEFAULT_WEEK_INDEX,
   formatUsd,
+  groupAssessmentsByStatus,
   manualCost,
   USAGE_WEEKS,
   type UsageAssumptions,
 } from '@/lib/usageInsights'
+import { INITIAL_PARTNERSHIP_REQUESTS, type PartnershipRequest } from '@/types/partnership.types'
 
 const TEAL = '#36c0c9'
 const ORANGE = '#ea580c'
@@ -177,9 +179,33 @@ const CostChart: React.FC<{
   )
 }
 
-export const UsageInsightsScreen: React.FC = () => {
+export interface UsageInsightsScreenProps {
+  /** The cases behind the assessments by status; the seed cases when omitted */
+  requests?: PartnershipRequest[]
+  /** Only the Partnership Admin can change the Value/ROI inputs and recalculate */
+  canRecalculate?: boolean
+  /** The inputs the numbers are calculated from, kept by the page so every profile sees them */
+  assumptions?: UsageAssumptions
+  recalculatedAt?: string | null
+  onRecalculate?: (assumptions: UsageAssumptions) => void
+}
+
+export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
+  requests = INITIAL_PARTNERSHIP_REQUESTS,
+  canRecalculate = false,
+  assumptions: sharedAssumptions,
+  recalculatedAt: sharedRecalculatedAt,
+  onRecalculate,
+}) => {
   const [weekIndex, setWeekIndex] = useState(DEFAULT_WEEK_INDEX)
-  const [assumptions, setAssumptions] = useState<UsageAssumptions>(DEFAULT_ASSUMPTIONS)
+  const [ownAssumptions, setOwnAssumptions] = useState<UsageAssumptions>(DEFAULT_ASSUMPTIONS)
+  const [ownRecalculatedAt, setOwnRecalculatedAt] = useState<string | null>(null)
+  // The numbers use the last recalculated inputs; the Admin edits a draft until then
+  const assumptions = sharedAssumptions ?? ownAssumptions
+  const recalculatedAt =
+    sharedRecalculatedAt === undefined ? ownRecalculatedAt : sharedRecalculatedAt
+  const [draft, setDraft] = useState<UsageAssumptions>(assumptions)
+  useEffect(() => setDraft(assumptions), [assumptions])
   const [view, setView] = useState<'chart' | 'table'>('chart')
   const [showAll, setShowAll] = useState(false)
 
@@ -191,7 +217,17 @@ export const UsageInsightsScreen: React.FC = () => {
   const roi = ai > 0 ? manual / ai : 0
 
   const setValue = (key: keyof UsageAssumptions, raw: string) =>
-    setAssumptions((prev) => ({ ...prev, [key]: raw === '' ? 0 : Math.max(0, Number(raw)) }))
+    setDraft((prev) => ({ ...prev, [key]: raw === '' ? 0 : Math.max(0, Number(raw)) }))
+
+  const recalculate = () => {
+    if (onRecalculate) onRecalculate(draft)
+    else {
+      setOwnAssumptions(draft)
+      setOwnRecalculatedAt(new Date().toLocaleString('en-GB'))
+    }
+  }
+
+  const groups = groupAssessmentsByStatus(requests)
 
   const shown = showAll ? 6 : 4
 
@@ -298,9 +334,10 @@ export const UsageInsightsScreen: React.FC = () => {
                         type="number"
                         min="0"
                         step={row.step}
-                        value={assumptions[row.key]}
+                        value={draft[row.key]}
+                        disabled={!canRecalculate}
                         onChange={(e) => setValue(row.key, e.target.value)}
-                        className={`w-28 h-10 rounded-lg border border-[#e2e8f0] bg-white text-sm font-semibold text-[#0d212c] text-center shadow-2xs transition hover:border-[#bcc7d3] focus:outline-none focus:border-[#a3b1c2] ${
+                        className={`w-28 disabled:bg-slate-50 disabled:text-[#64748b] disabled:cursor-not-allowed h-10 rounded-lg border border-[#e2e8f0] bg-white text-sm font-semibold text-[#0d212c] text-center shadow-2xs transition hover:border-[#bcc7d3] focus:outline-none focus:border-[#a3b1c2] ${
                           row.prefix ? 'pl-6' : ''
                         }`}
                       />
@@ -310,7 +347,31 @@ export const UsageInsightsScreen: React.FC = () => {
                 </li>
               ))}
             </ul>
-            <p className="pt-4 text-xs text-[#94a3b8]">AI cost includes text + voice tokens</p>
+            <div className="pt-4 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs text-[#94a3b8]">AI cost includes text + voice tokens</p>
+              {canRecalculate ? (
+                <div className="flex items-center gap-3">
+                  {recalculatedAt && (
+                    <span className="text-xs text-[#64748b]">
+                      Last recalculated {recalculatedAt}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={recalculate}
+                    className="h-9 px-4 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer transition"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+                    Recalculate
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-[#64748b]">
+                  Only the Partnership Admin can recalculate.
+                  {recalculatedAt && ` Last recalculated ${recalculatedAt}.`}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-5 sm:p-6 flex flex-col gap-4">
@@ -426,13 +487,16 @@ export const UsageInsightsScreen: React.FC = () => {
         </div>
         <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-5 sm:p-6 flex flex-col gap-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:divide-x md:divide-[#f1f5f9]">
-            {ASSESSMENTS_BY_STATUS.map((group) => (
+            {groups.map((group) => (
               <div key={group.title} className="flex flex-col gap-3 md:first:pl-0 md:pl-6">
                 <h3 className="text-base font-semibold text-[#0d212c]">{group.title}</h3>
                 <ul aria-label={group.title} className="flex flex-col divide-y divide-[#f1f5f9]">
+                  {group.items.length === 0 && (
+                    <li className="py-3 text-sm text-[#94a3b8]">No assessments</li>
+                  )}
                   {group.items.slice(0, shown).map((item) => (
                     <li
-                      key={item.name}
+                      key={`${item.name}-${item.stage}`}
                       className="flex items-center justify-between gap-4 py-3 text-sm"
                     >
                       <span className="text-[#0d212c] truncate" title={item.name}>

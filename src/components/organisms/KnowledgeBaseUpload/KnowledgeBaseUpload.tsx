@@ -30,7 +30,8 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
       <div className="flex flex-col gap-1">
         <h2 className="text-xl font-semibold text-[#0d212c]">Prepare Pre-read Summary</h2>
         <p className="text-sm text-[#64748b] leading-relaxed">
-          Upload relevant documents to help the agent generate the pre-read summary.
+          These documents are in the knowledge base now. Remove any you do not need, or upload more
+          to help the agent generate the pre-read summary.
         </p>
       </div>
 
@@ -60,9 +61,10 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
       {files.length > 0 && (
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold text-[#0d212c]">
-            Documents added <span className="font-normal text-[#64748b]">({files.length})</span>
+            Knowledge base documents{' '}
+            <span className="font-normal text-[#64748b]">({files.length})</span>
           </h3>
-          <ul aria-label="Documents added" className="flex flex-col gap-2">
+          <ul aria-label="Knowledge base documents" className="flex flex-col gap-2">
             {files.map((f) => (
               <li
                 key={f.name}
@@ -72,6 +74,7 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="text-sm font-semibold text-[#0d212c] truncate">{f.name}</span>
                   <span className="text-xs text-[#64748b]">
+                    {f.source ? `${f.source} · ` : ''}
                     {fileTypeLabel(f.name)} · {formatFileSize(f.size)}
                   </span>
                 </div>

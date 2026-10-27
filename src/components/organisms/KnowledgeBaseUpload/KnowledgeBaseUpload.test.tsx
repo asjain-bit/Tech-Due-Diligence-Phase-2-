@@ -17,7 +17,9 @@ describe('KnowledgeBaseUpload', () => {
     render(<Harness />)
     expect(screen.getByRole('heading', { name: 'Prepare Pre-read Summary' })).toBeInTheDocument()
     expect(
-      screen.getByText('Upload relevant documents to help the agent generate the pre-read summary.')
+      screen.getByText(
+        'These documents are in the knowledge base now. Remove any you do not need, or upload more to help the agent generate the pre-read summary.'
+      )
     ).toBeInTheDocument()
     expect(screen.getByText('Upload supporting documents')).toBeInTheDocument()
     expect(screen.getByText('PDF, DOCX, XLSX · Max 20 MB per file')).toBeInTheDocument()
@@ -30,7 +32,7 @@ describe('KnowledgeBaseUpload', () => {
       )
     ).toBeInTheDocument()
     // Nothing is pre-selected
-    expect(screen.queryByRole('list', { name: 'Documents added' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Knowledge base documents' })).not.toBeInTheDocument()
   })
 
   it('generates the summary with or without documents, and has no skip button', async () => {
@@ -53,11 +55,13 @@ describe('KnowledgeBaseUpload', () => {
     ])
     await user.click(within(popup).getByRole('button', { name: 'Add documents' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    const list = within(screen.getByRole('list', { name: 'Documents added' }))
+    const list = within(screen.getByRole('list', { name: 'Knowledge base documents' }))
     expect(list.getAllByRole('listitem')).toHaveLength(2)
     await user.click(screen.getByRole('button', { name: 'Remove plan.pdf' }))
     expect(
-      within(screen.getByRole('list', { name: 'Documents added' })).getAllByRole('listitem')
+      within(screen.getByRole('list', { name: 'Knowledge base documents' })).getAllByRole(
+        'listitem'
+      )
     ).toHaveLength(1)
   })
 

@@ -22,6 +22,18 @@ export interface PreReadSection {
   documents?: PreReadDocument[]
 }
 
+/** Documents already in the M42 knowledge base; the pre-read starts with these */
+export const EXISTING_KNOWLEDGE_BASE: { name: string; size: number; source: string }[] = [
+  { name: 'M42_Roadmap_Register.xlsx', size: 412 * 1024, source: 'In knowledge base' },
+  {
+    name: 'M42_Digital_Health_Strategy_2026.pdf',
+    size: 2.4 * 1024 * 1024,
+    source: 'In knowledge base',
+  },
+  { name: 'Partnership_Policy_Guidelines.docx', size: 186 * 1024, source: 'In knowledge base' },
+  { name: 'News_Trends_Agent_KB_Extract.docx', size: 540 * 1024, source: 'In knowledge base' },
+]
+
 export const KNOWLEDGE_BASE_ACCEPT = '.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx'
 
 const EXTENSIONS = ['pdf', 'ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx']

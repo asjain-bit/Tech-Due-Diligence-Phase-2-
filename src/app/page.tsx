@@ -8,6 +8,7 @@ import { VendorWebForm } from '@/components/screens/VendorWebForm'
 import { Sidebar } from '@/components/organisms/Sidebar'
 import { INITIAL_PARTNERSHIP_REQUESTS, type PartnershipRequest } from '@/types/partnership.types'
 import { buildCaseFromForm, nextCaseCode } from '@/lib/caseActions'
+import { DEFAULT_ASSUMPTIONS, type UsageAssumptions } from '@/lib/usageInsights'
 import type { VendorFormValues } from '@/types/vendorForm'
 
 export default function HomePage() {
@@ -20,6 +21,9 @@ export default function HomePage() {
   )
   // Cases are shared by every profile for the length of the session
   const [requests, setRequests] = useState<PartnershipRequest[]>(INITIAL_PARTNERSHIP_REQUESTS)
+  // The Value/ROI inputs the Partnership Admin last recalculated, shown to every profile
+  const [usageAssumptions, setUsageAssumptions] = useState<UsageAssumptions>(DEFAULT_ASSUMPTIONS)
+  const [recalculatedAt, setRecalculatedAt] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
   const handleLogin = (profile: UserProfile) => {
@@ -75,7 +79,16 @@ export default function HomePage() {
         {/* Full-Width Dashboard Content */}
         <main className="flex-1 w-full p-6">
           {activeTab === 'usage' ? (
-            <UsageInsightsScreen />
+            <UsageInsightsScreen
+              requests={requests}
+              canRecalculate={userProfile.id === 'partnership-admin'}
+              assumptions={usageAssumptions}
+              recalculatedAt={recalculatedAt}
+              onRecalculate={(next) => {
+                setUsageAssumptions(next)
+                setRecalculatedAt(new Date().toLocaleString('en-GB'))
+              }}
+            />
           ) : (
             <DashboardScreen
               userProfile={userProfile}

@@ -134,7 +134,7 @@ describe('DashboardScreen', () => {
     render(<DashboardScreen userProfile={directorProfile} />)
     expect(screen.queryByText('NeuroLink Diagnostics')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /All requests/ })).toHaveTextContent('4')
-    expect(screen.getByRole('button', { name: /Information Requested/ })).toHaveTextContent('0')
+    expect(screen.getByRole('button', { name: /RFI/ })).toHaveTextContent('0')
   })
 
   it('shows the Partnership Admin every case, including ones waiting for triage', () => {
@@ -254,13 +254,13 @@ describe('DashboardScreen', () => {
     await user.click(screen.getByText('MedTech Innovations'))
     finishThinking()
 
-    // Request more info marks the case Information Requested until it is marked as received
+    // Request more info marks the case RFI until it is marked as received
     await user.click(screen.getByRole('button', { name: 'Next' }))
     let decision = screen.getByRole('dialog', { name: 'Your decision' })
-    await user.selectOptions(within(decision).getByLabelText(/^Decision/), 'Request more info')
+    await user.click(within(decision).getByRole('radio', { name: 'Request more info' }))
     await user.click(within(decision).getByRole('button', { name: 'Mark information requested' }))
     expect(screen.getByText('Information requested: waiting for the vendor')).toBeInTheDocument()
-    expect(screen.getAllByText('Information Requested').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('RFI').length).toBeGreaterThan(0)
     await user.click(screen.getByRole('button', { name: 'Mark info received' }))
     expect(
       screen.queryByText('Information requested: waiting for the vendor')
@@ -269,7 +269,7 @@ describe('DashboardScreen', () => {
     // Approve, then send the Internal Canvas request with its questions
     await user.click(screen.getByRole('button', { name: 'Next' }))
     decision = screen.getByRole('dialog', { name: 'Your decision' })
-    await user.selectOptions(within(decision).getByLabelText(/^Decision/), 'Proceed')
+    await user.click(within(decision).getByRole('radio', { name: 'Proceed' }))
     await user.type(within(decision).getByLabelText(/^Reason/), 'Strong fit.')
     await user.click(within(decision).getByRole('button', { name: 'Proceed' }))
     finishThinking()
@@ -492,9 +492,7 @@ describe('DashboardScreen', () => {
     const decision = screen.getByRole('dialog', { name: 'Proceed with this partnership' })
     expect(within(decision).queryByText(/optional/i)).not.toBeInTheDocument()
     await user.click(within(decision).getByRole('button', { name: 'Proceed' }))
-    const confirm = screen.getByRole('dialog', { name: 'Submit your decision?' })
-    expect(confirm).toHaveTextContent('Proceed')
-    await user.click(within(confirm).getByRole('button', { name: 'Submit' }))
+    expect(screen.queryByRole('dialog', { name: 'Submit your decision?' })).toBeNull()
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
@@ -575,11 +573,15 @@ describe('Internal Interest outcomes', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('closes the case as Closed when no one responds, and keeps the dropdown to try the others', async () => {
+  it('asks to close the case when no one responds, and keeps the dropdown to try the others', async () => {
     const user = setup()
     render(<Shared profile={directorProfile} initial={[sentToInternal]} />)
     await openCase(user)
     await simulate(user, 'none')
+    // A popup says nobody responded, and the case closes with its button
+    const popup = screen.getByRole('dialog', { name: 'Nobody responded' })
+    expect(within(popup).queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+    await user.click(within(popup).getByRole('button', { name: 'Close Case' }))
     expect(
       screen.getByText('This case was closed: No one from the Internal Interest team responded.')
     ).toBeInTheDocument()
@@ -869,5 +871,52 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     expect(screen.getByRole('heading', { name: 'Signed NDA Execution Form' })).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Download/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('Table filters and pagination', () => {
+  const many = Array.from({ length: 9 }, (_, i) => ({
+    ...INITIAL_PARTNERSHIP_REQUESTS[0],
+    id: `m-${i}`,
+    requestCode: `PR-${200 + i}`,
+    companyName: `Company ${String.fromCharCode(65 + i)}`,
+    daysInStage: i,
+  }))
+
+  it('shows 7 rows a page with pagination after that', async () => {
+    const user = setup()
+    render(<DashboardScreen userProfile={directorProfile} requests={many} />)
+    expect(screen.getAllByRole('row')).toHaveLength(8)
+    expect(screen.getByText('Showing 1–7 of 9')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getAllByRole('row')).toHaveLength(3)
+    expect(screen.getByText('Showing 8–9 of 9')).toBeInTheDocument()
+  })
+
+  it('filters by stage and SLA status, and sorts', async () => {
+    const user = setup()
+    const mixed = many.map((r, i) =>
+      i === 0 ? { ...r, status: 'In Progress' as const, slaStatus: 'Breached' as const } : r
+    )
+    render(<DashboardScreen userProfile={directorProfile} requests={mixed} />)
+    await user.click(screen.getByRole('button', { name: /Filters/ }))
+    await user.selectOptions(screen.getByLabelText('Stage'), 'Internal Canvas')
+    expect(screen.getAllByRole('row')).toHaveLength(2)
+    await user.selectOptions(screen.getByLabelText('Stage'), 'all')
+    await user.selectOptions(screen.getByLabelText('SLA status'), 'Breached')
+    expect(screen.getAllByRole('row')).toHaveLength(2)
+    expect(screen.getByText('Company A')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Clear all' }))
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'days')
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('Company I')
+  })
+
+  it('offers only the five statuses as chips', () => {
+    render(<DashboardScreen userProfile={directorProfile} />)
+    const chips = screen
+      .getAllByRole('button')
+      .map((b) => b.textContent ?? '')
+      .filter((t) => /^(All requests|Pending|In Progress|Completed|Closed|RFI)\d/.test(t))
+    expect(chips).toHaveLength(6)
   })
 })

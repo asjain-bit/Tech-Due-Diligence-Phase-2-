@@ -41,7 +41,13 @@ import { ValueDueDiligenceStage } from '@/components/organisms/ValueDueDiligence
 import { SponsorAssignModal } from '@/components/organisms/SponsorAssignModal'
 import { PrototypeScenarioSelect } from '@/components/molecules/PrototypeScenarioSelect'
 import { AnalysisDrawer } from '@/components/organisms/AnalysisDrawer'
-import { buildInfoEmail, hasDirectorDecided, type AdminRouting } from '@/lib/caseActions'
+import {
+  buildInfoEmail,
+  getStageLabel,
+  hasDirectorDecided,
+  type AdminRouting,
+} from '@/lib/caseActions'
+import { getDisplayStatus, type DisplayStatus } from '@/lib/caseStatus'
 import { AssessmentBrief } from '@/components/organisms/AssessmentBrief'
 import { BriefDecisionModal } from '@/components/organisms/BriefDecisionModal'
 import { ReviewersLoading } from '@/components/molecules/ReviewersLoading'
@@ -51,6 +57,7 @@ import {
   type KnowledgeBaseFile,
 } from '@/components/organisms/KnowledgeBaseUpload'
 import { PreReadSummary } from '@/components/organisms/PreReadSummary'
+import { EXISTING_KNOWLEDGE_BASE } from '@/lib/preRead'
 import { StrategyDecisionModal } from '@/components/organisms/StrategyDecisionModal'
 import {
   isQuestionnaireComplete,
@@ -174,6 +181,8 @@ const PRE_READ_CHECKS = [
   'Preparing the pre-read summary',
 ]
 
+const MAX_STRATEGY_MEMBERS = 5
+
 type StepId = 'brief' | 'canvas' | 'alignment' | 'nda' | 'value' | 'questionnaire' | 'preread'
 
 export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
@@ -249,12 +258,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   }
 
   // Strategy Team: knowledge base, generated pre-read and the decision
-  const [kbFiles, setKbFiles] = useState<KnowledgeBaseFile[]>([])
+  const [kbFiles, setKbFiles] = useState<KnowledgeBaseFile[]>(EXISTING_KNOWLEDGE_BASE)
   const [strategyModal, setStrategyModal] = useState<'proceed' | 'reject' | null>(null)
-  const [pendingStrategy, setPendingStrategy] = useState<{
-    decision: StrategyDecision
-    reason: string
-  } | null>(null)
   const [strategyDecided, setStrategyDecided] = useState(false)
   const strategyMine = request.strategyTeamMembers?.[0]?.strategyResponse
   const [lastStrategyDecision, setLastStrategyDecision] = useState<StrategyDecision | null>(null)
@@ -264,17 +269,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     strategyDone ? 'ready' : 'upload'
   )
 
-  const handleConfirmStrategyDecision = () => {
-    if (!pendingStrategy) return
+  // The reason popup is the only step: submitting it records the decision straight away
+  const handleStrategyDecision = (decision: StrategyDecision, reason: string) => {
     const response: StrategyMemberResponse = {
       documents: kbFiles.map((f) => f.name),
-      finalDecision: pendingStrategy.decision,
-      finalDecisionNote: pendingStrategy.reason,
+      finalDecision: decision,
+      finalDecisionNote: reason,
       submittedAt: 'Just now',
     }
     onSubmitReview?.(request.id, 'strategy', { response })
-    setLastStrategyDecision(pendingStrategy.decision)
-    setPendingStrategy(null)
+    setLastStrategyDecision(decision)
     setStrategyDecided(true)
     completeStep('preread')
     setReviewToast('Strategy decision submitted successfully for Director Review.')
@@ -347,6 +351,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     internalScenario === 'not-ready' &&
     !isClosedAfterBrief &&
     scenarioPrompt === 'open'
+  const showNoResponseClose =
+    isDirector && internalScenario === 'none' && !isClosedAfterBrief && scenarioPrompt === 'open'
   const showSponsorAssign =
     isDirector &&
     internalScenario === 'multiple' &&
@@ -360,6 +366,12 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     setReadyPromptOpen(false)
     setActiveStep('alignment')
   }
+  // A case with several sponsors is split: the original lists its duplicates, and each duplicate
+  // points back to the original
+  const splitCases = allRequests.filter((r) => r.splitFrom === request.id)
+  const splitParent = request.splitFrom
+    ? allRequests.find((r) => r.id === request.splitFrom)
+    : undefined
   const sponsorCandidates = (request.internalInterests ?? []).filter((m) => m.sponsor === 'Yes')
 
   // A decided strategy case has both steps behind it already
@@ -561,23 +573,27 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     onRoute?.(request.id, routing)
   }
 
-  // Status category mapper (matching external table: Pending, In Progress, At Risk, Exited)
-  const getStatusCategory = (status: string) => {
-    switch (status) {
-      case 'In Progress':
-        return 'info'
-      case 'Pending':
-        return 'warning'
-      case 'At Risk':
-        return 'error'
-      case 'Exited':
-        return 'neutral'
-      case 'Closed':
-        return 'neutral'
-      default:
-        return 'neutral'
-    }
-  }
+  // The status as this profile sees it: Pending when it waits on them, otherwise In Progress
+  const displayStatus = getDisplayStatus(
+    request,
+    isAdmin
+      ? 'admin'
+      : isSponsor
+        ? 'sponsor'
+        : isInternalTeam
+          ? 'internal'
+          : isStrategyTeam
+            ? 'strategy'
+            : 'director'
+  )
+  const getStatusCategory = (status: DisplayStatus) =>
+    ({
+      Pending: 'warning',
+      'In Progress': 'info',
+      Completed: 'success',
+      Closed: 'neutral',
+      RFI: 'error',
+    })[status] as 'warning' | 'info' | 'success' | 'neutral' | 'error'
 
   // Internal Interest Stakeholders / Respondents state
   const [stakeholders, setStakeholders] = useState<InternalInterestStakeholder[]>(
@@ -665,15 +681,15 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     setDeleteNote('')
   }
 
-  // Strategy Team state (starts with only 1 person)
+  // Strategy Team state (starts with one person, up to 5)
   const [strategyMembers, setStrategyMembers] = useState<InternalInterestStakeholder[]>(
     request.strategyTeamMembers && request.strategyTeamMembers.length > 0
-      ? request.strategyTeamMembers.slice(0, 1)
+      ? request.strategyTeamMembers
       : DEFAULT_STRATEGY_MEMBERS.slice(0, 1)
   )
   React.useEffect(() => {
     if (request.sent?.strategy && request.strategyTeamMembers?.length) {
-      setStrategyMembers(request.strategyTeamMembers.slice(0, 1))
+      setStrategyMembers(request.strategyTeamMembers)
     }
   }, [request.sent?.strategy, request.strategyTeamMembers])
 
@@ -691,12 +707,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
   // Send Review states
   const [sendTeam, setSendTeam] = useState<'strategy' | 'internal' | null>(null)
   const [showVendorForm, setShowVendorForm] = useState(false)
-  const [internalSendNote] = useState(
-    `Hi,\n\nWe have received a partnership request from ${request.companyName}. We would value your input and would like to confirm your interest in exploring this opportunity.\n\nPlease review the details in the Tech Due Diligence workspace and share your response.`
-  )
-  const [strategySendNote, setStrategySendNote] = useState(
-    `Hi,\n\nWe have received a partnership request from ${request.companyName}. Please review the strategic alignment and market expansion potential for this partnership.\n\nPlease review the details in the Tech Due Diligence workspace and share your response.`
-  )
   const [reviewToast, setReviewToast] = useState<string | null>(null)
   // Reviewer tables: edit layout until that request is sent, tracking layout afterwards
   const canEditStrategy = isDirector && !strategySent
@@ -762,7 +772,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
   // Handlers for Strategy Team
   const handleOpenAddStrategyMember = () => {
-    if (strategyMembers.length >= 2) {
+    if (strategyMembers.length >= MAX_STRATEGY_MEMBERS) {
       setMaxStrategyLimitWarning(true)
       return
     }
@@ -839,11 +849,11 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     showQuestionnaireConfirmModal ||
     briefModal ||
     showNotReadyConfirm ||
+    showNoResponseClose ||
     showSponsorAssign ||
     showSponsorReady ||
     strategyAckOpen ||
-    strategyModal ||
-    pendingStrategy
+    strategyModal
   )
 
   React.useEffect(() => {
@@ -1253,17 +1263,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         </td>
 
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          {person.source === 'manual' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                              <UserPlus className="w-3 h-3 text-slate-500" />
-                              <span>Manually Added</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
-                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
-                              <span>AI Recommended</span>
-                            </span>
-                          )}
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            <UserPlus className="w-3 h-3 text-slate-500" />
+                            <span>Manually Added</span>
+                          </span>
                         </td>
 
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
@@ -1294,17 +1297,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         </td>
 
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          {person.source === 'manual' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                              <UserPlus className="w-3 h-3 text-slate-500" />
-                              <span>Manually Added</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
-                              <Sparkles className="w-3 h-3 text-[#0f766e]" />
-                              <span>AI Recommended</span>
-                            </span>
-                          )}
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            <UserPlus className="w-3 h-3 text-slate-500" />
+                            <span>Manually Added</span>
+                          </span>
                         </td>
 
                         {canEditStrategy && (
@@ -1338,10 +1334,10 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           <div className="relative group inline-block shrink-0">
             <button
               type="button"
-              disabled={strategyMembers.length >= 1}
+              disabled={strategyMembers.length >= MAX_STRATEGY_MEMBERS}
               onClick={handleOpenAddStrategyMember}
               className={`px-4 py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs transition ${
-                strategyMembers.length >= 1
+                strategyMembers.length >= MAX_STRATEGY_MEMBERS
                   ? 'border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed shadow-none'
                   : 'border border-[#cbd5e1] bg-white text-[#0d212c] hover:bg-slate-50 hover:border-slate-400 cursor-pointer'
               }`}
@@ -1350,11 +1346,15 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
               <span>Add Member</span>
             </button>
             <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-40 whitespace-nowrap bg-[#0d212c] text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl text-center">
-              {strategyMembers.length >= 1 ? 'Only 1 member for now' : 'Add 1 member'}
+              {strategyMembers.length >= MAX_STRATEGY_MEMBERS
+                ? `Up to ${MAX_STRATEGY_MEMBERS} members`
+                : 'Add a member'}
               <div className="absolute bottom-full left-4 border-4 border-transparent border-b-[#0d212c]" />
             </div>
           </div>
-          <span className="text-xs text-[#64748b]">You can add 1 member for now.</span>
+          <span className="text-xs text-[#64748b]">
+            You can add up to {MAX_STRATEGY_MEMBERS} members.
+          </span>
         </div>
       )}
     </div>
@@ -1436,8 +1436,15 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     </>
                   ) : (
                     <StatusChip
-                      label={request.status}
-                      status={getStatusCategory(request.status)}
+                      label={displayStatus}
+                      status={getStatusCategory(displayStatus)}
+                      dot={false}
+                    />
+                  )}
+                  {splitParent && (
+                    <StatusChip
+                      label={`Split from ${splitParent.requestCode}`}
+                      status="neutral"
                       dot={false}
                     />
                   )}
@@ -1626,6 +1633,42 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                         )}
                       </p>
                     )}
+                    {splitCases.length > 0 && (
+                      <section aria-label="Split cases" className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-0.5">
+                          <h3 className="text-sm font-semibold text-[#0d212c]">Split cases</h3>
+                          <p className="text-xs text-[#64748b]">
+                            Each co-sponsor has a duplicate of this case with the same details.
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-[#e2e8f0] overflow-x-auto">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-[#f8fafc] text-[#64748b] text-[11px] uppercase tracking-wider">
+                              <tr>
+                                <th className="py-3 px-4 font-medium">Case ID</th>
+                                <th className="py-3 px-4 font-medium">Sponsor</th>
+                                <th className="py-3 px-4 font-medium">Stage</th>
+                                <th className="py-3 px-4 font-medium">Created</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#f1f5f9]">
+                              {splitCases.map((c) => (
+                                <tr key={c.id}>
+                                  <td className="py-3 px-4 font-medium text-[#0d212c]">
+                                    {c.requestCode}
+                                  </td>
+                                  <td className="py-3 px-4 text-[#0d212c]">{c.sponsors?.lead}</td>
+                                  <td className="py-3 px-4 text-[#0d212c]">{getStageLabel(c)}</td>
+                                  <td className="py-3 px-4 text-[#64748b]">
+                                    {c.auditLog[c.auditLog.length - 1]?.timestamp}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                    )}
                     {internalSection}
                   </div>
                 ))}
@@ -1648,7 +1691,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           ? 'The Strategy Team has approved this partnership.'
                           : 'Waiting for approval from the Strategy Team. Follow the reviewer below.'
                         : isDirector
-                          ? 'Choose the Strategy Team reviewer, then send the request.'
+                          ? 'Choose the Strategy Team reviewers, then send the request.'
                           : 'The Director has not sent this to the Strategy Team yet.',
                       canEditStrategy ? (
                         <button
@@ -2115,6 +2158,21 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           }
         />
       )}
+      {showNoResponseClose && (
+        <ConfirmDialog
+          title="Nobody responded"
+          description="No one from the Internal Interest team responded, so this case has been closed."
+          confirmLabel="Close Case"
+          hideCancel
+          onCancel={() => setScenarioPrompt('dismissed')}
+          onConfirm={() =>
+            onCaseAction?.(request.id, {
+              type: 'closeCase',
+              reason: 'No one from the Internal Interest team responded.',
+            })
+          }
+        />
+      )}
       {showSponsorReady && (
         <ConfirmDialog
           title="Ready to sponsor"
@@ -2150,7 +2208,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
       {sendTeam === 'internal' && (
         <SendInternalModal
           members={stakeholders}
-          defaultNote={internalSendNote}
           onClose={() => setSendTeam(null)}
           onSend={({ memberIds, questionnaire }) => {
             const members = stakeholders.filter((m) => memberIds.includes(m.id))
@@ -2181,7 +2238,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                     Send to the Strategy Team
                   </h3>
                   <p className="text-xs text-[#64748b] mt-0.5">
-                    The reviewer is notified as soon as you send it.
+                    Reviewers are notified as soon as you send it.
                   </p>
                 </div>
               </div>
@@ -2196,7 +2253,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
 
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h4 className="text-sm font-semibold text-[#0d212c]">Strategy Team reviewer</h4>
+                <h4 className="text-sm font-semibold text-[#0d212c]">Strategy Team reviewers</h4>
                 <span className="inline-flex items-center gap-1.5 text-xs text-[#64748b]">
                   <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
                   Response due in 2-3 business days
@@ -2229,19 +2286,6 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                   </li>
                 ))}
               </ul>
-
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="send-note-strategy" className="text-xs font-medium text-[#0d212c]">
-                  Note to Strategy Team
-                </label>
-                <textarea
-                  id="send-note-strategy"
-                  rows={9}
-                  value={strategySendNote}
-                  onChange={(e) => setStrategySendNote(e.target.value)}
-                  className="w-full p-3 rounded-lg border border-[#e2e8f0] text-xs sm:text-sm text-[#0d212c] focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-100 bg-white leading-relaxed resize-none"
-                />
-              </div>
             </div>
 
             <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#f1f5f9] flex-wrap">
@@ -2497,8 +2541,8 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
             <div>
               <h3 className="text-lg font-semibold text-[#0d212c]">Maximum Limit Reached</h3>
               <p className="text-xs text-[#64748b] mt-1 leading-relaxed">
-                You can add 1 strategy team member per partnership request for now. Please remove an
-                existing member to add another.
+                You can add up to {MAX_STRATEGY_MEMBERS} strategy team members per partnership
+                request. Please remove an existing member to add another.
               </p>
             </div>
             <div className="w-full mt-2">
@@ -2649,41 +2693,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
         />
       )}
 
-      {/* STRATEGY DECISION: reason popup, then a confirmation before it is recorded */}
+      {/* STRATEGY DECISION: the reason popup records the decision straight away */}
       {strategyModal && (
         <StrategyDecisionModal
           mode={strategyModal}
           onClose={() => setStrategyModal(null)}
           onConfirm={(reason) => {
-            setPendingStrategy({
-              decision: strategyModal === 'proceed' ? 'Proceed' : 'Reject',
-              reason,
-            })
+            handleStrategyDecision(strategyModal === 'proceed' ? 'Proceed' : 'Reject', reason)
             setStrategyModal(null)
           }}
         />
-      )}
-      {pendingStrategy && (
-        <ConfirmDialog
-          title="Submit your decision?"
-          description="Your decision goes to the Director. After this you will not be able to change it."
-          confirmLabel="Submit"
-          onCancel={() => setPendingStrategy(null)}
-          onConfirm={handleConfirmStrategyDecision}
-        >
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-[#64748b]">Your decision</span>
-              <span className="font-semibold text-[#0d212c]">{pendingStrategy.decision}</span>
-            </div>
-            {pendingStrategy.reason && (
-              <div className="flex flex-col gap-1 pt-2 border-t border-slate-200">
-                <span className="text-[#64748b]">Reason</span>
-                <p className="text-[#0d212c]">{pendingStrategy.reason}</p>
-              </div>
-            )}
-          </div>
-        </ConfirmDialog>
       )}
 
       {showVendorForm && (

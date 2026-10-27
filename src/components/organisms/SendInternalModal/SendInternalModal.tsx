@@ -18,7 +18,6 @@ import type { SendInternalModalProps } from './SendInternalModal.types'
 
 export const SendInternalModal: React.FC<SendInternalModalProps> = ({
   members,
-  defaultNote,
   onSend,
   onClose,
 }) => {
@@ -39,7 +38,6 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
     setVersions((prev) => [...prev, { version, label, questions: next }])
     setCurrentVersion(version)
   }
-  const [note, setNote] = useState(defaultNote)
   const [step, setStep] = useState<'questions' | 'reviewers'>('questions')
   const titleId = useId()
 
@@ -181,22 +179,6 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
                   })}
                 </div>
               </section>
-
-              <section className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="send-internal-note"
-                  className="text-sm font-semibold text-[#0d212c]"
-                >
-                  Note to Internal Interest
-                </label>
-                <textarea
-                  id="send-internal-note"
-                  rows={4}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  className="w-full p-3 rounded-lg border border-[#d6dee6] bg-white text-sm text-[#0d212c] leading-relaxed resize-none transition hover:border-[#bcc7d3] focus:outline-none focus:border-[#a3b1c2]"
-                />
-              </section>
             </>
           )}
         </div>
@@ -245,7 +227,6 @@ export const SendInternalModal: React.FC<SendInternalModalProps> = ({
                 onClick={() =>
                   onSend({
                     memberIds: selected,
-                    note,
                     questionnaire: {
                       name: getQuestionnaire(questionnaireId).name,
                       version: currentVersion,
