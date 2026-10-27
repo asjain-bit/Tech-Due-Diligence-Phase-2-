@@ -120,9 +120,21 @@ describe('ValueDueDiligenceStage', () => {
       <ValueDueDiligenceStage request={request} role="sponsor" onAction={onAction} />
     )
     expect(screen.getByRole('list', { name: 'TDD report' })).toBeInTheDocument()
+    // The report is laid out as a PDF document
+    expect(screen.getByText(/TDD_Report_PR-\d+\.pdf/)).toBeInTheDocument()
+    expect(screen.getByRole('article', { name: 'TDD report document' })).toBeInTheDocument()
+    // Each answer asks for a confirmation first
     await user.click(screen.getByRole('button', { name: 'Yes, sponsor' }))
+    expect(onAction).not.toHaveBeenCalled()
+    const yes = screen.getByRole('dialog', { name: 'Sponsor this partnership?' })
+    await user.click(within(yes).getByRole('button', { name: 'Yes, sponsor' }))
     expect(onAction).toHaveBeenCalledWith({ type: 'finalSponsor', sponsor: true })
     await user.click(screen.getByRole('button', { name: 'No, do not sponsor' }))
+    const no = screen.getByRole('dialog', { name: 'Do not sponsor?' })
+    expect(within(no).getByRole('button', { name: 'Yes, do not sponsor' }).className).toContain(
+      'bg-red-600'
+    )
+    await user.click(within(no).getByRole('button', { name: 'Yes, do not sponsor' }))
     expect(onAction).toHaveBeenCalledWith({ type: 'finalSponsor', sponsor: false })
     unmount()
     // The Director just waits, then sees the answer

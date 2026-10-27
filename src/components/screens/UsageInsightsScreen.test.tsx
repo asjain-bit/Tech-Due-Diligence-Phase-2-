@@ -1,7 +1,7 @@
 import React from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { INITIAL_PARTNERSHIP_REQUESTS } from '@/types/partnership.types'
 import { UsageInsightsScreen } from './UsageInsightsScreen'
 import { aiCost, DEFAULT_ASSUMPTIONS, manualCost, USAGE_WEEKS } from '@/lib/usageInsights'
@@ -10,7 +10,7 @@ describe('usage maths', () => {
   it('reproduces the reference week', () => {
     const week = USAGE_WEEKS[2]
     expect(Math.round(manualCost(week, DEFAULT_ASSUMPTIONS))).toBe(2400)
-    expect(Math.round(aiCost(week, DEFAULT_ASSUMPTIONS))).toBe(158)
+    expect(Math.round(aiCost(week, DEFAULT_ASSUMPTIONS))).toBe(159)
   })
 })
 
@@ -21,7 +21,7 @@ describe('UsageInsightsScreen', () => {
     expect(screen.getByText('20')).toBeInTheDocument()
     expect(screen.getByText('20 assessment calls')).toBeInTheDocument()
     expect(screen.getByText('18.6M')).toBeInTheDocument()
-    expect(screen.getByText('$158')).toBeInTheDocument()
+    expect(screen.getByText('$159')).toBeInTheDocument()
     expect(screen.getByLabelText('Week')).toHaveValue('2')
   })
 
@@ -44,18 +44,28 @@ describe('UsageInsightsScreen', () => {
     unmount()
 
     render(<UsageInsightsScreen canRecalculate />)
+    // No token price inputs: only the embedding token price is added
+    expect(screen.queryByLabelText(/Input Token/)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/Embedding token price/)).toHaveValue(0.13)
     const hours = screen.getByLabelText(/Hours spent on manual assessments/)
     expect(hours).toHaveValue(4)
     expect(screen.getByLabelText('Cost per hour')).toHaveValue(30)
     await user.click(screen.getByRole('button', { name: 'Summary' }))
     expect(screen.getByText('$2,400')).toBeInTheDocument()
     expect(screen.getByText('15x')).toBeInTheDocument()
-    expect(screen.getByText('$2,242')).toBeInTheDocument()
+    expect(screen.getByText('$2,241')).toBeInTheDocument()
     await user.clear(hours)
     await user.type(hours, '2')
     // Nothing changes until Recalculate
     expect(screen.getByText('$2,400')).toBeInTheDocument()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     await user.click(screen.getByRole('button', { name: /Recalculate/i }))
+    // A circular progress runs on the cost card before the new numbers show
+    expect(screen.getByRole('status', { name: 'Recalculating' })).toBeInTheDocument()
+    expect(screen.getByText('$2,400')).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(1600))
+    vi.useRealTimers()
+    expect(screen.queryByRole('status', { name: 'Recalculating' })).not.toBeInTheDocument()
     expect(screen.getByText('$1,200')).toBeInTheDocument()
     expect(screen.getByText('Total hours 40 | Cost per hour $30')).toBeInTheDocument()
     expect(screen.getByText(/Last recalculated/)).toBeInTheDocument()
@@ -74,7 +84,7 @@ describe('UsageInsightsScreen', () => {
     expect(screen.getByRole('img', { name: /Manual cost versus AI cost/ })).toBeInTheDocument()
   })
 
-  it('lists the cases as Completed, In Progress and Closed, with their workflow stage', async () => {
+  it('lists the cases as Completed, In Progress and Closed, with their case ID', async () => {
     const user = userEvent.setup()
     const base = INITIAL_PARTNERSHIP_REQUESTS[2]
     const cases = [
@@ -92,7 +102,9 @@ describe('UsageInsightsScreen', () => {
     expect(
       within(screen.getByRole('list', { name: 'Completed' })).getByText('Done Co')
     ).toBeVisible()
-    expect(within(screen.getByRole('list', { name: 'Closed' })).getByText('Closed')).toBeVisible()
+    expect(
+      within(screen.getByRole('list', { name: 'Closed' })).getByText(base.requestCode)
+    ).toBeVisible()
     expect(
       within(screen.getByRole('list', { name: 'In Progress' })).getAllByRole('listitem')
     ).toHaveLength(4)

@@ -361,12 +361,16 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     scenarioPrompt === 'open'
   const showNoResponseClose =
     isDirector && internalScenario === 'none' && !isClosedAfterBrief && scenarioPrompt === 'open'
-  const showSponsorAssign =
+  // Several people are ready to sponsor: acknowledge that first, then assign the sponsors
+  const [multipleAcknowledged, setMultipleAcknowledged] = useState(false)
+  const waitingOnSponsors =
     isDirector &&
     internalScenario === 'multiple' &&
     !request.sponsors &&
     !isClosedAfterBrief &&
     scenarioPrompt === 'open'
+  const showMultipleAck = waitingOnSponsors && !multipleAcknowledged
+  const showSponsorAssign = waitingOnSponsors && multipleAcknowledged
   // One person is ready to sponsor: say so, then move on to Strategic Alignment either way
   const showSponsorReady =
     isDirector && readyPromptOpen && internalScenario === 'single' && Boolean(request.sponsors)
@@ -458,6 +462,25 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     return (open ?? stepDefs[stepDefs.length - 1]).id
   })
 
+  // A real submission from the Internal Interest team (no prototype outcome picked): acknowledge it
+  const [internalAckOpen, setInternalAckOpen] = useState(false)
+  const internalApprovedBefore = React.useRef(internalApproved)
+  React.useEffect(() => {
+    if (
+      isDirector &&
+      !internalApprovedBefore.current &&
+      internalApproved &&
+      !request.internalOutcome &&
+      activeStep === 'canvas'
+    ) {
+      setInternalAckOpen(true)
+    }
+    internalApprovedBefore.current = internalApproved
+  }, [isDirector, internalApproved, request.internalOutcome, activeStep])
+  const acknowledgeInternal = () => {
+    setInternalAckOpen(false)
+    setActiveStep('alignment')
+  }
   // Once the Strategy Team has approved, the Director acknowledges it and moves on to the NDA stage
   const [strategyAckOpen, setStrategyAckOpen] = useState(false)
   const strategyApprovedBefore = React.useRef(strategyApproved)
@@ -865,7 +888,9 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
     briefModal ||
     showNotReadyConfirm ||
     showNoResponseClose ||
+    showMultipleAck ||
     showSponsorAssign ||
+    internalAckOpen ||
     showSponsorReady ||
     strategyAckOpen ||
     strategyModal
@@ -1603,6 +1628,7 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
                           value={request.internalOutcome?.scenario}
                           onChange={(scenario) => {
                             setScenarioPrompt('open')
+                            setMultipleAcknowledged(false)
                             if (scenario === 'single') setReadyPromptOpen(true)
                             onCaseAction?.(request.id, { type: 'internalScenario', scenario })
                           }}
@@ -2208,6 +2234,26 @@ export const PartnershipDetail: React.FC<PartnershipDetailProps> = ({
           hideCancel
           onCancel={acknowledgeStrategy}
           onConfirm={acknowledgeStrategy}
+        />
+      )}
+      {showMultipleAck && (
+        <ConfirmDialog
+          title="Internal Interest has responded"
+          description={`${sponsorCandidates.length} people from the Internal Interest team are ready to sponsor this request. Choose the lead sponsor next.`}
+          confirmLabel="Proceed"
+          hideCancel
+          onCancel={() => setScenarioPrompt('dismissed')}
+          onConfirm={() => setMultipleAcknowledged(true)}
+        />
+      )}
+      {internalAckOpen && (
+        <ConfirmDialog
+          title="Internal Interest has responded"
+          description="The Internal Interest team has responded and is ready to sponsor this request. Moving to the Strategic Alignment stage."
+          confirmLabel="Proceed"
+          hideCancel
+          onCancel={acknowledgeInternal}
+          onConfirm={acknowledgeInternal}
         />
       )}
       {showSponsorAssign && (

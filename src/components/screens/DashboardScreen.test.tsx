@@ -683,6 +683,9 @@ describe('Internal Interest outcomes', () => {
     render(<Shared profile={directorProfile} initial={[sentToInternal]} />)
     await openCase(user)
     await simulate(user, 'multiple')
+    // The response is acknowledged first, then the sponsors are assigned
+    const ack = screen.getByRole('dialog', { name: 'Internal Interest has responded' })
+    await user.click(within(ack).getByRole('button', { name: 'Proceed' }))
     const popup = screen.getByRole('dialog', { name: 'Assign sponsors' })
     await user.click(within(popup).getByRole('radio', { name: /Parag Agarwal/ }))
     await user.click(within(popup).getByRole('checkbox', { name: 'Riza Sayeed' }))
@@ -857,6 +860,12 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     expect(screen.getByRole('list', { name: 'TDD report' })).toBeInTheDocument()
     // The sponsor's final answer completes the stage
     await user.click(screen.getByRole('button', { name: 'Yes, sponsor' }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Sponsor this partnership?' })).getByRole(
+        'button',
+        { name: 'Yes, sponsor' }
+      )
+    )
     expect(stepper.getByRole('button', { name: /Value & Due Diligence/ })).toHaveTextContent(
       'Completed'
     )

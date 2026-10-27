@@ -7,7 +7,7 @@
  * Used in: HomePage
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   Calendar,
   ChevronDown,
@@ -34,7 +34,8 @@ import {
 import { INITIAL_PARTNERSHIP_REQUESTS, type PartnershipRequest } from '@/types/partnership.types'
 
 const TEAL = '#36c0c9'
-const ORANGE = '#ea580c'
+// The dark navy of the M42 logo
+const DARK = '#0d212c'
 
 const INPUT_ROWS: {
   key: keyof UsageAssumptions
@@ -53,33 +54,9 @@ const INPUT_ROWS: {
   },
   { key: 'costPerHour', label: 'Cost per hour', prefix: '$', unit: 'USD', step: '1' },
   {
-    key: 'inputTokenPrice',
-    label: 'Input Token Price',
-    hint: '(per 1M input tokens)',
-    prefix: '$',
-    unit: 'USD',
-    step: '0.01',
-  },
-  {
-    key: 'outputTokenPrice',
-    label: 'Output Token Price',
-    hint: '(per 1M output tokens)',
-    prefix: '$',
-    unit: 'USD',
-    step: '0.01',
-  },
-  {
-    key: 'inputVoicePrice',
-    label: 'Input Token (Voice)',
-    hint: '(per 1M voice tokens)',
-    prefix: '$',
-    unit: 'USD',
-    step: '0.01',
-  },
-  {
-    key: 'outputVoicePrice',
-    label: 'Output Token (Voice)',
-    hint: '(per 1M voice tokens)',
+    key: 'embeddingTokenPrice',
+    label: 'Embedding token price',
+    hint: '(per 1M tokens · uploaded files)',
     prefix: '$',
     unit: 'USD',
     step: '0.01',
@@ -112,7 +89,7 @@ const CostChart: React.FC<{
   labels: string[]
 }> = ({ manual, ai, selected, labels }) => {
   const W = 600
-  const H = 400
+  const H = 280
   const left = 44
   const right = 124
   const top = 16
@@ -148,12 +125,12 @@ const CostChart: React.FC<{
         strokeDasharray="3 3"
       />
       <polyline points={line(manual)} fill="none" stroke={TEAL} strokeWidth="2.5" />
-      <polyline points={line(ai)} fill="none" stroke={ORANGE} strokeWidth="2.5" />
+      <polyline points={line(ai)} fill="none" stroke={DARK} strokeWidth="2.5" />
       {manual.map((v, i) => (
         <circle key={`m${i}`} cx={x(i)} cy={y(v)} r={i === selected ? 5 : 3.5} fill={TEAL} />
       ))}
       {ai.map((v, i) => (
-        <circle key={`a${i}`} cx={x(i)} cy={y(v)} r={i === selected ? 5 : 3.5} fill={ORANGE} />
+        <circle key={`a${i}`} cx={x(i)} cy={y(v)} r={i === selected ? 5 : 3.5} fill={DARK} />
       ))}
       <text x={x(last) + 12} y={y(manual[last]) + 4} fontSize="12" fontWeight="600" fill="#0d212c">
         Manual {formatUsd(manual[last])}
@@ -218,12 +195,20 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
   const setValue = (key: keyof UsageAssumptions, raw: string) =>
     setDraft((prev) => ({ ...prev, [key]: raw === '' ? 0 : Math.max(0, Number(raw)) }))
 
+  // A short circular progress runs on the cost card, then the updated numbers show
+  const [recalculating, setRecalculating] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => (timer.current ? clearTimeout(timer.current) : undefined), [])
   const recalculate = () => {
-    if (onRecalculate) onRecalculate(draft)
-    else {
-      setOwnAssumptions(draft)
-      setOwnRecalculatedAt(new Date().toLocaleString('en-GB'))
-    }
+    setRecalculating(true)
+    timer.current = setTimeout(() => {
+      if (onRecalculate) onRecalculate(draft)
+      else {
+        setOwnAssumptions(draft)
+        setOwnRecalculatedAt(new Date().toLocaleString('en-GB'))
+      }
+      setRecalculating(false)
+    }, 1500)
   }
 
   const groups = groupAssessmentsByStatus(requests)
@@ -315,7 +300,7 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
               {INPUT_ROWS.map((row) => (
                 <li
                   key={row.key}
-                  className="flex items-center justify-between gap-4 py-4 first:pt-0"
+                  className="flex items-center justify-between gap-4 py-3 first:pt-0"
                 >
                   <label htmlFor={`usage-${row.key}`} className="flex flex-col min-w-0">
                     <span className="text-sm font-semibold text-[#0d212c]">{row.label}</span>
@@ -357,8 +342,9 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
                   )}
                   <button
                     type="button"
+                    disabled={recalculating}
                     onClick={recalculate}
-                    className="h-9 px-4 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer transition"
+                    className="h-9 px-4 rounded-lg bg-[#36c0c9] hover:bg-[#2fb0b9] disabled:opacity-60 disabled:cursor-wait text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer transition"
                   >
                     Recalculate
                   </button>
@@ -372,7 +358,29 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-5 sm:p-6 flex flex-col gap-4">
+          <div className="relative bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-5 sm:p-6 flex flex-col gap-4">
+            {recalculating && (
+              <div
+                role="status"
+                aria-label="Recalculating"
+                className="absolute inset-0 z-10 rounded-2xl bg-white/90 flex flex-col items-center justify-center gap-3"
+              >
+                <svg viewBox="0 0 48 48" className="w-12 h-12 animate-spin" aria-hidden="true">
+                  <circle cx="24" cy="24" r="20" fill="none" stroke="#e2e8f0" strokeWidth="4" />
+                  <circle
+                    cx="24"
+                    cy="24"
+                    r="20"
+                    fill="none"
+                    stroke={TEAL}
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray="42 126"
+                  />
+                </svg>
+                <span className="text-sm font-medium text-[#475569]">Recalculating…</span>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-4 flex-wrap">
                 <h3 className="text-base font-semibold text-[#0d212c]">Manual cost vs AI cost</h3>
@@ -383,7 +391,7 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
                       Manual cost
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <span className="w-4 h-0.5" style={{ backgroundColor: ORANGE }} />
+                      <span className="w-4 h-0.5" style={{ backgroundColor: DARK }} />
                       AI cost
                     </span>
                   </div>
@@ -425,7 +433,7 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
               />
             ) : (
               <dl className="flex flex-col flex-1 border-t border-[#e2e8f0]/70">
-                <div className="grid grid-cols-2 py-8 flex-1 items-center">
+                <div className="grid grid-cols-2 py-5 flex-1 items-center">
                   <div className="flex flex-col gap-2 pr-6">
                     <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
                       Manual cost
@@ -448,7 +456,7 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 py-8 flex-1 items-center border-t border-[#e2e8f0]/70">
+                <div className="grid grid-cols-2 py-5 flex-1 items-center border-t border-[#e2e8f0]/70">
                   <div className="flex flex-col gap-2 pr-6">
                     <dt className="text-sm font-semibold text-[#0d212c] flex items-center gap-1.5">
                       Estimated ROI
@@ -494,14 +502,14 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
                   )}
                   {group.items.slice(0, shown).map((item) => (
                     <li
-                      key={`${item.name}-${item.stage}`}
+                      key={`${item.name}-${item.code}`}
                       className="flex items-center justify-between gap-4 py-3 text-sm"
                     >
                       <span className="text-[#0d212c] truncate" title={item.name}>
                         {item.name}
                       </span>
                       <span className="text-[#36c0c9] font-medium whitespace-nowrap">
-                        {item.stage}
+                        {item.code}
                       </span>
                     </li>
                   ))}
