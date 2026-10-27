@@ -47,12 +47,35 @@ const INPUT_ROWS: {
 }[] = [
   {
     key: 'hoursPerAssessment',
-    label: 'Hours spent on manual assessments',
-    hint: '(per assessment)',
+    label: 'Manual hours per output',
+    hint: '(per report or SOW)',
     unit: 'hours',
     step: '1',
   },
-  { key: 'costPerHour', label: 'Cost per hour', prefix: '$', unit: 'USD', step: '1' },
+  {
+    key: 'costPerHour',
+    label: 'Resource cost per hour',
+    hint: '(cost of the person doing it manually)',
+    prefix: '$',
+    unit: 'USD',
+    step: '1',
+  },
+  {
+    key: 'inputTokenPrice',
+    label: 'Input token price',
+    hint: '(per 1M input tokens)',
+    prefix: '$',
+    unit: 'USD',
+    step: '0.01',
+  },
+  {
+    key: 'outputTokenPrice',
+    label: 'Output token price',
+    hint: '(per 1M output tokens)',
+    prefix: '$',
+    unit: 'USD',
+    step: '0.01',
+  },
   {
     key: 'embeddingTokenPrice',
     label: 'Embedding token price',
@@ -60,6 +83,14 @@ const INPUT_ROWS: {
     prefix: '$',
     unit: 'USD',
     step: '0.01',
+  },
+  {
+    key: 'searchCreditPrice',
+    label: 'Price per search credit',
+    hint: '(web search)',
+    prefix: '$',
+    unit: 'USD',
+    step: '0.001',
   },
 ]
 
@@ -162,7 +193,6 @@ export interface UsageInsightsScreenProps {
   canRecalculate?: boolean
   /** The inputs the numbers are calculated from, kept by the page so every profile sees them */
   assumptions?: UsageAssumptions
-  recalculatedAt?: string | null
   onRecalculate?: (assumptions: UsageAssumptions) => void
 }
 
@@ -170,16 +200,12 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
   requests = INITIAL_PARTNERSHIP_REQUESTS,
   canRecalculate = false,
   assumptions: sharedAssumptions,
-  recalculatedAt: sharedRecalculatedAt,
   onRecalculate,
 }) => {
   const [weekIndex, setWeekIndex] = useState(DEFAULT_WEEK_INDEX)
   const [ownAssumptions, setOwnAssumptions] = useState<UsageAssumptions>(DEFAULT_ASSUMPTIONS)
-  const [ownRecalculatedAt, setOwnRecalculatedAt] = useState<string | null>(null)
   // The numbers use the last recalculated inputs; the Admin edits a draft until then
   const assumptions = sharedAssumptions ?? ownAssumptions
-  const recalculatedAt =
-    sharedRecalculatedAt === undefined ? ownRecalculatedAt : sharedRecalculatedAt
   const [draft, setDraft] = useState<UsageAssumptions>(assumptions)
   useEffect(() => setDraft(assumptions), [assumptions])
   const [view, setView] = useState<'chart' | 'table'>('chart')
@@ -205,7 +231,6 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
       if (onRecalculate) onRecalculate(draft)
       else {
         setOwnAssumptions(draft)
-        setOwnRecalculatedAt(new Date().toLocaleString('en-GB'))
       }
       setRecalculating(false)
     }, 1500)
@@ -332,14 +357,12 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
               ))}
             </ul>
             <div className="pt-4 flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-xs text-[#94a3b8]">AI cost includes text + voice tokens</p>
-              {canRecalculate ? (
+              <p className="text-xs text-[#94a3b8]">
+                AI cost includes model + web search
+                {!canRecalculate && ' · Only an admin can recalculate'}
+              </p>
+              {canRecalculate && (
                 <div className="flex items-center gap-3">
-                  {recalculatedAt && (
-                    <span className="text-xs text-[#64748b]">
-                      Last recalculated {recalculatedAt}
-                    </span>
-                  )}
                   <button
                     type="button"
                     disabled={recalculating}
@@ -349,11 +372,6 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
                     Recalculate
                   </button>
                 </div>
-              ) : (
-                <span className="text-xs text-[#64748b]">
-                  Only the Partnership Admin can recalculate.
-                  {recalculatedAt && ` Last recalculated ${recalculatedAt}.`}
-                </span>
               )}
             </div>
           </div>
@@ -494,7 +512,10 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
         <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-5 sm:p-6 flex flex-col gap-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:divide-x md:divide-[#f1f5f9]">
             {groups.map((group) => (
-              <div key={group.title} className="flex flex-col gap-3 md:first:pl-0 md:pl-6">
+              <div
+                key={group.title}
+                className="flex flex-col gap-3 md:first:pl-0 md:pl-6 md:pr-6 md:last:pr-0"
+              >
                 <h3 className="text-base font-semibold text-[#0d212c]">{group.title}</h3>
                 <ul aria-label={group.title} className="flex flex-col divide-y divide-[#f1f5f9]">
                   {group.items.length === 0 && (
@@ -508,7 +529,7 @@ export const UsageInsightsScreen: React.FC<UsageInsightsScreenProps> = ({
                       <span className="text-[#0d212c] truncate" title={item.name}>
                         {item.name}
                       </span>
-                      <span className="text-[#36c0c9] font-medium whitespace-nowrap">
+                      <span className="text-[#36c0c9] font-medium whitespace-nowrap pl-3 shrink-0">
                         {item.code}
                       </span>
                     </li>

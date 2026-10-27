@@ -74,10 +74,10 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText('M42 admin')).not.toBeInTheDocument()
 
     expectKpis([
-      ['Awaiting My Decision', 'Initial reviews and escalations.'],
-      ['Internal Canvas', 'Awaiting team responses.'],
-      ['NDA & Discovery', 'In the current stage.'],
-      ['Alignment Pack', 'Awaiting preparation or review.'],
+      ['Pending', 'Waiting on your action.'],
+      ['Completed This Month', 'Requests completed this month.'],
+      ['SLA Breached', 'Requests past their SLA.'],
+      ['Closed', 'Closed or exited requests.'],
     ])
   })
 
@@ -146,10 +146,10 @@ describe('DashboardScreen', () => {
     expect(row).toHaveTextContent('Nadia Al-Farsi')
     expect(screen.getByRole('button', { name: /All requests/ })).toHaveTextContent('5')
     expectKpis([
-      ['Awaiting Review', 'New requests to assess.'],
+      ['Pending', 'New requests to assess.'],
       ['Reviewed This Month', 'Decisions recorded this month.'],
       ['Proceeded', 'Forwarded to Director.'],
-      ['Rejected', 'Closed at admin review.'],
+      ['Closed', 'Closed at admin review.'],
     ])
   })
 
@@ -352,9 +352,9 @@ describe('DashboardScreen', () => {
     // Four KPI cards, scoped to the reviewer's own questionnaires
     expectKpis([
       ['Pending Responses', 'Assigned questionnaires awaiting submission.'],
-      ['Submitted', 'Questionnaires submitted by you.'],
-      ['Proceed Recommendations', 'Your submitted proceed verdicts.'],
-      ['Reject Recommendations', 'Your submitted reject verdicts.'],
+      ['Completed This Month', 'Requests completed this month.'],
+      ['Proceed Recommendations', 'Requests you responded to with Proceed.'],
+      ['SLA Breached', 'Requests past their SLA.'],
     ])
 
     // Vendor Name column should NOT be rendered in outside table
@@ -376,9 +376,9 @@ describe('DashboardScreen', () => {
 
     expectKpis([
       ['Pending Reviews', 'Strategic assessments awaiting your verdict.'],
-      ['Verdicts Submitted', 'Strategic assessments completed by you.'],
-      ['Proceed Recommendations', 'Your submitted proceed verdicts.'],
-      ['Reject Recommendations', 'Your submitted reject verdicts.'],
+      ['Completed This Month', 'Requests completed this month.'],
+      ['Proceed Recommendations', 'Requests you responded to with Proceed.'],
+      ['SLA Breached', 'Requests past their SLA.'],
     ])
 
     // Vendor Name column should NOT be rendered in outside table
@@ -802,10 +802,10 @@ describe('NDA & Discovery, Value and the Sponsor profile', () => {
     expect(screen.getByText('GenomicX MENA FZ-LLC')).toBeInTheDocument()
     expect(screen.queryByText('MedTech Innovations')).not.toBeInTheDocument()
     expectKpis([
-      ['Assigned Requests', 'Requests assigned to your ownership.'],
-      ['Due Diligence Pending', 'Assigned requests not yet completed.'],
-      ['Completed', 'Due diligence completed by you.'],
-      ['Overdue', 'Assigned tasks past their deadline.'],
+      ['Pending', 'Waiting on your action.'],
+      ['Completed This Month', 'Partnerships you sponsored this month.'],
+      ['SLA Breached', 'Requests past their SLA.'],
+      ['Assigned Requests', 'Requests under your ownership.'],
     ])
   })
 
@@ -933,5 +933,13 @@ describe('Table filters and pagination', () => {
       .map((b) => b.textContent ?? '')
       .filter((t) => /^(All requests|Pending|In Progress|Completed|Closed|RFI)\d/.test(t))
     expect(chips).toHaveLength(6)
+  })
+
+  it('shows a Closed request with a red chip', () => {
+    const closed = { ...INITIAL_PARTNERSHIP_REQUESTS[0], status: 'Closed' as const }
+    render(<DashboardScreen userProfile={directorProfile} requests={[closed]} />)
+    const row = screen.getByText('MedTech Innovations').closest('tr')!
+    const chips = within(row).getAllByText('Closed')
+    expect(chips.some((c) => c.closest('[class*="c5221f"]') !== null)).toBe(true)
   })
 })

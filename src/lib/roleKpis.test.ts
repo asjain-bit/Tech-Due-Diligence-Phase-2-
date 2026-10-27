@@ -22,38 +22,95 @@ const withReviewer = (status: string, decision: string): PartnershipRequest => (
 const approval = (status: 'approved' | 'declined') => ({ status, by: 'x', date: 'y' })
 const values = (kpis: { value: number }[]) => kpis.map((k) => k.value)
 
+const NOW = new Date('2026-10-23T10:00:00Z')
+const breachedCase = (over: Partial<PartnershipRequest> = {}): PartnershipRequest => ({
+  ...base,
+  slaStatus: 'Breached',
+  ...over,
+})
+
 describe('role KPIs', () => {
-  it('counts the Internal Interest reviewer own questionnaires only', () => {
+  it('counts the Internal Interest reviewer own responses, completions and SLA breaches', () => {
+    // Cases the Director sent to the team, in the Internal Canvas stage
+    const sent = (status: string, decision: string): PartnershipRequest => ({
+      ...withReviewer(status, decision),
+      status: 'In Progress',
+      decision: { status: 'proceeded', date: 'x' },
+      sent: { internal: true },
+    })
     const cases = [
-      withReviewer('Pending', '-'),
-      withReviewer('Completed', 'Proceed'),
-      withReviewer('Completed', 'Proceed'),
-      withReviewer('Completed', 'Reject'),
+      sent('Pending', '-'),
+      sent('Completed', 'Proceed'),
+      sent('Completed', 'Proceed'),
+      sent('Completed', 'Reject'),
+      {
+        ...sent('Pending', '-'),
+        slaStatus: 'Breached' as const,
+        value: { sponsoredOn: '12 Oct 2026' },
+      },
+      { ...sent('Pending', '-'), slaStatus: 'Breached' as const, status: 'Closed' as const },
     ]
-    expect(values(internalInterestKpis(cases))).toEqual([1, 3, 2, 1])
+    const kpis = internalInterestKpis(cases, NOW)
+    expect(kpis.map((k) => k.title)).toEqual([
+      'Pending Responses',
+      'Completed This Month',
+      'Proceed Recommendations',
+      'SLA Breached',
+    ])
+    // Pending: only the case still waiting on the reviewer; closed cases are not counted as breached
+    expect(values(kpis)).toEqual([1, 1, 2, 1])
+    expect(kpis[2].caption).toBe('Requests you responded to with Proceed.')
   })
 
-  it('counts the Strategy Lead verdicts, leaving pending ones out of Proceed and Reject', () => {
+  it('counts the Strategy Lead proceed verdicts, completions and SLA breaches', () => {
     const cases: PartnershipRequest[] = [
       { ...base, stageApprovals: {} },
       { ...base, stageApprovals: { strategy: approval('approved') } },
       { ...base, stageApprovals: { strategy: approval('declined') } },
       { ...base, stageApprovals: { strategy: approval('approved') } },
+      { ...breachedCase(), value: { sponsoredOn: '3 Oct 2026' } },
     ]
-    expect(values(strategyLeadKpis(cases))).toEqual([1, 3, 2, 1])
+    const kpis = strategyLeadKpis(cases, NOW)
+    expect(kpis.map((k) => k.title)).toEqual([
+      'Pending Reviews',
+      'Completed This Month',
+      'Proceed Recommendations',
+      'SLA Breached',
+    ])
+    expect(values(kpis)).toEqual([0, 1, 2, 1])
   })
 
-  it('counts the sponsor cases, with no overdue count while there are no deadlines', () => {
+  it('counts the sponsor cases: pending, completed this month, SLA breached and assigned', () => {
+    const atValue = (over: Partial<PartnershipRequest> = {}): PartnershipRequest => ({
+      ...base,
+      status: 'In Progress',
+      decision: { status: 'proceeded', date: 'x' },
+      stageApprovals: {
+        internal: approval('approved'),
+        strategy: approval('approved'),
+      },
+      alignmentPackOn: 'x',
+      discovery: { notes: [], recordings: [], proceededOn: 'x' },
+      ...over,
+    })
     const cases: PartnershipRequest[] = [
-      { ...base, value: { sponsoredOn: '22 Oct 2026' } },
-      { ...base, value: {} },
-      { ...base, value: {} },
+      atValue({ value: { sponsoredOn: '22 Oct 2026' } }),
+      atValue({ value: { sponsoredOn: '22 Sep 2026' } }),
+      atValue({ slaStatus: 'Breached' }),
+      atValue(),
       { ...base, status: 'Closed' },
     ]
-    expect(values(sponsorKpis(cases))).toEqual([4, 2, 1, 0])
+    const kpis = sponsorKpis(cases, NOW)
+    expect(kpis.map((k) => k.title)).toEqual([
+      'Pending',
+      'Completed This Month',
+      'SLA Breached',
+      'Assigned Requests',
+    ])
+    expect(values(kpis)).toEqual([2, 1, 1, 5])
   })
 
-  it('counts the Partnership Admin queue, decisions this month, forwarded and rejected cases', () => {
+  it('counts the Partnership Admin queue, decisions this month, forwarded and closed cases', () => {
     const now = new Date('2026-10-23T10:00:00Z')
     const decision = (action: 'proceed' | 'reject', decidedAt?: string) => ({
       action,
@@ -71,7 +128,7 @@ describe('role KPIs', () => {
     expect(values(adminKpis(cases, now))).toEqual([2, 2, 1, 2])
   })
 
-  it('counts the Director cases by their current stage', () => {
+  it('counts the Director cases: pending, completed this month, SLA breached and closed', () => {
     const ok = approval('approved')
     const mk = (over: Partial<PartnershipRequest>): PartnershipRequest => ({
       ...base,
@@ -83,28 +140,29 @@ describe('role KPIs', () => {
     const cases: PartnershipRequest[] = [
       // Initial review waiting on the Director
       mk({ status: 'Pending', decision: undefined }),
-      // Internal Canvas sent, awaiting responses
+      // Internal Canvas sent: waiting on the team, not the Director
       mk({ sent: { internal: true } }),
-      // Strategy declined after Internal approved: an escalation
-      mk({
-        sent: { internal: true, strategy: true },
-        stageApprovals: { internal: ok, strategy: approval('declined') },
-      }),
-      // NDA & Discovery, pack ready for the Director
-      mk({
-        stageApprovals: { internal: ok, strategy: ok },
-        alignmentPackOn: 'x',
-      }),
-      // NDA & Discovery already handed on: no pack left to review
+      // NDA stage: the Director's work
+      mk({ stageApprovals: { internal: ok, strategy: ok } }),
+      // Completed this month, and last month
       mk({
         stageApprovals: { internal: ok, strategy: ok },
         alignmentPackOn: 'x',
         discovery: { notes: [], recordings: [], proceededOn: 'x' },
+        value: { sponsoredOn: '5 Oct 2026' },
       }),
-      // Closed cases count nowhere
+      mk({ value: { sponsoredOn: '5 Sep 2026' } }),
+      mk({ slaStatus: 'Breached' }),
       mk({ status: 'Closed' }),
+      mk({ status: 'Exited' }),
     ]
-    // The escalation is in Strategic Alignment with the Strategy response in, so not "awaiting"
-    expect(values(directorKpis(cases))).toEqual([2, 1, 1, 1])
+    const kpis = directorKpis(cases, NOW)
+    expect(kpis.map((k) => k.title)).toEqual([
+      'Pending',
+      'Completed This Month',
+      'SLA Breached',
+      'Closed',
+    ])
+    expect(values(kpis)).toEqual([3, 1, 1, 2])
   })
 })

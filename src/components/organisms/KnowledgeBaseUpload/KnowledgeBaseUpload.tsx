@@ -100,7 +100,7 @@ export const KnowledgeBaseUpload: React.FC<KnowledgeBaseUploadProps> = ({
       )}
 
       <div className="flex items-center gap-3 px-1 py-2 text-sm text-[#475569]">
-        <Info className="w-5 h-5 shrink-0 text-[#0284c7]" aria-hidden="true" />
+        <Info className="w-5 h-5 shrink-0 text-slate-400" aria-hidden="true" />
         <span>
           Only the documents selected here will be used. The agent will analyse the uploaded
           documents to generate the pre-read summary.

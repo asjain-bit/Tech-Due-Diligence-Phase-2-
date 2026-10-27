@@ -23,7 +23,6 @@ export default function HomePage() {
   const [requests, setRequests] = useState<PartnershipRequest[]>(INITIAL_PARTNERSHIP_REQUESTS)
   // The Value/ROI inputs the Partnership Admin last recalculated, shown to every profile
   const [usageAssumptions, setUsageAssumptions] = useState<UsageAssumptions>(DEFAULT_ASSUMPTIONS)
-  const [recalculatedAt, setRecalculatedAt] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
   const handleLogin = (profile: UserProfile) => {
@@ -83,10 +82,8 @@ export default function HomePage() {
               requests={requests}
               canRecalculate={userProfile.id === 'partnership-admin'}
               assumptions={usageAssumptions}
-              recalculatedAt={recalculatedAt}
               onRecalculate={(next) => {
                 setUsageAssumptions(next)
-                setRecalculatedAt(new Date().toLocaleString('en-GB'))
               }}
             />
           ) : (

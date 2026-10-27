@@ -9,8 +9,8 @@ import { aiCost, DEFAULT_ASSUMPTIONS, manualCost, USAGE_WEEKS } from '@/lib/usag
 describe('usage maths', () => {
   it('reproduces the reference week', () => {
     const week = USAGE_WEEKS[2]
-    expect(Math.round(manualCost(week, DEFAULT_ASSUMPTIONS))).toBe(2400)
-    expect(Math.round(aiCost(week, DEFAULT_ASSUMPTIONS))).toBe(159)
+    expect(Math.round(manualCost(week, DEFAULT_ASSUMPTIONS))).toBe(4200)
+    expect(Math.round(aiCost(week, DEFAULT_ASSUMPTIONS))).toBe(154)
   })
 })
 
@@ -21,7 +21,7 @@ describe('UsageInsightsScreen', () => {
     expect(screen.getByText('20')).toBeInTheDocument()
     expect(screen.getByText('20 assessment calls')).toBeInTheDocument()
     expect(screen.getByText('18.6M')).toBeInTheDocument()
-    expect(screen.getByText('$159')).toBeInTheDocument()
+    expect(screen.getByText('$154')).toBeInTheDocument()
     expect(screen.getByLabelText('Week')).toHaveValue('2')
   })
 
@@ -40,35 +40,42 @@ describe('UsageInsightsScreen', () => {
     const { unmount } = render(<UsageInsightsScreen />)
     // Everyone else sees the inputs, read-only, and no Recalculate button
     expect(screen.queryByRole('button', { name: /Recalculate/i })).not.toBeInTheDocument()
-    expect(screen.getByLabelText(/Hours spent on manual assessments/)).toBeDisabled()
+    expect(screen.getByLabelText(/Manual hours per output/)).toBeDisabled()
     unmount()
 
     render(<UsageInsightsScreen canRecalculate />)
-    // No token price inputs: only the embedding token price is added
-    expect(screen.queryByLabelText(/Input Token/)).not.toBeInTheDocument()
-    expect(screen.getByLabelText(/Embedding token price/)).toHaveValue(0.13)
-    const hours = screen.getByLabelText(/Hours spent on manual assessments/)
-    expect(hours).toHaveValue(4)
-    expect(screen.getByLabelText('Cost per hour')).toHaveValue(30)
+    // The six inputs of the calculation
+    expect(screen.getAllByRole('spinbutton').map((i) => (i as HTMLInputElement).value)).toEqual([
+      '6',
+      '35',
+      '1.25',
+      '10',
+      '0.13',
+      '0.008',
+    ])
+    expect(screen.getByText('AI cost includes model + web search')).toBeInTheDocument()
+    const hours = screen.getByLabelText(/Manual hours per output/)
+    expect(hours).toHaveValue(6)
+    expect(screen.getByLabelText(/Resource cost per hour/)).toHaveValue(35)
     await user.click(screen.getByRole('button', { name: 'Summary' }))
-    expect(screen.getByText('$2,400')).toBeInTheDocument()
-    expect(screen.getByText('15x')).toBeInTheDocument()
-    expect(screen.getByText('$2,241')).toBeInTheDocument()
+    expect(screen.getByText('$4,200')).toBeInTheDocument()
+    expect(screen.getByText('27x')).toBeInTheDocument()
+    expect(screen.getByText('$4,046')).toBeInTheDocument()
     await user.clear(hours)
     await user.type(hours, '2')
     // Nothing changes until Recalculate
-    expect(screen.getByText('$2,400')).toBeInTheDocument()
+    expect(screen.getByText('$4,200')).toBeInTheDocument()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     await user.click(screen.getByRole('button', { name: /Recalculate/i }))
     // A circular progress runs on the cost card before the new numbers show
     expect(screen.getByRole('status', { name: 'Recalculating' })).toBeInTheDocument()
-    expect(screen.getByText('$2,400')).toBeInTheDocument()
+    expect(screen.getByText('$4,200')).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(1600))
     vi.useRealTimers()
     expect(screen.queryByRole('status', { name: 'Recalculating' })).not.toBeInTheDocument()
-    expect(screen.getByText('$1,200')).toBeInTheDocument()
-    expect(screen.getByText('Total hours 40 | Cost per hour $30')).toBeInTheDocument()
-    expect(screen.getByText(/Last recalculated/)).toBeInTheDocument()
+    expect(screen.getByText('$1,400')).toBeInTheDocument()
+    expect(screen.getByText('Total hours 40 | Cost per hour $35')).toBeInTheDocument()
+    expect(screen.queryByText(/Last recalculated/)).not.toBeInTheDocument()
   })
 
   it('switches between the chart and the summary', async () => {

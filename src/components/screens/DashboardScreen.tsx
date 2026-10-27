@@ -202,8 +202,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       Pending: 'warning',
       'In Progress': 'info',
       Completed: 'success',
-      Closed: 'neutral',
-      RFI: 'error',
+      Closed: 'error',
+      RFI: 'neutral',
     })[status] as 'warning' | 'info' | 'success' | 'neutral' | 'error'
 
   const notify = (message: string) => {

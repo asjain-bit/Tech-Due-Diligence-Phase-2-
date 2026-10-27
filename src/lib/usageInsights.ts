@@ -13,6 +13,8 @@ export interface UsageWeek {
   tokensM: number
   /** Tokens embedded from uploaded files, in millions */
   embeddingTokensM: number
+  /** Web search credits used */
+  searchCredits: number
 }
 
 export const USAGE_WEEKS: UsageWeek[] = [
@@ -22,6 +24,7 @@ export const USAGE_WEEKS: UsageWeek[] = [
     calls: 14,
     tokensM: 13.6,
     embeddingTokensM: 6.2,
+    searchCredits: 1900,
   },
   {
     short: 'Oct 5 – 11',
@@ -29,6 +32,7 @@ export const USAGE_WEEKS: UsageWeek[] = [
     calls: 17,
     tokensM: 16.1,
     embeddingTokensM: 7.4,
+    searchCredits: 2150,
   },
   {
     short: 'Oct 12 – 18',
@@ -36,6 +40,7 @@ export const USAGE_WEEKS: UsageWeek[] = [
     calls: 20,
     tokensM: 18.6,
     embeddingTokensM: 9,
+    searchCredits: 2400,
   },
   {
     short: 'Oct 19 – 25',
@@ -43,6 +48,7 @@ export const USAGE_WEEKS: UsageWeek[] = [
     calls: 22,
     tokensM: 20.4,
     embeddingTokensM: 9.8,
+    searchCredits: 2650,
   },
   {
     short: 'Oct 26 – Nov 1',
@@ -50,6 +56,7 @@ export const USAGE_WEEKS: UsageWeek[] = [
     calls: 19,
     tokensM: 17.5,
     embeddingTokensM: 8.5,
+    searchCredits: 2300,
   },
 ]
 
@@ -58,38 +65,34 @@ export const DEFAULT_WEEK_INDEX = 2
 export interface UsageAssumptions {
   hoursPerAssessment: number
   costPerHour: number
+  inputTokenPrice: number
+  outputTokenPrice: number
   /** Price per 1M tokens embedded from uploaded files */
   embeddingTokenPrice: number
+  /** Price of one web search credit */
+  searchCreditPrice: number
 }
 
 export const DEFAULT_ASSUMPTIONS: UsageAssumptions = {
-  hoursPerAssessment: 4,
-  costPerHour: 30,
+  hoursPerAssessment: 6,
+  costPerHour: 35,
+  inputTokenPrice: 1.25,
+  outputTokenPrice: 10,
   embeddingTokenPrice: 0.13,
+  searchCreditPrice: 0.008,
 }
 
-/** Model prices per 1M tokens: text in, text out, voice in, voice out. Fixed, not an input. */
-const MODEL_PRICES = { textIn: 1.25, textOut: 10, voiceIn: 10, voiceOut: 20 }
-
-/** Share of all tokens by kind: text in, text out, voice in, voice out */
-const TOKEN_MIX = {
-  textIn: 4.8 / 18.6,
-  textOut: 11.2 / 18.6,
-  voiceIn: 1.2 / 18.6,
-  voiceOut: 1.4 / 18.6,
-}
+/** Share of all model tokens that are input; the rest are output */
+const INPUT_SHARE = 6 / 18.6
 
 export const manualCost = (week: UsageWeek, a: UsageAssumptions) =>
   week.calls * a.hoursPerAssessment * a.costPerHour
 
-/** Model tokens at the fixed prices, plus the embeddings of the uploaded files */
+/** Model tokens at the input and output prices, plus embeddings of uploaded files and web search */
 export const aiCost = (week: UsageWeek, a: UsageAssumptions) =>
-  week.tokensM *
-    (TOKEN_MIX.textIn * MODEL_PRICES.textIn +
-      TOKEN_MIX.textOut * MODEL_PRICES.textOut +
-      TOKEN_MIX.voiceIn * MODEL_PRICES.voiceIn +
-      TOKEN_MIX.voiceOut * MODEL_PRICES.voiceOut) +
-  week.embeddingTokensM * a.embeddingTokenPrice
+  week.tokensM * (INPUT_SHARE * a.inputTokenPrice + (1 - INPUT_SHARE) * a.outputTokenPrice) +
+  week.embeddingTokensM * a.embeddingTokenPrice +
+  week.searchCredits * a.searchCreditPrice
 
 export const formatUsd = (value: number) => `$${Math.round(value).toLocaleString('en-US')}`
 
