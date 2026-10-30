@@ -1,0 +1,310 @@
+/*
+ * TDD Admin profile view — styles carried over from the M42 Tech Due Diligence repo.
+ * Every rule is scoped to `.tdd-admin` so no other profile view is affected.
+ */
+
+/* Source design tokens (primitives, light theme and brand), scoped to the TDD Admin view */
+.tdd-admin {
+  /* Blue Ramp */
+  --colors-blue-50: #eff6ff;
+  --colors-blue-100: #dbeafe;
+  --colors-blue-200: #bfdbfe;
+  --colors-blue-300: #93c5fd;
+  --colors-blue-400: #60a5fa;
+  --colors-blue-500: #3b82f6;
+  --colors-blue-600: #2563eb;
+  --colors-blue-700: #1d4ed8;
+  --colors-blue-800: #1e40af;
+  --colors-blue-900: #1e3a8a;
+
+  /* Neutral Ramp */
+  --colors-neutral-0: #ffffff;
+  --colors-neutral-50: #f8fafc;
+  --colors-neutral-100: #f1f5f9;
+  --colors-neutral-200: #e2e8f0;
+  --colors-neutral-300: #cbd5e1;
+  --colors-neutral-400: #94a3b8;
+  --colors-neutral-500: #64748b;
+  --colors-neutral-600: #475569;
+  --colors-neutral-700: #334155;
+  --colors-neutral-800: #1e293b;
+  --colors-neutral-900: #0f172a;
+  --colors-neutral-950: #020617;
+
+  /* Green Ramp */
+  --colors-green-50: #f0fdf4;
+  --colors-green-100: #dcfce7;
+  --colors-green-200: #bbf7d0;
+  --colors-green-300: #86efac;
+  --colors-green-400: #4ade80;
+  --colors-green-500: #22c55e;
+  --colors-green-600: #16a34a;
+  --colors-green-700: #15803d;
+  --colors-green-800: #166534;
+  --colors-green-900: #14532d;
+
+  /* Amber Ramp */
+  --colors-amber-50: #fffbeb;
+  --colors-amber-100: #fef3c7;
+  --colors-amber-200: #fde68a;
+  --colors-amber-300: #fcd34d;
+  --colors-amber-400: #fbbf24;
+  --colors-amber-500: #f59e0b;
+  --colors-amber-600: #d97706;
+  --colors-amber-700: #b45309;
+  --colors-amber-800: #92400e;
+  --colors-amber-900: #78350f;
+
+  /* Red Ramp */
+  --colors-red-50: #fef2f2;
+  --colors-red-100: #fee2e2;
+  --colors-red-200: #fecaca;
+  --colors-red-300: #fca5a5;
+  --colors-red-400: #f87171;
+  --colors-red-500: #ef4444;
+  --colors-red-600: #dc2626;
+  --colors-red-700: #b91c1c;
+  --colors-red-800: #991b1b;
+  --colors-red-900: #7f1d1d;
+
+  /* Sky Ramp */
+  --colors-sky-50: #f0f9ff;
+  --colors-sky-100: #e0f2fe;
+  --colors-sky-200: #bae6fd;
+  --colors-sky-300: #7dd3fc;
+  --colors-sky-400: #38bdf8;
+  --colors-sky-500: #0ea5e9;
+  --colors-sky-600: #0284c7;
+  --colors-sky-700: #0369a1;
+  --colors-sky-800: #075985;
+  --colors-sky-900: #0c4a6e;
+
+  /* Violet Ramp */
+  --colors-violet-50: #f5f3ff;
+  --colors-violet-100: #ede9fe;
+  --colors-violet-200: #ddd6fe;
+  --colors-violet-300: #c4b5fd;
+  --colors-violet-400: #a78bfa;
+  --colors-violet-500: #8b5cf6;
+  --colors-violet-600: #7c3aed;
+  --colors-violet-700: #6d28d9;
+  --colors-violet-800: #5b21b6;
+  --colors-violet-900: #4c1d95;
+
+  /* Yellow Ramp */
+  --colors-yellow-50: #fefce8;
+  --colors-yellow-100: #fef9c3;
+  --colors-yellow-200: #fef08a;
+  --colors-yellow-300: #fde047;
+  --colors-yellow-400: #facc15;
+  --colors-yellow-500: #eab308;
+  --colors-yellow-600: #ca8a04;
+  --colors-yellow-700: #a16207;
+  --colors-yellow-800: #854d0e;
+  --colors-yellow-900: #713f12;
+
+  /* Radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-12: 3rem;
+}
+
+.tdd-admin {
+  /* Backgrounds */
+  --bg-default: var(--colors-neutral-0);
+  --bg-surface-1: var(--colors-neutral-50);
+  --bg-surface-2: var(--colors-neutral-100);
+  --bg-surface-3: var(--colors-neutral-200);
+  --bg-surface-4: var(--colors-neutral-300);
+  --bg-surface-5: var(--colors-neutral-400);
+  --bg-overlay: rgba(15, 23, 42, 0.5);
+  --bg-input: var(--colors-neutral-0);
+  --bg-tooltip: var(--colors-neutral-900);
+  --bg-modal: var(--colors-neutral-0);
+  --bg-sidebar: var(--colors-neutral-50);
+  --bg-hover: var(--colors-neutral-100);
+  --bg-pressed: var(--colors-neutral-200);
+  --bg-selected: var(--colors-blue-50);
+  --bg-disabled: var(--colors-neutral-100);
+
+  /* Text */
+  --text-primary: var(--colors-neutral-900);
+  --text-secondary: var(--text-tertiary, var(--colors-neutral-600));
+  --text-tertiary: var(--colors-neutral-500);
+  --text-disabled: var(--colors-neutral-400);
+  --text-placeholder: var(--colors-neutral-400);
+  --text-inverse: var(--colors-neutral-0);
+  --text-on-primary: var(--colors-neutral-0);
+  --text-accent: var(--colors-blue-600);
+  --text-link: var(--colors-blue-600);
+  --text-success: var(--colors-green-600);
+  --text-warning: var(--colors-amber-600);
+  --text-error: var(--colors-red-600);
+  --text-info: var(--colors-sky-600);
+
+  /* Borders */
+  --border-default: var(--colors-neutral-200);
+  --border-subtle: var(--colors-neutral-100);
+  --border-strong: var(--colors-neutral-300);
+  --border-focus: var(--colors-blue-500);
+
+  /* Actions */
+  --action-primary-bg-default: var(--colors-blue-600);
+  --action-primary-bg-hover: var(--colors-blue-700);
+  --action-primary-bg-pressed: var(--colors-blue-800);
+  --action-primary-text: var(--colors-neutral-0);
+  --action-primary-bg-soft: var(--colors-blue-50);
+
+  --action-destructive-bg-default: var(--colors-red-600);
+  --action-destructive-bg-hover: var(--colors-red-700);
+  --action-destructive-text: var(--colors-neutral-0);
+
+  /* Status */
+  --status-success-bg: var(--colors-green-50);
+  --status-success-text: var(--colors-green-700);
+  --status-success-border: var(--colors-green-200);
+  --status-success-icon: var(--colors-green-600);
+
+  --status-warning-bg: var(--colors-amber-50);
+  --status-warning-text: var(--colors-amber-700);
+  --status-warning-border: var(--colors-amber-200);
+  --status-warning-icon: var(--colors-amber-600);
+
+  --status-error-bg: var(--colors-red-50);
+  --text-error-override: var(--colors-red-700);
+  --status-error-text: var(--colors-red-700);
+  --status-error-border: var(--colors-red-200);
+  --status-error-icon: var(--colors-red-600);
+
+  --status-info-bg: var(--colors-sky-50);
+  --status-info-text: var(--colors-sky-700);
+  --status-info-border: var(--colors-sky-200);
+  --status-info-icon: var(--colors-sky-600);
+}
+
+.tdd-admin {
+  /* Application colors */
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f1f5f9;
+
+  --app-primary: #0d212c;
+  --app-primary-soft: #d9e6eb;
+
+  --app-accent: #36c0c9;
+  --app-accent-hover: #2baab3;
+  --app-accent-soft: #ddf7f9;
+
+  --app-text: #0d212c;
+  --app-text-muted: #64748b;
+  --app-border: #e2e8f0;
+
+  /* Global Input Design Tokens */
+  --input-bg: #ffffff;
+  --input-border: #d9e2ec;
+  --input-border-hover: #cbd5e1;
+  --input-border-focus: #36c0c9;
+  --input-text: #0d212c;
+  --input-placeholder: #94a3b8;
+  --input-label: #0d212c;
+  --input-helper-text: #64748b;
+  --input-disabled-bg: #f8fafc;
+  --input-disabled-text: #94a3b8;
+  --input-error-border: #d92d20;
+  --input-error-text: #d92d20;
+  --input-success-border: #12b76a;
+
+  /* Semantic Status Chip Tokens */
+  --status-success-bg: #e6f4ea;
+  --status-success-text: #137333;
+
+  --status-warning-bg: #fef7e0;
+  --status-warning-text: #b06000;
+
+  --status-error-bg: #fce8e6;
+  --status-error-text: #c5221f;
+
+  --status-info-bg: #e8f0fe;
+  --status-info-text: #1a73e8;
+
+  --status-neutral-bg: #f1f3f4;
+  --status-neutral-text: #5f6368;
+}
+
+/* Source font weight scale (bold = 600, extrabold = 700, black = 800) */
+.tdd-admin {
+  --font-weight-black: 800;
+  --font-weight-extrabold: 700;
+  --font-weight-bold: 600;
+  font-family: var(--font-sans, 'Poppins', system-ui, sans-serif);
+}
+
+/* Subtle custom horizontal scrollbar - Visible ONLY on hover */
+.tdd-admin .subtle-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  display: block !important;
+}
+.tdd-admin .subtle-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+.tdd-admin .subtle-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+.tdd-admin .subtle-scrollbar:hover::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tdd-admin .subtle-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+.tdd-admin .subtle-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.tdd-admin .subtle-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.2s ease;
+}
+.tdd-admin .subtle-scrollbar:hover {
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* Form fields: hover and focus never thicken the stroke (no ring or outline);
+   focus only shifts the 1px border to a subtle grey. Error borders are kept. */
+.tdd-admin input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.tdd-admin textarea,
+.tdd-admin select {
+  outline: none;
+}
+.tdd-admin input:not([type='checkbox']):not([type='radio']):not([type='range']):is(
+    :hover,
+    :focus,
+    :focus-visible
+  ),
+.tdd-admin textarea:is(:hover, :focus, :focus-visible),
+.tdd-admin select:is(:hover, :focus, :focus-visible) {
+  outline: none;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-offset-width: 0px;
+}
+.tdd-admin input:not([type='checkbox']):not([type='radio']):not([type='range']):not([class*='border-red']):not(
+    [class*='d92d20']
+  ):focus,
+.tdd-admin textarea:not([class*='border-red']):not([class*='d92d20']):focus,
+.tdd-admin select:not([class*='border-red']):not([class*='d92d20']):focus {
+  border-color: #cbd5e1;
+}

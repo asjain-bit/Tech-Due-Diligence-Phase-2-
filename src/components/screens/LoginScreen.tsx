@@ -75,6 +75,15 @@ export const AVAILABLE_PROFILES: UserProfile[] = [
       'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
   },
   {
+    id: 'tdd-admin',
+    name: 'Zaid Al Ali',
+    designation: 'TDD Admin',
+    email: 'zaid.alali@m42.ae',
+    roleTitle: 'TDD Admin',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+  },
+  {
     id: 'legal-director',
     name: 'Fatima Al-Kaabi',
     designation: 'Legal Team',
@@ -273,7 +282,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     profile.id === 'director' ||
                     profile.id === 'evaluator' ||
                     profile.id === 'strategy-fit' ||
-                    profile.id === 'sponsor'
+                    profile.id === 'sponsor' ||
+                    profile.id === 'tdd-admin'
 
                   if (isAccessible) {
                     return (

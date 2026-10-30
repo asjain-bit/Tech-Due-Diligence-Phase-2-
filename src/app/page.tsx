@@ -6,6 +6,7 @@ import { UsageInsightsScreen } from '@/components/screens/UsageInsightsScreen'
 import { DashboardScreen } from '@/components/screens/DashboardScreen'
 import { VendorWebForm } from '@/components/screens/VendorWebForm'
 import { Sidebar } from '@/components/organisms/Sidebar'
+import { TddAdminApp } from '@/tdd-admin/TddAdminApp'
 import { INITIAL_PARTNERSHIP_REQUESTS, type PartnershipRequest } from '@/types/partnership.types'
 import { buildCaseFromForm, nextCaseCode } from '@/lib/caseActions'
 import { DEFAULT_ASSUMPTIONS, type UsageAssumptions } from '@/lib/usageInsights'
@@ -46,6 +47,16 @@ export default function HomePage() {
 
   if (userProfile.id === 'vendor') {
     return <VendorWebForm onSubmitCase={handleVendorSubmit} onSignOut={handleSignOut} />
+  }
+
+  if (userProfile.id === 'tdd-admin') {
+    return (
+      <TddAdminApp
+        userName={userProfile.name}
+        userEmail={userProfile.email}
+        onSignOut={handleSignOut}
+      />
+    )
   }
 
   return (
