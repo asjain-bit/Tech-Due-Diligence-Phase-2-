@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "sync:tdd-admin": "bash scripts/sync-tdd-admin.sh"
   },
   "dependencies": {
     "lucide-react": "^1.55.0",

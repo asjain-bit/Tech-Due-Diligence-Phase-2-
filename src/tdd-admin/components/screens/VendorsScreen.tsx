@@ -1131,7 +1131,9 @@ export const VendorsScreen: React.FC = () => {
                               <CountryFlag country={c.name} />
                               <span>{c.name}</span>
                             </div>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-[#36c0c9] shrink-0" />}
+                            {isSelected && (
+                              <Check className="w-3.5 h-3.5 text-[#36c0c9] shrink-0" />
+                            )}
                           </div>
                         )
                       })}
@@ -1370,7 +1372,10 @@ export const VendorsScreen: React.FC = () => {
                             setSelectedSearchResult(null)
                             setFindWebsite('')
                             setFindCountry('')
-                          } else if (selectedSearchResult && e.target.value !== selectedSearchResult.name) {
+                          } else if (
+                            selectedSearchResult &&
+                            e.target.value !== selectedSearchResult.name
+                          ) {
                             setSelectedSearchResult(null)
                             setFindWebsite('')
                           }
@@ -1388,12 +1393,14 @@ export const VendorsScreen: React.FC = () => {
                       <div className="absolute top-full left-0 right-0 z-50 mt-1.5 flex flex-col gap-1.5 bg-white p-3 rounded-2xl border border-[#e2e8f0] shadow-2xl max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                         <span className="text-[10px] font-extrabold uppercase text-[#64748b] tracking-wider mb-1">
                           SELECT MATCHING VENDOR RESULT (
-                          {searchVendorResults.filter(
-                            (r) =>
-                              !findSearchQuery.trim() ||
-                              r.name.toLowerCase().includes(findSearchQuery.toLowerCase()) ||
-                              r.domain.toLowerCase().includes(findSearchQuery.toLowerCase())
-                          ).length}{' '}
+                          {
+                            searchVendorResults.filter(
+                              (r) =>
+                                !findSearchQuery.trim() ||
+                                r.name.toLowerCase().includes(findSearchQuery.toLowerCase()) ||
+                                r.domain.toLowerCase().includes(findSearchQuery.toLowerCase())
+                            ).length
+                          }{' '}
                           FOUND)
                         </span>
                         {searchVendorResults.filter(
@@ -1402,62 +1409,65 @@ export const VendorsScreen: React.FC = () => {
                             r.name.toLowerCase().includes(findSearchQuery.toLowerCase()) ||
                             r.domain.toLowerCase().includes(findSearchQuery.toLowerCase())
                         ).length > 0 ? (
-                          searchVendorResults.filter(
-                            (r) =>
-                              !findSearchQuery.trim() ||
-                              r.name.toLowerCase().includes(findSearchQuery.toLowerCase()) ||
-                              r.domain.toLowerCase().includes(findSearchQuery.toLowerCase())
-                          ).map((res) => {
-                            const isSelected =
-                              selectedSearchResult?.id === res.id || findSearchQuery === res.name
-                            return (
-                              <div
-                              key={res.id}
-                              onClick={() => {
-                                setSelectedSearchResult(res)
-                                setFindSearchQuery(res.name) // Adds vendor name to input field
-                                setHasSearched(false) // Closes the search results list
-                                if (res.domain) {
-                                  const formattedUrl =
-                                    res.domain.startsWith('http://') || res.domain.startsWith('https://')
-                                      ? res.domain
-                                      : `https://${res.domain}`
-                                  setFindWebsite(formattedUrl)
-                                }
-                                if (res.country) {
-                                  setFindCountry(res.country)
-                                } else {
-                                  setFindCountry('United Arab Emirates')
-                                }
-                              }}
-                              className={`p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                                isSelected
-                                  ? 'bg-[#f1f5f9] border-transparent'
-                                  : 'bg-white border-[#e2e8f0] hover:bg-[#f8fafc]'
-                              }`}
-                            >
-                              <div className="flex flex-col min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-xs text-[#0d212c] truncate">
-                                    {res.name}
-                                  </span>
-                                  {isSelected && (
-                                    <Check className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
-                                  )}
-                                </div>
-                                <span className="text-[11px] text-[#64748b] truncate">
-                                  {res.domain}
-                                </span>
-                              </div>
+                          searchVendorResults
+                            .filter(
+                              (r) =>
+                                !findSearchQuery.trim() ||
+                                r.name.toLowerCase().includes(findSearchQuery.toLowerCase()) ||
+                                r.domain.toLowerCase().includes(findSearchQuery.toLowerCase())
+                            )
+                            .map((res) => {
+                              const isSelected =
+                                selectedSearchResult?.id === res.id || findSearchQuery === res.name
+                              return (
+                                <div
+                                  key={res.id}
+                                  onClick={() => {
+                                    setSelectedSearchResult(res)
+                                    setFindSearchQuery(res.name) // Adds vendor name to input field
+                                    setHasSearched(false) // Closes the search results list
+                                    if (res.domain) {
+                                      const formattedUrl =
+                                        res.domain.startsWith('http://') ||
+                                        res.domain.startsWith('https://')
+                                          ? res.domain
+                                          : `https://${res.domain}`
+                                      setFindWebsite(formattedUrl)
+                                    }
+                                    if (res.country) {
+                                      setFindCountry(res.country)
+                                    } else {
+                                      setFindCountry('United Arab Emirates')
+                                    }
+                                  }}
+                                  className={`p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+                                    isSelected
+                                      ? 'bg-[#f1f5f9] border-transparent'
+                                      : 'bg-white border-[#e2e8f0] hover:bg-[#f8fafc]'
+                                  }`}
+                                >
+                                  <div className="flex flex-col min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-xs text-[#0d212c] truncate">
+                                        {res.name}
+                                      </span>
+                                      {isSelected && (
+                                        <Check className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
+                                      )}
+                                    </div>
+                                    <span className="text-[11px] text-[#64748b] truncate">
+                                      {res.domain}
+                                    </span>
+                                  </div>
 
-                              <StatusChip
-                                label={res.confidence}
-                                status={res.confidenceType}
-                                dot={false}
-                              />
-                            </div>
-                          )
-                        })
+                                  <StatusChip
+                                    label={res.confidence}
+                                    status={res.confidenceType}
+                                    dot={false}
+                                  />
+                                </div>
+                              )
+                            })
                         ) : (
                           <div className="text-xs text-[#64748b] py-3 text-center">
                             No vendor found in the public registry. You can add the vendor manually.
@@ -1633,9 +1643,7 @@ export const VendorsScreen: React.FC = () => {
                     <button
                       type="button"
                       disabled={
-                        isAddingVendor ||
-                        !selectedSearchResult ||
-                        findRecipients.length > 5
+                        isAddingVendor || !selectedSearchResult || findRecipients.length > 5
                       }
                       onClick={handleAddVendorFromFind}
                       className="bg-[#0d212c] hover:bg-[#122e3d] text-white font-bold text-xs px-6 py-2.5 rounded-xl transition cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed border-0 flex items-center justify-center gap-2"

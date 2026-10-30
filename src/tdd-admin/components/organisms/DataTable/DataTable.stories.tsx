@@ -15,8 +15,18 @@ type Story = StoryObj<typeof DataTable>
 const columns: Column<Record<string, unknown>>[] = [
   { key: 'id', header: 'ID' },
   { key: 'name', header: 'Component' },
-  { key: 'layer', header: 'Layer', render: (row: Record<string, unknown>) => <Badge variant="info">{String(row.layer)}</Badge> },
-  { key: 'status', header: 'Status', render: (row: Record<string, unknown>) => <Badge variant={row.status === 'Ready' ? 'success' : 'warning'}>{String(row.status)}</Badge> },
+  {
+    key: 'layer',
+    header: 'Layer',
+    render: (row: Record<string, unknown>) => <Badge variant="info">{String(row.layer)}</Badge>,
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    render: (row: Record<string, unknown>) => (
+      <Badge variant={row.status === 'Ready' ? 'success' : 'warning'}>{String(row.status)}</Badge>
+    ),
+  },
 ]
 
 const data: Record<string, unknown>[] = [

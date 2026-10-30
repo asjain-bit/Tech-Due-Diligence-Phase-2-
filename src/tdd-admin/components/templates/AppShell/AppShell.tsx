@@ -17,7 +17,11 @@ export const AppShell: React.FC<AppShellProps> = ({
   className = '',
 }) => {
   return (
-    <div className={['min-h-screen flex flex-col bg-bg-default text-text-primary', className].filter(Boolean).join(' ')}>
+    <div
+      className={['min-h-screen flex flex-col bg-bg-default text-text-primary', className]
+        .filter(Boolean)
+        .join(' ')}
+    >
       {/* Topbar slot (56px) */}
       {topbar && <div className="w-full shrink-0 z-30">{topbar}</div>}
 

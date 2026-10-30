@@ -13,7 +13,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles: Record<NonNullable<ButtonProps['variant']>, string> = {
       primary: 'bg-[#0d212c] text-white hover:bg-[#122e3d] active:bg-[#08171f] shadow-xs font-bold',
-      secondary: 'bg-white text-[#0d212c] border border-[#e2e8f0] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] shadow-xs font-semibold',
+      secondary:
+        'bg-white text-[#0d212c] border border-[#e2e8f0] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] shadow-xs font-semibold',
       accent: 'bg-[#0d212c] text-white hover:bg-[#122e3d] active:bg-[#08171f] shadow-xs font-bold',
       ghost: 'bg-transparent text-[#0d212c] hover:bg-[#f1f5f9] active:bg-[#e2e8f0]',
       outline: 'bg-transparent text-[#0d212c] border border-[#e2e8f0] hover:bg-[#f1f5f9]',

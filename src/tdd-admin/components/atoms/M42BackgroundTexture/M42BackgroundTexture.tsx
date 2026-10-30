@@ -21,18 +21,8 @@ export const M42BackgroundTexture: React.FC<M42BackgroundTextureProps> = ({ clas
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <path
-          d="M 50 350 L 350 50 L 350 350 Z"
-          stroke="currentColor"
-          strokeWidth="2"
-          fill="none"
-        />
-        <path
-          d="M 120 380 L 380 120 L 380 380 Z"
-          stroke="#36c0c9"
-          strokeWidth="2.5"
-          fill="none"
-        />
+        <path d="M 50 350 L 350 50 L 350 350 Z" stroke="currentColor" strokeWidth="2" fill="none" />
+        <path d="M 120 380 L 380 120 L 380 380 Z" stroke="#36c0c9" strokeWidth="2.5" fill="none" />
         <path
           d="M 200 400 L 400 200 L 400 400 Z"
           stroke="currentColor"

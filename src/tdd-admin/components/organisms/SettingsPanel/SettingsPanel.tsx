@@ -27,11 +27,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onSave, className 
   }
 
   return (
-    <div className={['w-full max-w-2xl bg-bg-surface-1 border border-border-default rounded-xl p-6 shadow-xs flex flex-col gap-6 text-text-primary', className].filter(Boolean).join(' ')}>
+    <div
+      className={[
+        'w-full max-w-2xl bg-bg-surface-1 border border-border-default rounded-xl p-6 shadow-xs flex flex-col gap-6 text-text-primary',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className="flex items-center justify-between border-b border-border-subtle pb-4">
         <div>
           <h2 className="text-xl font-bold font-serif">Account Settings</h2>
-          <p className="text-sm text-text-tertiary">Manage your profile details and design system preferences.</p>
+          <p className="text-sm text-text-tertiary">
+            Manage your profile details and design system preferences.
+          </p>
         </div>
         <Avatar fallback="AD" size="lg" />
       </div>

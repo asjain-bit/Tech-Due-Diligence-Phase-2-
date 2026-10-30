@@ -52,60 +52,64 @@ export const QuestionnaireDetailScreen: React.FC<QuestionnaireDetailScreenProps>
   // Questions list
   const [questions, setQuestions] = useState<QuestionItem[]>(
     questionnaire.initialQuestions ??
-    (questionnaire.title === 'Presight Technical & Compliance' ? [] : [
-    {
-      id: 1,
-      question:
-        'Describe the primary clinical or operational use cases supported by your solution.',
-      responseCue:
-        'Specify whether workflows are clinical, decision-support, operational, or administrative. State whether outputs influence patient care directly or indirectly.',
-      researchNeeded: true,
-      attachmentRequired: true,
-    },
-    {
-      id: 2,
-      question:
-        'Has your organization performed a patient safety or clinical risk assessment for this product?',
-      responseCue:
-        'Provide documentation or summary of hazard analysis, risk register, or failure-mode analysis related to patient harm.',
-      researchNeeded: false,
-      attachmentRequired: true,
-    },
-    {
-      id: 3,
-      question:
-        'Describe how customer data is encrypted in transit and at rest across cloud tenants.',
-      responseCue:
-        'Specify encryption algorithms (e.g. AES-256, TLS 1.3), key rotation policies, and HSM backing.',
-      researchNeeded: true,
-      attachmentRequired: true,
-    },
-    {
-      id: 4,
-      question: 'Provide proof of SOC 2 Type II or ISO/IEC 27001 certification compliance.',
-      responseCue:
-        'Attach executive summary or auditor attestation statement covering the last 12 months.',
-      researchNeeded: false,
-      attachmentRequired: true,
-    },
-    {
-      id: 5,
-      question: 'Can customer data be strictly isolated within United Arab Emirates cloud regions?',
-      responseCue:
-        'Detail tenant deployment architecture, backup locations, and compliance with UAE Health Data Law.',
-      researchNeeded: true,
-      attachmentRequired: false,
-    },
-    {
-      id: 6,
-      question:
-        'Outline your incident response SLA for reporting data breaches to affected healthcare entities.',
-      responseCue:
-        'Provide notification timeline (e.g., within 24 hours), triage workflows, and root cause analysis format.',
-      researchNeeded: true,
-      attachmentRequired: true,
-    },
-  ]))
+      (questionnaire.title === 'Presight Technical & Compliance'
+        ? []
+        : [
+            {
+              id: 1,
+              question:
+                'Describe the primary clinical or operational use cases supported by your solution.',
+              responseCue:
+                'Specify whether workflows are clinical, decision-support, operational, or administrative. State whether outputs influence patient care directly or indirectly.',
+              researchNeeded: true,
+              attachmentRequired: true,
+            },
+            {
+              id: 2,
+              question:
+                'Has your organization performed a patient safety or clinical risk assessment for this product?',
+              responseCue:
+                'Provide documentation or summary of hazard analysis, risk register, or failure-mode analysis related to patient harm.',
+              researchNeeded: false,
+              attachmentRequired: true,
+            },
+            {
+              id: 3,
+              question:
+                'Describe how customer data is encrypted in transit and at rest across cloud tenants.',
+              responseCue:
+                'Specify encryption algorithms (e.g. AES-256, TLS 1.3), key rotation policies, and HSM backing.',
+              researchNeeded: true,
+              attachmentRequired: true,
+            },
+            {
+              id: 4,
+              question: 'Provide proof of SOC 2 Type II or ISO/IEC 27001 certification compliance.',
+              responseCue:
+                'Attach executive summary or auditor attestation statement covering the last 12 months.',
+              researchNeeded: false,
+              attachmentRequired: true,
+            },
+            {
+              id: 5,
+              question:
+                'Can customer data be strictly isolated within United Arab Emirates cloud regions?',
+              responseCue:
+                'Detail tenant deployment architecture, backup locations, and compliance with UAE Health Data Law.',
+              researchNeeded: true,
+              attachmentRequired: false,
+            },
+            {
+              id: 6,
+              question:
+                'Outline your incident response SLA for reporting data breaches to affected healthcare entities.',
+              responseCue:
+                'Provide notification timeline (e.g., within 24 hours), triage workflows, and root cause analysis format.',
+              researchNeeded: true,
+              attachmentRequired: true,
+            },
+          ])
+  )
 
   // Handle Question field edits
   const handleQuestionChange = (id: number, field: keyof QuestionItem, value: string | boolean) => {
@@ -265,7 +269,10 @@ export const QuestionnaireDetailScreen: React.FC<QuestionnaireDetailScreenProps>
                 </button>
                 <button
                   onClick={handlePublish}
-                  disabled={questions.length === 0 || questions.some(q => !q.question.trim() || !q.responseCue.trim())}
+                  disabled={
+                    questions.length === 0 ||
+                    questions.some((q) => !q.question.trim() || !q.responseCue.trim())
+                  }
                   className="bg-[#0d212c] hover:bg-[#122e3d] text-white font-bold px-6 py-2 rounded-xl text-xs shadow-xs cursor-pointer transition border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Publish questionnaire
@@ -282,7 +289,10 @@ export const QuestionnaireDetailScreen: React.FC<QuestionnaireDetailScreenProps>
                 </button>
                 <button
                   onClick={handlePublish}
-                  disabled={questions.length === 0 || questions.some(q => !q.question.trim() || !q.responseCue.trim())}
+                  disabled={
+                    questions.length === 0 ||
+                    questions.some((q) => !q.question.trim() || !q.responseCue.trim())
+                  }
                   className="bg-[#0d212c] hover:bg-[#122e3d] text-white font-bold px-6 py-2 rounded-xl text-xs shadow-xs cursor-pointer transition border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Publish questionnaire
@@ -300,7 +310,10 @@ export const QuestionnaireDetailScreen: React.FC<QuestionnaireDetailScreenProps>
               </button>
               <button
                 onClick={handleSaveOrEdit}
-                disabled={questions.length === 0 || questions.some(q => !q.question.trim() || !q.responseCue.trim())}
+                disabled={
+                  questions.length === 0 ||
+                  questions.some((q) => !q.question.trim() || !q.responseCue.trim())
+                }
                 className="bg-[#36c0c9] hover:bg-[#2eb0b9] text-white font-bold px-6 py-2 rounded-xl text-xs cursor-pointer shadow-xs border-0 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Save
@@ -336,115 +349,119 @@ export const QuestionnaireDetailScreen: React.FC<QuestionnaireDetailScreenProps>
           </div>
         ) : (
           questions.map((q, idx) => (
-          /* Requirement 3: Subtle grey border for question card in edit mode (no cyan highlight) */
-          <div
-            key={q.id}
-            draggable={isEditing}
-            onDragStart={(e) => handleDragStart(e, idx)}
-            onDragOver={(e) => handleDragOver(e, idx)}
-            onDragEnd={handleDragEnd}
-            className={`bg-white p-6 rounded-2xl border transition flex flex-col gap-4 ${
-              draggedIndex === idx
-                ? 'border-[#cbd5e1] shadow-md opacity-70 bg-slate-50'
-                : isEditing
-                  ? 'border-[#e2e8f0] hover:border-[#cbd5e1] shadow-xs'
-                  : 'border-[#e2e8f0]'
-            }`}
-          >
-            {/* Question Card Top Bar */}
-            <div className="flex items-center justify-between gap-4 border-b border-[#e2e8f0]/80 pb-3">
-              <div className="flex items-center gap-3 min-w-0">
+            /* Requirement 3: Subtle grey border for question card in edit mode (no cyan highlight) */
+            <div
+              key={q.id}
+              draggable={isEditing}
+              onDragStart={(e) => handleDragStart(e, idx)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDragEnd={handleDragEnd}
+              className={`bg-white p-6 rounded-2xl border transition flex flex-col gap-4 ${
+                draggedIndex === idx
+                  ? 'border-[#cbd5e1] shadow-md opacity-70 bg-slate-50'
+                  : isEditing
+                    ? 'border-[#e2e8f0] hover:border-[#cbd5e1] shadow-xs'
+                    : 'border-[#e2e8f0]'
+              }`}
+            >
+              {/* Question Card Top Bar */}
+              <div className="flex items-center justify-between gap-4 border-b border-[#e2e8f0]/80 pb-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {isEditing && (
+                    <div className="relative group/drag shrink-0">
+                      <div
+                        className="p-1.5 rounded-lg text-[#64748b] hover:text-[#0d212c] hover:bg-slate-100 cursor-grab active:cursor-grabbing transition"
+                        title="Drag and drop to change question position"
+                      >
+                        <GripVertical className="w-4 h-4 text-[#64748b]" />
+                      </div>
+                      <div className="pointer-events-none opacity-0 group-hover/drag:opacity-100 transition-opacity duration-200 absolute left-8 top-1/2 -translate-y-1/2 z-50 w-56 bg-[#0d212c] text-white text-[11px] px-2.5 py-1.5 rounded-lg shadow-xl border border-white/10 text-center leading-snug font-normal whitespace-normal">
+                        Drag and drop to change the position of this question
+                      </div>
+                    </div>
+                  )}
+                  <span className="text-sm font-extrabold text-[#0d212c] tracking-tight">
+                    Question {idx + 1}
+                  </span>
+                </div>
+
                 {isEditing && (
-                  <div className="relative group/drag shrink-0">
-                    <div
-                      className="p-1.5 rounded-lg text-[#64748b] hover:text-[#0d212c] hover:bg-slate-100 cursor-grab active:cursor-grabbing transition"
-                      title="Drag and drop to change question position"
-                    >
-                      <GripVertical className="w-4 h-4 text-[#64748b]" />
-                    </div>
-                    <div className="pointer-events-none opacity-0 group-hover/drag:opacity-100 transition-opacity duration-200 absolute left-8 top-1/2 -translate-y-1/2 z-50 w-56 bg-[#0d212c] text-white text-[11px] px-2.5 py-1.5 rounded-lg shadow-xl border border-white/10 text-center leading-snug font-normal whitespace-normal">
-                      Drag and drop to change the position of this question
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => setDeletingQuestionId(q.id)}
+                    className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition cursor-pointer"
+                    title="Delete question"
+                    aria-label="Delete question"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 )}
-                <span className="text-sm font-extrabold text-[#0d212c] tracking-tight">
-                  Question {idx + 1}
-                </span>
               </div>
 
-              {isEditing && (
-                <button
-                  onClick={() => setDeletingQuestionId(q.id)}
-                  className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition cursor-pointer"
-                  title="Delete question"
-                  aria-label="Delete question"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+              {/* Requirement 1: QUESTION Input Field (View-only mode has no focus/click stroke interaction) */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-extrabold text-[#64748b] uppercase tracking-wider">
+                  QUESTION {q.requiredQuestion && <span className="text-red-500 font-bold">*</span>}
+                </label>
+                <input
+                  type="text"
+                  value={q.question}
+                  readOnly={!isEditing}
+                  tabIndex={!isEditing ? -1 : 0}
+                  onChange={(e) => handleQuestionChange(q.id, 'question', e.target.value)}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-medium text-[#0d212c] transition ${
+                    isEditing
+                      ? 'border-[#cbd5e1] focus:border-[#cbd5e1] focus:outline-none bg-white'
+                      : 'border-[#e2e8f0] bg-slate-50/50 cursor-default outline-none select-none pointer-events-none'
+                  }`}
+                />
+              </div>
 
-            {/* Requirement 1: QUESTION Input Field (View-only mode has no focus/click stroke interaction) */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-extrabold text-[#64748b] uppercase tracking-wider">
-                QUESTION {q.requiredQuestion && <span className="text-red-500 font-bold">*</span>}
-              </label>
-              <input
-                type="text"
-                value={q.question}
-                readOnly={!isEditing}
-                tabIndex={!isEditing ? -1 : 0}
-                onChange={(e) => handleQuestionChange(q.id, 'question', e.target.value)}
-                className={`w-full px-4 py-2.5 rounded-xl border text-xs font-medium text-[#0d212c] transition ${
-                  isEditing
-                    ? 'border-[#cbd5e1] focus:border-[#cbd5e1] focus:outline-none bg-white'
-                    : 'border-[#e2e8f0] bg-slate-50/50 cursor-default outline-none select-none pointer-events-none'
-                }`}
-              />
-            </div>
+              {/* Requirement 1: RESPONSE CUE Textarea (View-only mode has no focus/click stroke interaction) */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-extrabold text-[#64748b] uppercase tracking-wider">
+                  RESPONSE CUE{' '}
+                  {q.requiredQuestion && <span className="text-red-500 font-bold">*</span>}
+                </label>
+                <textarea
+                  value={q.responseCue}
+                  readOnly={!isEditing}
+                  tabIndex={!isEditing ? -1 : 0}
+                  onChange={(e) => handleQuestionChange(q.id, 'responseCue', e.target.value)}
+                  rows={2}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-medium text-[#0d212c] resize-y transition ${
+                    isEditing
+                      ? 'border-[#cbd5e1] focus:border-[#cbd5e1] focus:outline-none bg-white'
+                      : 'border-[#e2e8f0] bg-slate-50/50 cursor-default outline-none select-none pointer-events-none'
+                  }`}
+                />
+              </div>
 
-            {/* Requirement 1: RESPONSE CUE Textarea (View-only mode has no focus/click stroke interaction) */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-extrabold text-[#64748b] uppercase tracking-wider">
-                RESPONSE CUE {q.requiredQuestion && <span className="text-red-500 font-bold">*</span>}
-              </label>
-              <textarea
-                value={q.responseCue}
-                readOnly={!isEditing}
-                tabIndex={!isEditing ? -1 : 0}
-                onChange={(e) => handleQuestionChange(q.id, 'responseCue', e.target.value)}
-                rows={2}
-                className={`w-full px-4 py-2.5 rounded-xl border text-xs font-medium text-[#0d212c] resize-y transition ${
-                  isEditing
-                    ? 'border-[#cbd5e1] focus:border-[#cbd5e1] focus:outline-none bg-white'
-                    : 'border-[#e2e8f0] bg-slate-50/50 cursor-default outline-none select-none pointer-events-none'
-                }`}
-              />
+              {/* Checkboxes: Research needed | Attachment required | Required question */}
+              <div className="flex items-center gap-6 pt-2">
+                <Checkbox
+                  label="Research needed"
+                  checked={q.researchNeeded}
+                  disabled={!isEditing}
+                  onChange={(e) => handleQuestionChange(q.id, 'researchNeeded', e.target.checked)}
+                />
+                <Checkbox
+                  label="Attachment required"
+                  checked={q.attachmentRequired}
+                  disabled={!isEditing}
+                  onChange={(e) =>
+                    handleQuestionChange(q.id, 'attachmentRequired', e.target.checked)
+                  }
+                />
+                <Checkbox
+                  label="Required Question"
+                  checked={Boolean(q.requiredQuestion)}
+                  disabled={!isEditing}
+                  onChange={(e) => handleQuestionChange(q.id, 'requiredQuestion', e.target.checked)}
+                />
+              </div>
             </div>
-
-            {/* Checkboxes: Research needed | Attachment required | Required question */}
-            <div className="flex items-center gap-6 pt-2">
-              <Checkbox
-                label="Research needed"
-                checked={q.researchNeeded}
-                disabled={!isEditing}
-                onChange={(e) => handleQuestionChange(q.id, 'researchNeeded', e.target.checked)}
-              />
-              <Checkbox
-                label="Attachment required"
-                checked={q.attachmentRequired}
-                disabled={!isEditing}
-                onChange={(e) => handleQuestionChange(q.id, 'attachmentRequired', e.target.checked)}
-              />
-              <Checkbox
-                label="Required Question"
-                checked={Boolean(q.requiredQuestion)}
-                disabled={!isEditing}
-                onChange={(e) => handleQuestionChange(q.id, 'requiredQuestion', e.target.checked)}
-              />
-            </div>
-          </div>
-        )))}
+          ))
+        )}
       </div>
 
       {/* Requirement 4: Add New Question Modal Popup */}

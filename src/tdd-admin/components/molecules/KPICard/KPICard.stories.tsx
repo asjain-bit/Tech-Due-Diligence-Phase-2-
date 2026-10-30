@@ -24,9 +24,30 @@ export const Default: Story = {
 export const GridDisplay: Story = {
   render: () => (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <KPICard title="Active Sessions" value="3,420" change="+8.1%" trend="up" badgeText="Live" badgeVariant="info" />
-      <KPICard title="Bounce Rate" value="24.8%" change="-2.3%" trend="down" badgeText="Healthy" badgeVariant="success" />
-      <KPICard title="Error Rate" value="1.82%" change="+0.4%" trend="down" badgeText="Warning" badgeVariant="warning" />
+      <KPICard
+        title="Active Sessions"
+        value="3,420"
+        change="+8.1%"
+        trend="up"
+        badgeText="Live"
+        badgeVariant="info"
+      />
+      <KPICard
+        title="Bounce Rate"
+        value="24.8%"
+        change="-2.3%"
+        trend="down"
+        badgeText="Healthy"
+        badgeVariant="success"
+      />
+      <KPICard
+        title="Error Rate"
+        value="1.82%"
+        change="+0.4%"
+        trend="down"
+        badgeText="Warning"
+        badgeVariant="warning"
+      />
     </div>
   ),
 }

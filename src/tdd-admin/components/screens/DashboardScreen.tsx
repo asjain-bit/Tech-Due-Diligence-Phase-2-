@@ -354,11 +354,7 @@ export const DashboardScreen: React.FC = () => {
 
   const joinRequestsRow = assessments.find((a) => a.id === joinRequestsRowId)
 
-  const decideJoinRequest = (
-    rowId: string,
-    requestId: string,
-    decision: 'approved' | 'rejected'
-  ) =>
+  const decideJoinRequest = (rowId: string, requestId: string, decision: 'approved' | 'rejected') =>
     setAssessments((prev) =>
       prev.map((a) =>
         a.id === rowId
@@ -602,8 +598,7 @@ export const DashboardScreen: React.FC = () => {
                 paginatedAssessments.map((row) => {
                   const hasPastRounds = Boolean(row.pastRounds?.length)
                   const isExpanded = hasPastRounds && Boolean(expandedRows[row.id])
-                  const pendingRequests =
-                    row.joinRequests?.filter((r) => !r.decision).length ?? 0
+                  const pendingRequests = row.joinRequests?.filter((r) => !r.decision).length ?? 0
                   return (
                     <React.Fragment key={row.id}>
                       <tr

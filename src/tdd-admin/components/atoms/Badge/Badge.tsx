@@ -7,7 +7,12 @@
 import React from 'react'
 import { BadgeProps } from './Badge.types'
 
-export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', className = '', children, ...props }) => {
+export const Badge: React.FC<BadgeProps> = ({
+  variant = 'neutral',
+  className = '',
+  children,
+  ...props
+}) => {
   const baseStyle =
     'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-colors'
 

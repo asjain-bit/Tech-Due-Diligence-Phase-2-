@@ -9,7 +9,11 @@ import { useTheme, Theme } from '@/tdd-admin/contexts/ThemeContext'
 import { Icon } from '@/tdd-admin/components/atoms/Icon'
 import { ThemeToggleProps } from './ThemeToggle.types'
 
-export const ThemeToggle: React.FC<ThemeToggleProps> = ({ showLabel = false, className = '', ...props }) => {
+export const ThemeToggle: React.FC<ThemeToggleProps> = ({
+  showLabel = false,
+  className = '',
+  ...props
+}) => {
   const { theme, setTheme, resolvedTheme } = useTheme()
 
   const handleCycle = () => {

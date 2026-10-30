@@ -960,9 +960,7 @@ export const AssessmentDetailScreen: React.FC<AssessmentDetailScreenProps> = ({
                       />
                       <div
                         className={`mt-0.5 w-4 h-4 rounded-md flex items-center justify-center shrink-0 transition-all border ${
-                          isSelected
-                            ? 'bg-[#36c0c9] border-[#36c0c9]'
-                            : 'bg-white border-[#cbd5e1]'
+                          isSelected ? 'bg-[#36c0c9] border-[#36c0c9]' : 'bg-white border-[#cbd5e1]'
                         }`}
                       >
                         {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
@@ -2173,131 +2171,132 @@ export const AssessmentDetailScreen: React.FC<AssessmentDetailScreenProps> = ({
 
                         {/* Reviewer Comment Section (answered Low confidence questions; an added comment stays visible after the confidence changes) */}
                         {q.answer !== '(not answered)' &&
-                          (isLowConfidence || (!isScheduled && Boolean(questionComments[q.id]))) && (
-                          <div className="mt-1 flex flex-col gap-2">
-                            {/* If comment has already been added */}
-                            {questionComments[q.id] ? (
-                              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col gap-2">
-                                {/* Top: Name of the person who added the comment */}
-                                <div className="flex items-center justify-between gap-2 flex-wrap">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-[#0d7280]/10 text-[#0d7280] flex items-center justify-center text-[10px] font-bold shrink-0">
-                                      {questionComments[q.id].author.charAt(0)}
+                          (isLowConfidence ||
+                            (!isScheduled && Boolean(questionComments[q.id]))) && (
+                            <div className="mt-1 flex flex-col gap-2">
+                              {/* If comment has already been added */}
+                              {questionComments[q.id] ? (
+                                <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col gap-2">
+                                  {/* Top: Name of the person who added the comment */}
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-6 h-6 rounded-full bg-[#0d7280]/10 text-[#0d7280] flex items-center justify-center text-[10px] font-bold shrink-0">
+                                        {questionComments[q.id].author.charAt(0)}
+                                      </div>
+                                      <span className="text-xs font-bold text-[#0d212c]">
+                                        {questionComments[q.id].author}
+                                      </span>
                                     </div>
-                                    <span className="text-xs font-bold text-[#0d212c]">
-                                      {questionComments[q.id].author}
+                                    <span className="text-[11px] text-[#94a3b8]">
+                                      {questionComments[q.id].date}
                                     </span>
                                   </div>
-                                  <span className="text-[11px] text-[#94a3b8]">
-                                    {questionComments[q.id].date}
-                                  </span>
-                                </div>
 
-                                {/* Middle: Comment text */}
-                                <p className="text-xs text-[#0d212c] pl-8 whitespace-pre-wrap leading-relaxed">
-                                  {questionComments[q.id].text}
-                                </p>
+                                  {/* Middle: Comment text */}
+                                  <p className="text-xs text-[#0d212c] pl-8 whitespace-pre-wrap leading-relaxed">
+                                    {questionComments[q.id].text}
+                                  </p>
 
-                                {/* Bottom: Reviewed by user name */}
-                                <div className="pt-2 pl-8 border-t border-[#e2e8f0]/60 flex items-center gap-1.5 text-xs text-[#64748b]">
-                                  <span>Reviewed by:</span>
-                                  <span className="font-semibold text-[#0d212c]">
-                                    {questionComments[q.id].reviewer}
-                                  </span>
-                                </div>
-                              </div>
-                            ) : currentStatus !== 'finalised' ? (
-                              /* If no comment added yet, give the option to add only 1 comment */
-                              <div>
-                                {!openCommentInput[q.id] ? (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setOpenCommentInput((prev) => ({ ...prev, [q.id]: true }))
-                                    }
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#cbd5e1] bg-white text-xs font-semibold text-[#0d212c] shadow-2xs cursor-pointer"
-                                  >
-                                    <MessageSquare className="w-3.5 h-3.5" />
-                                    <span>Add comment</span>
-                                  </button>
-                                ) : (
-                                  <div className="p-3.5 rounded-xl bg-white border border-[#cbd5e1] shadow-2xs flex flex-col gap-2.5">
-                                    <div className="flex items-center justify-between">
-                                      <label className="text-xs font-bold text-[#0d212c] flex items-center gap-1.5">
-                                        <MessageSquare className="w-3.5 h-3.5 text-[#0d7280]" />
-                                        <span>Add Comment</span>
-                                      </label>
-                                      <span className="text-[11px] text-[#64748b]">
-                                        1 comment allowed for low confidence
-                                      </span>
-                                    </div>
-                                    <div className="relative">
-                                      <textarea
-                                        value={commentText}
-                                        onChange={(e) =>
-                                          setCommentTexts((prev) => ({
-                                            ...prev,
-                                            [q.id]: e.target.value.slice(0, 500),
-                                          }))
-                                        }
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' && isCommentLimitReached) {
-                                            e.preventDefault()
-                                          }
-                                        }}
-                                        maxLength={500}
-                                        placeholder="Write your review comment here..."
-                                        rows={2}
-                                        className={`w-full p-2.5 pb-6 rounded-xl border text-xs text-[#0d212c] outline-none resize-none transition ${
-                                          isCommentLimitReached
-                                            ? 'border-red-400 bg-red-50/20 focus:border-red-500'
-                                            : 'border-[#e2e8f0] bg-[#f8fafc] focus:border-[#cbd5e1]'
-                                        }`}
-                                      />
-                                      <span
-                                        className={`absolute bottom-2 right-2.5 text-[11px] pointer-events-none select-none ${
-                                          isCommentLimitReached
-                                            ? 'text-red-500 font-semibold'
-                                            : 'text-[#64748b]'
-                                        }`}
-                                      >
-                                        {commentLength}/500 character
-                                      </span>
-                                    </div>
-                                    {isCommentLimitReached && (
-                                      <p className="text-[11px] text-red-500 font-medium animate-in fade-in duration-150">
-                                        Maximum limit of 500 characters reached
-                                      </p>
-                                    )}
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenCommentInput((prev) => ({
-                                            ...prev,
-                                            [q.id]: false,
-                                          }))
-                                          setCommentTexts((prev) => ({ ...prev, [q.id]: '' }))
-                                        }}
-                                        className="px-3 py-1.5 rounded-xl text-xs font-medium text-[#64748b] hover:text-[#0d212c] cursor-pointer"
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleAddComment(q.id)}
-                                        disabled={!commentText.trim() || commentLength > 500}
-                                        className="px-3.5 py-1.5 rounded-xl bg-[#0d212c] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer border-0 shadow-2xs"
-                                      >
-                                        Add comment
-                                      </button>
-                                    </div>
+                                  {/* Bottom: Reviewed by user name */}
+                                  <div className="pt-2 pl-8 border-t border-[#e2e8f0]/60 flex items-center gap-1.5 text-xs text-[#64748b]">
+                                    <span>Reviewed by:</span>
+                                    <span className="font-semibold text-[#0d212c]">
+                                      {questionComments[q.id].reviewer}
+                                    </span>
                                   </div>
-                                )}
-                              </div>
-                            ) : null}
-                          </div>
-                        )}
+                                </div>
+                              ) : currentStatus !== 'finalised' ? (
+                                /* If no comment added yet, give the option to add only 1 comment */
+                                <div>
+                                  {!openCommentInput[q.id] ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setOpenCommentInput((prev) => ({ ...prev, [q.id]: true }))
+                                      }
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#cbd5e1] bg-white text-xs font-semibold text-[#0d212c] shadow-2xs cursor-pointer"
+                                    >
+                                      <MessageSquare className="w-3.5 h-3.5" />
+                                      <span>Add comment</span>
+                                    </button>
+                                  ) : (
+                                    <div className="p-3.5 rounded-xl bg-white border border-[#cbd5e1] shadow-2xs flex flex-col gap-2.5">
+                                      <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold text-[#0d212c] flex items-center gap-1.5">
+                                          <MessageSquare className="w-3.5 h-3.5 text-[#0d7280]" />
+                                          <span>Add Comment</span>
+                                        </label>
+                                        <span className="text-[11px] text-[#64748b]">
+                                          1 comment allowed for low confidence
+                                        </span>
+                                      </div>
+                                      <div className="relative">
+                                        <textarea
+                                          value={commentText}
+                                          onChange={(e) =>
+                                            setCommentTexts((prev) => ({
+                                              ...prev,
+                                              [q.id]: e.target.value.slice(0, 500),
+                                            }))
+                                          }
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && isCommentLimitReached) {
+                                              e.preventDefault()
+                                            }
+                                          }}
+                                          maxLength={500}
+                                          placeholder="Write your review comment here..."
+                                          rows={2}
+                                          className={`w-full p-2.5 pb-6 rounded-xl border text-xs text-[#0d212c] outline-none resize-none transition ${
+                                            isCommentLimitReached
+                                              ? 'border-red-400 bg-red-50/20 focus:border-red-500'
+                                              : 'border-[#e2e8f0] bg-[#f8fafc] focus:border-[#cbd5e1]'
+                                          }`}
+                                        />
+                                        <span
+                                          className={`absolute bottom-2 right-2.5 text-[11px] pointer-events-none select-none ${
+                                            isCommentLimitReached
+                                              ? 'text-red-500 font-semibold'
+                                              : 'text-[#64748b]'
+                                          }`}
+                                        >
+                                          {commentLength}/500 character
+                                        </span>
+                                      </div>
+                                      {isCommentLimitReached && (
+                                        <p className="text-[11px] text-red-500 font-medium animate-in fade-in duration-150">
+                                          Maximum limit of 500 characters reached
+                                        </p>
+                                      )}
+                                      <div className="flex items-center justify-end gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenCommentInput((prev) => ({
+                                              ...prev,
+                                              [q.id]: false,
+                                            }))
+                                            setCommentTexts((prev) => ({ ...prev, [q.id]: '' }))
+                                          }}
+                                          className="px-3 py-1.5 rounded-xl text-xs font-medium text-[#64748b] hover:text-[#0d212c] cursor-pointer"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleAddComment(q.id)}
+                                          disabled={!commentText.trim() || commentLength > 500}
+                                          className="px-3.5 py-1.5 rounded-xl bg-[#0d212c] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer border-0 shadow-2xs"
+                                        >
+                                          Add comment
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
                       </div>
                     )
                   })}

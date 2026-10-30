@@ -6,7 +6,16 @@
 'use client'
 
 import React, { useState } from 'react'
-import { LayoutDashboard, FileText, Building2, Bot, BarChart3, PanelLeftClose, LogOut, X } from 'lucide-react'
+import {
+  LayoutDashboard,
+  FileText,
+  Building2,
+  Bot,
+  BarChart3,
+  PanelLeftClose,
+  LogOut,
+  X,
+} from 'lucide-react'
 import { Avatar } from '@/tdd-admin/components/atoms/Avatar'
 
 export interface SidebarProps {

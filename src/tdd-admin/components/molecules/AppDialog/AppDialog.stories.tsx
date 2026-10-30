@@ -25,7 +25,8 @@ export const Destructive: Story = {
   args: {
     isOpen: true,
     title: 'Delete Repository',
-    children: 'This action cannot be undone. All project files and history will be permanently wiped.',
+    children:
+      'This action cannot be undone. All project files and history will be permanently wiped.',
     confirmLabel: 'Permanently Delete',
     destructive: true,
     onClose: () => {},

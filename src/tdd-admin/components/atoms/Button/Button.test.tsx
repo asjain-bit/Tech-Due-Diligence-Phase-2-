@@ -27,7 +27,11 @@ describe('Button Atom', () => {
 
   it('disables button when disabled prop is set', async () => {
     const handleClick = vi.fn()
-    render(<Button disabled onClick={handleClick}>Disabled</Button>)
+    render(
+      <Button disabled onClick={handleClick}>
+        Disabled
+      </Button>
+    )
     const button = screen.getByRole('button')
     expect(button).toBeDisabled()
     await userEvent.click(button)

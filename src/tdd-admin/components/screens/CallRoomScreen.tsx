@@ -203,7 +203,11 @@ export const CallRoomScreen: React.FC<CallRoomScreenProps> = ({
   // Only the running question and the next one are shown
   const visibleQuestions = questions
     .slice(currentQuestionIndex, currentQuestionIndex + 2)
-    .map((q, offset) => ({ ...q, number: currentQuestionIndex + offset + 1, isCurrent: offset === 0 }))
+    .map((q, offset) => ({
+      ...q,
+      number: currentQuestionIndex + offset + 1,
+      isCurrent: offset === 0,
+    }))
 
   const formatElapsed = (s: number) => {
     const m = Math.floor(s / 60)
@@ -513,7 +517,8 @@ export const CallRoomScreen: React.FC<CallRoomScreenProps> = ({
                   value={yourName}
                   onChange={(e) => setYourName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && yourName.trim() && adminConsent) setRoomState('waiting')
+                    if (e.key === 'Enter' && yourName.trim() && adminConsent)
+                      setRoomState('waiting')
                   }}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-xs text-[#0d212c] outline-none focus:border-[#36c0c9] transition"
                 />
@@ -525,7 +530,12 @@ export const CallRoomScreen: React.FC<CallRoomScreenProps> = ({
                   AI DISCLOSURE
                 </span>
                 <p className="text-xs text-[#64748b] leading-relaxed">
-                  I am an AI agent — not a human. I am conducting this structured vendor due-diligence assessment on behalf of M42/Malaffi across the relevant domain teams. This call is recorded and transcribed for assessment purposes. No audio and transcript is recorded while the agent is on hold. By joining you consent to recording. AI voice processing is performed by Microsoft Azure outside the UAE as the EU/Sweden are recognised as adequate.
+                  I am an AI agent — not a human. I am conducting this structured vendor
+                  due-diligence assessment on behalf of M42/Malaffi across the relevant domain
+                  teams. This call is recorded and transcribed for assessment purposes. No audio and
+                  transcript is recorded while the agent is on hold. By joining you consent to
+                  recording. AI voice processing is performed by Microsoft Azure outside the UAE as
+                  the EU/Sweden are recognised as adequate.
                 </p>
               </div>
 
@@ -544,7 +554,8 @@ export const CallRoomScreen: React.FC<CallRoomScreenProps> = ({
                   {adminConsent && <Check className="w-3 h-3 text-white stroke-[3]" />}
                 </div>
                 <span className="text-xs text-[#0d212c] font-normal leading-snug">
-                  I acknowledge I am speaking with an AI agent conducting this assessment on behalf of M42/Malaffi
+                  I acknowledge I am speaking with an AI agent conducting this assessment on behalf
+                  of M42/Malaffi
                 </span>
               </div>
 
@@ -583,8 +594,7 @@ export const CallRoomScreen: React.FC<CallRoomScreenProps> = ({
             const isFormValid = vendorNameInput.trim() !== '' && isEmailValid
             // Emails outside the invite list trigger a join request to the admin
             const isUninvitedEmail =
-              isEmailValid &&
-              !VENDOR_INVITED_EMAILS.includes(vendorEmailInput.trim().toLowerCase())
+              isEmailValid && !VENDOR_INVITED_EMAILS.includes(vendorEmailInput.trim().toLowerCase())
 
             return (
               <div className="relative w-full max-w-[420px]">
@@ -661,7 +671,12 @@ export const CallRoomScreen: React.FC<CallRoomScreenProps> = ({
                       AI DISCLOSURE
                     </span>
                     <p className="text-xs text-[#64748b] leading-relaxed">
-                      I am an AI agent — not a human. I am conducting this structured vendor due-diligence assessment on behalf of M42/Malaffi across the relevant domain teams. This call is recorded and transcribed for assessment purposes. No audio and transcript is recorded while the agent is on hold. By joining you consent to recording. AI voice processing is performed by Microsoft Azure outside the UAE as the EU/Sweden are recognised as adequate.
+                      I am an AI agent — not a human. I am conducting this structured vendor
+                      due-diligence assessment on behalf of M42/Malaffi across the relevant domain
+                      teams. This call is recorded and transcribed for assessment purposes. No audio
+                      and transcript is recorded while the agent is on hold. By joining you consent
+                      to recording. AI voice processing is performed by Microsoft Azure outside the
+                      UAE as the EU/Sweden are recognised as adequate.
                     </p>
                   </div>
 
@@ -680,7 +695,8 @@ export const CallRoomScreen: React.FC<CallRoomScreenProps> = ({
                       {vendorConsent && <Check className="w-3 h-3 text-white stroke-[3]" />}
                     </div>
                     <span className="text-xs text-[#0d212c] font-normal leading-snug">
-                      I acknowledge I am speaking with an AI agent conducting this assessment on behalf of M42/Malaffi
+                      I acknowledge I am speaking with an AI agent conducting this assessment on
+                      behalf of M42/Malaffi
                     </span>
                   </div>
 
@@ -1156,8 +1172,8 @@ export const CallRoomScreen: React.FC<CallRoomScreenProps> = ({
                         (currentQuestionIndex % 2 === 0 ? (
                           <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#b06000] animate-in fade-in duration-300">
                             <FileSearch className="w-3.5 h-3.5 shrink-0" />
-                            Background research: the vendor&apos;s claim could not be verified
-                            from public sources
+                            Background research: the vendor&apos;s claim could not be verified from
+                            public sources
                           </span>
                         ) : (
                           <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#d92d20] animate-in fade-in duration-300">
@@ -1297,7 +1313,9 @@ export const CallRoomScreen: React.FC<CallRoomScreenProps> = ({
         {assessmentStarted && (
           <div
             className={`absolute top-0 right-0 bottom-0 w-[300px] border-l border-[#e2e8f0] bg-white flex flex-col shrink-0 min-h-0 z-20 transition-transform duration-500 ease-in-out ${
-              showTranscript ? 'translate-x-0 pointer-events-auto animate-in slide-in-from-right' : 'translate-x-full pointer-events-none'
+              showTranscript
+                ? 'translate-x-0 pointer-events-auto animate-in slide-in-from-right'
+                : 'translate-x-full pointer-events-none'
             }`}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#e2e8f0] shrink-0">

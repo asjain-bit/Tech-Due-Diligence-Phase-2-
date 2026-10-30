@@ -312,8 +312,7 @@ function CostChart({ manual, ai, selectedIndex }: CostChartProps) {
 
   const x = (i: number) =>
     CHART_PLOT.left + ((CHART_PLOT.right - CHART_PLOT.left) * i) / (manual.length - 1)
-  const y = (v: number) =>
-    CHART_PLOT.bottom - ((CHART_PLOT.bottom - CHART_PLOT.top) * v) / yMax
+  const y = (v: number) => CHART_PLOT.bottom - ((CHART_PLOT.bottom - CHART_PLOT.top) * v) / yMax
   const points = (values: number[]) => values.map((v, i) => `${x(i)},${y(v)}`).join(' ')
   const last = manual.length - 1
 
@@ -340,7 +339,13 @@ function CostChart({ manual, ai, selectedIndex }: CostChartProps) {
               stroke="#f1f5f9"
               strokeWidth={1}
             />
-            <text x={CHART_PLOT.left - 12} y={y(t) + 4} textAnchor="end" fontSize={12} fill="#94a3b8">
+            <text
+              x={CHART_PLOT.left - 12}
+              y={y(t) + 4}
+              textAnchor="end"
+              fontSize={12}
+              fill="#94a3b8"
+            >
               ${t / 1000 === 0 ? 0 : `${t / 1000}K`}
             </text>
           </g>
@@ -408,7 +413,20 @@ function CostChart({ manual, ai, selectedIndex }: CostChartProps) {
 }
 
 function formatWeekDisplay(monday: Date, sunday: Date): string {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ]
   const mMonth = months[monday.getMonth()]
   const sMonth = months[sunday.getMonth()]
   const mDay = monday.getDate()
@@ -495,9 +513,7 @@ function NumericStepperInput({
     <div className="flex items-center gap-2 shrink-0">
       <div className="h-[36px] flex items-center bg-white border border-[#e2e8f0] rounded-xl px-2.5 shadow-2xs hover:border-[#cbd5e1] focus-within:border-[#cbd5e1] focus-within:bg-[#f8fafc] transition-colors">
         {prefix && (
-          <span className="text-xs text-[#94a3b8] font-normal mr-1 select-none">
-            {prefix}
-          </span>
+          <span className="text-xs text-[#94a3b8] font-normal mr-1 select-none">{prefix}</span>
         )}
         <input
           type="text"
@@ -527,9 +543,7 @@ function NumericStepperInput({
           </button>
         </div>
       </div>
-      <span className="text-xs text-[#64748b] font-medium min-w-[36px] select-none">
-        {unit}
-      </span>
+      <span className="text-xs text-[#64748b] font-medium min-w-[36px] select-none">{unit}</span>
     </div>
   )
 }
@@ -827,7 +841,9 @@ export const UsageInsightsScreen: React.FC = () => {
                 <div className="absolute right-0 top-full mt-1.5 w-64 bg-white border border-[#e2e8f0] rounded-2xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
                   <div className="px-3.5 py-2 text-[10px] font-semibold text-[#94a3b8] uppercase tracking-wider border-b border-[#f1f5f9] bg-[#f8fafc]/60 flex items-center justify-between">
                     <span>October 2026</span>
-                    <span className="text-[10px] text-[#94a3b8] font-normal lowercase">5 weeks</span>
+                    <span className="text-[10px] text-[#94a3b8] font-normal lowercase">
+                      5 weeks
+                    </span>
                   </div>
                   <div className="py-1">
                     {OCTOBER_WEEKS.map((w, idx) => {
@@ -962,8 +978,8 @@ export const UsageInsightsScreen: React.FC = () => {
 
             <div className="flex items-center gap-1.5 pt-2 border-t border-[#e2e8f0] text-[11px] text-[#64748b]">
               <span className="truncate">
-                week of {formatWeekDisplay(selectedWeek.monday, selectedWeek.sunday)} · text, voice &
-                web search
+                week of {formatWeekDisplay(selectedWeek.monday, selectedWeek.sunday)} · text, voice
+                & web search
               </span>
             </div>
           </div>
@@ -1009,8 +1025,8 @@ export const UsageInsightsScreen: React.FC = () => {
                 {isRecalculating
                   ? 'Recalculating metrics...'
                   : hasPendingChanges
-                  ? 'Unapplied changes'
-                  : 'AI cost includes text + voice tokens, embeddings and web search'}
+                    ? 'Unapplied changes'
+                    : 'AI cost includes text + voice tokens, embeddings and web search'}
               </span>
               <button
                 type="button"
@@ -1022,9 +1038,7 @@ export const UsageInsightsScreen: React.FC = () => {
                     : 'bg-[#36c0c9] opacity-40 cursor-not-allowed pointer-events-none'
                 }`}
               >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 ${isRecalculating ? 'animate-spin' : ''}`}
-                />
+                <RefreshCw className={`w-3.5 h-3.5 ${isRecalculating ? 'animate-spin' : ''}`} />
                 <span>Recalculate</span>
               </button>
             </div>
@@ -1138,8 +1152,13 @@ export const UsageInsightsScreen: React.FC = () => {
                             <Info className="w-3.5 h-3.5" />
                           </button>
                           <div className="absolute bottom-full left-0 mb-2 hidden group-hover/tip:block z-50 px-3 py-1.5 bg-[#0d212c] text-white text-[11px] font-normal rounded-lg shadow-xl pointer-events-none w-max max-w-xs text-left leading-relaxed animate-in fade-in duration-150">
-                            <div>Manual cost is the multiply of manual hours into resource cost per hour.</div>
-                            <div className="mt-0.5">Outputs × Manual hours × Resource cost per hour</div>
+                            <div>
+                              Manual cost is the multiply of manual hours into resource cost per
+                              hour.
+                            </div>
+                            <div className="mt-0.5">
+                              Outputs × Manual hours × Resource cost per hour
+                            </div>
                             <div className="absolute top-full left-2 border-4 border-transparent border-t-[#0d212c]" />
                           </div>
                         </div>
@@ -1165,8 +1184,13 @@ export const UsageInsightsScreen: React.FC = () => {
                             <Info className="w-3.5 h-3.5" />
                           </button>
                           <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 hidden group-hover/tip:block z-50 px-3 py-1.5 bg-[#0d212c] text-white text-[11px] font-normal rounded-lg shadow-xl pointer-events-none w-max max-w-xs text-left leading-relaxed animate-in fade-in duration-150">
-                            <div>AI cost adds up text, voice and embedding token costs plus web search credits.</div>
-                            <div className="mt-0.5">Tokens × Price per 1M + Search credits × Credit price</div>
+                            <div>
+                              AI cost adds up text, voice and embedding token costs plus web search
+                              credits.
+                            </div>
+                            <div className="mt-0.5">
+                              Tokens × Price per 1M + Search credits × Credit price
+                            </div>
                             <div className="absolute top-full left-2 sm:left-auto sm:right-2 border-4 border-transparent border-t-[#0d212c]" />
                           </div>
                         </div>
@@ -1197,7 +1221,9 @@ export const UsageInsightsScreen: React.FC = () => {
                             <Info className="w-3.5 h-3.5" />
                           </button>
                           <div className="absolute bottom-full left-0 mb-2 hidden group-hover/tip:block z-50 px-3 py-1.5 bg-[#0d212c] text-white text-[11px] font-normal rounded-lg shadow-xl pointer-events-none w-max max-w-xs text-left leading-relaxed animate-in fade-in duration-150">
-                            <div>Estimated ROI is calculated by dividing manual cost by AI cost.</div>
+                            <div>
+                              Estimated ROI is calculated by dividing manual cost by AI cost.
+                            </div>
                             <div className="mt-0.5">Manual cost ÷ AI cost</div>
                             <div className="absolute top-full left-2 border-4 border-transparent border-t-[#0d212c]" />
                           </div>
@@ -1221,7 +1247,10 @@ export const UsageInsightsScreen: React.FC = () => {
                             <Info className="w-3.5 h-3.5" />
                           </button>
                           <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 hidden group-hover/tip:block z-50 px-3 py-1.5 bg-[#0d212c] text-white text-[11px] font-normal rounded-lg shadow-xl pointer-events-none w-max max-w-xs text-left leading-relaxed animate-in fade-in duration-150">
-                            <div>Estimated savings is calculated by subtracting AI cost from manual cost.</div>
+                            <div>
+                              Estimated savings is calculated by subtracting AI cost from manual
+                              cost.
+                            </div>
                             <div className="mt-0.5">Manual cost − AI cost</div>
                             <div className="absolute top-full left-2 sm:left-auto sm:right-2 border-4 border-transparent border-t-[#0d212c]" />
                           </div>
@@ -1258,9 +1287,7 @@ export const UsageInsightsScreen: React.FC = () => {
             <div className="space-y-3 md:pr-6 pb-6 md:pb-0 flex flex-col justify-between">
               <div>
                 <div className="pb-3 border-b border-[#f1f5f9]">
-                  <h3 className="text-xs sm:text-sm font-semibold text-[#0d212c]">
-                    Completed
-                  </h3>
+                  <h3 className="text-xs sm:text-sm font-semibold text-[#0d212c]">Completed</h3>
                 </div>
 
                 <div className="divide-y divide-[#f1f5f9]">
@@ -1298,9 +1325,7 @@ export const UsageInsightsScreen: React.FC = () => {
             <div className="space-y-3 md:px-6 py-6 md:py-0 flex flex-col justify-between">
               <div>
                 <div className="pb-3 border-b border-[#f1f5f9]">
-                  <h3 className="text-xs sm:text-sm font-semibold text-[#0d212c]">
-                    Scheduled
-                  </h3>
+                  <h3 className="text-xs sm:text-sm font-semibold text-[#0d212c]">Scheduled</h3>
                 </div>
 
                 <div className="divide-y divide-[#f1f5f9]">
@@ -1338,9 +1363,7 @@ export const UsageInsightsScreen: React.FC = () => {
             <div className="space-y-3 md:pl-6 pt-6 md:pt-0 flex flex-col justify-between">
               <div>
                 <div className="pb-3 border-b border-[#f1f5f9]">
-                  <h3 className="text-xs sm:text-sm font-semibold text-[#0d212c]">
-                    Finalised
-                  </h3>
+                  <h3 className="text-xs sm:text-sm font-semibold text-[#0d212c]">Finalised</h3>
                 </div>
 
                 <div className="divide-y divide-[#f1f5f9]">

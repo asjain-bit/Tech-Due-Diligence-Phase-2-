@@ -28,9 +28,7 @@ export const KPICard: React.FC<KPICardProps> = ({
         .join(' ')}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-[#64748b] tracking-wide">
-          {title}
-        </span>
+        <span className="text-xs font-bold text-[#64748b] tracking-wide">{title}</span>
         {badgeText && <Badge variant={badgeVariant}>{badgeText}</Badge>}
       </div>
 
@@ -43,8 +41,8 @@ export const KPICard: React.FC<KPICardProps> = ({
               trend === 'up'
                 ? 'bg-[#e6f4ea] text-[#137333]'
                 : trend === 'down'
-                ? 'bg-red-50 text-red-600'
-                : 'bg-slate-100 text-[#64748b]',
+                  ? 'bg-red-50 text-red-600'
+                  : 'bg-slate-100 text-[#64748b]',
             ].join(' ')}
           >
             {trend === 'up' && <Icon name="check" size={12} />}

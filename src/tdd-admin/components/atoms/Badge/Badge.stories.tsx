@@ -30,8 +30,6 @@ export const StatusVariants: Story = {
 
 export const EdgeCases: Story = {
   render: () => (
-    <Badge className="max-w-[100px] truncate">
-      Very long badge text content overflow test
-    </Badge>
+    <Badge className="max-w-[100px] truncate">Very long badge text content overflow test</Badge>
   ),
 }

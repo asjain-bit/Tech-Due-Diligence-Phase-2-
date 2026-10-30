@@ -25,7 +25,10 @@ export const FormField: React.FC<FormFieldProps> = ({
   return (
     <div className={['flex flex-col gap-1.5 w-full', className].filter(Boolean).join(' ')}>
       {label && (
-        <label htmlFor={inputId} className="text-xs font-bold text-[#0d212c] tracking-normal select-none">
+        <label
+          htmlFor={inputId}
+          className="text-xs font-bold text-[#0d212c] tracking-normal select-none"
+        >
           {label}
           {required && <span className="text-[#d92d20] ml-1">*</span>}
         </label>
