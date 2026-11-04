@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "name": "m42-workspace",
-=======
   "name": "tdd-phase",
->>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,13 +8,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src",
-<<<<<<< HEAD
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@dagrejs/dagre": "^3.1.3",
-    "@xyflow/react": "^12.12.0",
-=======
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -26,31 +15,18 @@
     "test:e2e": "playwright test",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "sync:tdd-admin": "bash scripts/sync-tdd-admin.sh"
   },
   "dependencies": {
->>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
+    "@dagrejs/dagre": "^3.1.3",
+    "@xyflow/react": "^12.12.0",
     "lucide-react": "^1.55.0",
     "next": "^15.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-<<<<<<< HEAD
-    "@eslint/eslintrc": "^3.3.0",
-    "@eslint/js": "^9.21.0",
-    "@tailwindcss/postcss": "^4.0.12",
-    "@types/node": "^22.13.9",
-    "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
-    "eslint": "^9.21.0",
-    "eslint-config-next": "^15.2.1",
-    "postcss": "^8.5.3",
-    "prettier": "^3.5.3",
-    "tailwindcss": "^4.0.12",
-    "typescript": "^5.7.3"
-=======
     "@commitlint/cli": "^19.7.1",
     "@commitlint/config-conventional": "^19.7.1",
     "@commitlint/types": "^19.5.0",
@@ -82,6 +58,5 @@
     "typescript": "^5.7.3",
     "vite": "^5.4.14",
     "vitest": "^2.1.8"
->>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
   }
 }
