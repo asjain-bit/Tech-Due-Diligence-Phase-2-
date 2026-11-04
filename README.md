@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # M42 Workspace – Workflow configurator
 
 Admin configurator for approval workflows (spec: `WORKFLOW_CONFIGURATOR_SPEC.md`).
@@ -49,3 +50,6 @@ const myNode: NodeTypeDef = {
 The palette, canvas card, form and validator pick it up automatically. Set `accent` / `cardTone` for its colours (or `view` to change them with the step's settings), `sla: 'human'` (or `slaFor` when it depends on the settings), `onConfigChange` to keep related settings in step to get the SLA block, `eventNotifications: true` for the notifications block, `outputs` to add fields to the case data dictionary, and `isAllowed` / `validate` for extra rules.
 
 To reset the demo data, clear the `m42-workflow-configurator.v2` key in localStorage.
+=======
+# TDD Phase
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c

@@ -19,4 +19,7 @@ test-results/
 .DS_Store
 *.log
 *.tsbuildinfo
+<<<<<<< HEAD
 .env
+=======
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c

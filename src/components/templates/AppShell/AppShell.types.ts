@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import type React from 'react'
 
 export interface AppShellProps {
@@ -11,4 +12,18 @@ export interface AppShellProps {
   fullBleed?: boolean
   /** Page content */
   children?: React.ReactNode
+=======
+import React from 'react'
+
+export interface AppShellProps {
+  topbar: React.ReactNode
+  leftbar?: React.ReactNode
+  main: React.ReactNode
+  rightbar?: React.ReactNode
+  isLeftbarCollapsed?: boolean
+  isRightbarOpen?: boolean
+  onToggleLeftbar?: () => void
+  onToggleRightbar?: () => void
+  className?: string
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
 }

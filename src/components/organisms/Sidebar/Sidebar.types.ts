@@ -1,4 +1,18 @@
+<<<<<<< HEAD
 export interface SidebarProps {
+=======
+import type { LucideIcon } from 'lucide-react'
+
+export interface SidebarNavItem {
+  id: string
+  label: string
+  icon: LucideIcon
+}
+
+export interface SidebarProps {
+  /** Navigation items; defaults to Dashboard and Usage */
+  items?: SidebarNavItem[]
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
   /** Active navigation tab identifier */
   activeTab: string
   /** Tab selection callback */

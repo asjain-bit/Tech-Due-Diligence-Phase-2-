@@ -1,23 +1,40 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+<<<<<<< HEAD
 import { LayoutDashboard, PanelLeftClose, LogOut, X } from 'lucide-react'
 import { Avatar } from '@/components/atoms/Avatar'
 import { APP_NAME } from '@/lib/session'
+=======
+import { BarChart3, LayoutDashboard, PanelLeftClose, LogOut, X } from 'lucide-react'
+import { Avatar } from '@/components/atoms/Avatar'
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
 import type { SidebarProps } from './Sidebar.types'
 
 /**
  * Sidebar — Organism
  * Primary expandable/collapsible left navigation sidebar with user profile and sign out.
+<<<<<<< HEAD
  * Used in: AppShell
  */
 export const Sidebar: React.FC<SidebarProps> = ({
+=======
+ * Used in: HomePage, AppShell
+ */
+export const Sidebar: React.FC<SidebarProps> = ({
+  items,
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
   activeTab,
   onTabChange,
   collapsed,
   onToggleCollapse,
+<<<<<<< HEAD
   userName = 'Nadia Al-Farsi',
   userDesignation = 'Admin',
+=======
+  userName = 'Zaid Al Ali',
+  userDesignation = 'Director',
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
   userAvatarUrl,
   onSignOut,
 }) => {
@@ -52,8 +69,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [showLogoutConfirm])
 
+<<<<<<< HEAD
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+=======
+  const navItems = items ?? [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'usage', label: 'Value & ROI', icon: BarChart3 },
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
   ]
 
   const userInitials = userName
@@ -90,7 +113,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className="h-5 w-auto object-contain shrink-0"
                 />
                 <span className="font-semibold text-xs tracking-tight text-white truncate leading-none">
+<<<<<<< HEAD
                   {APP_NAME}
+=======
+                  Tech Due Diligence
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
                 </span>
               </div>
 
@@ -155,7 +182,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
+<<<<<<< HEAD
         {/* Sidebar Footer User Section with Designation and Overlay */}
+=======
+        {/* Sidebar Footer User Section with Designation Director and Overlay */}
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
         <div className="p-3 pb-5 border-t border-[#153443] shrink-0 bg-[#08171f]/50 relative">
           {!collapsed ? (
             <div
@@ -305,7 +336,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div>
               <h3 className="text-xl font-semibold text-[#0d212c] mb-1.5">Confirm Logout</h3>
               <p className="text-xs text-[#64748b] leading-relaxed max-w-md">
+<<<<<<< HEAD
                 Are you sure you want to log out of {APP_NAME}?
+=======
+                Are you sure you want to log out of M42 Tech Due Diligence?
+>>>>>>> 0eaebb0353032bc71bea6002cc159795d5251c2c
               </p>
             </div>
             <div className="flex items-center justify-center gap-3 w-full mt-2">
